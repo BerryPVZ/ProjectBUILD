@@ -323,7 +323,7 @@
         <label>Name</label>
         <input id="lawnName" value="Main Lawn" />
         <label>Override Background PNG/GIF</label>
-        <input id="lawnImage" type="file" accept="image/png,image/gif,image/webp,image/jpeg" />
+        <input id="lawnImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
         <label>Override Music</label>
         <input id="lawnMusic" type="file" accept="audio/*" />
         <div class="row">
@@ -371,7 +371,7 @@
         </div>
 
         <label>Asset PNG/GIF</label>
-        <input id="entityImage" type="file" accept="image/png,image/gif,image/webp,image/jpeg" />
+        <input id="entityImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
         <div class="triple">
           <div><label>HP</label><input id="hp" type="number" value="100" /></div>
           <div><label>Damage</label><input id="damage" type="number" value="10" /></div>
@@ -399,9 +399,9 @@ Click me again to advance.</textarea>
         </div>
 
         <label>Projectile Image PNG/GIF, for shooter abilities</label>
-        <input id="projectileImage" type="file" accept="image/png,image/gif,image/webp,image/jpeg" />
+        <input id="projectileImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
         <label>Collectible Image PNG/GIF, for producer abilities</label>
-        <input id="collectibleImage" type="file" accept="image/png,image/gif,image/webp,image/jpeg" />
+        <input id="collectibleImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
         <label>Script, mainly for bosses, spawners, hazards, triggers, and special objects</label>
         <textarea id="scriptText">// Runs every frame for each scripted entity.
 // Available: self, game, spawn(type,x,y,template), say(text), rand(min,max)
@@ -528,6 +528,15 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
+    }
+
+    function isGifFile(file) {
+      return !!file && (/\.gif$/i.test(file.name || '') || file.type === 'image/gif');
+    }
+
+    function makeObjectURL(file) {
+      try { return file ? URL.createObjectURL(file) : null; }
+      catch (err) { return null; }
     }
 
     function isGifSrc(src) {
@@ -833,9 +842,22 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const imgFile = document.getElementById('lawnImage').files[0];
       const musicFile = document.getElementById('lawnMusic').files[0];
       if (imgFile) {
-        state.lawn.imageSrc = await fileToDataURL(imgFile);
-        state.lawn.image = makeImage(state.lawn.imageSrc);
-        setGifLawn(state.lawn.imageSrc);
+        const previewSrc = makeObjectURL(imgFile);
+        if (previewSrc) {
+          state.lawn.imageSrc = previewSrc;
+          state.lawn.image = isGifFile(imgFile) ? null : makeImage(previewSrc);
+          setGifLawn(isGifFile(imgFile) ? previewSrc : null);
+        }
+        try {
+          const storedSrc = await fileToDataURL(imgFile);
+          if (storedSrc) {
+            state.lawn.imageSrc = storedSrc;
+            state.lawn.image = isGifFile(imgFile) ? null : makeImage(storedSrc);
+            setGifLawn(isGifFile(imgFile) ? storedSrc : null);
+          }
+        } catch (err) {
+          showToast('Preview loaded, but export storage failed');
+        }
       }
       if (musicFile) {
         state.lawn.musicSrc = await fileToDataURL(musicFile);
