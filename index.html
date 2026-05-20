@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 3.0</title>
+  <title>Project: BUILD 3.1</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -316,6 +316,39 @@
       display: block;
     }
 
+
+    #readyOverlay {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+      z-index: 20;
+      font-size: clamp(38px, 8vw, 96px);
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      color: #d9ff9f;
+      text-shadow: 0 7px 0 rgba(0,0,0,0.75), 0 0 24px rgba(183,255,122,0.55);
+      background: radial-gradient(circle, rgba(0,0,0,0.18), rgba(0,0,0,0.56));
+    }
+
+    #tileHint {
+      position: absolute;
+      right: 14px;
+      bottom: 14px;
+      background: rgba(8, 13, 24, 0.74);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 16px;
+      padding: 9px 12px;
+      pointer-events: none;
+      font-size: 12px;
+      color: var(--muted);
+      z-index: 6;
+      display: none;
+      backdrop-filter: blur(8px);
+    }
+
     #hud {
       position: absolute;
       left: 14px;
@@ -404,7 +437,7 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1>Project: BUILD <span class="versionBadge">3.0</span></h1>
+      <h1>Project: BUILD <span class="versionBadge">3.1</span></h1>
       <p>Project: BUILD 3.0 sandbox. Make custom plants, zombies, lawns, bosses, NPCs, props, traps, spawners, projectiles, collectibles, scripted encounters, and layered scenes. Plants can snap to grid; everything else stays free-placement.</p>
 
       <h2>Tool</h2>
@@ -451,6 +484,22 @@
           <button id="initGrid">Initialize / Hide Grid</button>
         </div>
         <button id="disableGrid" class="danger">Disable Plant Snapping</button>
+      </div>
+
+      <h2>Tile Painter</h2>
+      <div class="card">
+        <p class="sectionNote">Paint special tile rules on the grid. Pool tiles require Aquatic plants. Roof tiles require Tilegrown plants.</p>
+        <label>Tile Type</label>
+        <select id="tilePaintType">
+          <option value="land">Land / Normal</option>
+          <option value="pool">Pool</option>
+          <option value="roof">Roof</option>
+        </select>
+        <div class="row">
+          <button id="tilePaintTool" class="blue">Paint Tiles</button>
+          <button id="toggleTileOverlay" class="blue">Tile Overlay: On</button>
+        </div>
+        <button id="clearTileTypes" class="danger">Clear Pool/Roof Tiles</button>
       </div>
 
       <h2>Main Lawn</h2>
@@ -538,6 +587,12 @@
           <div><label>Height</label><input id="height" type="number" value="80" /></div>
           <div><label>Cooldown</label><input id="cooldown" type="number" value="1.5" step="0.1" /></div>
         </div>
+        <label>Plant Tile Traits</label>
+        <div class="row">
+          <label><input id="traitAquatic" type="checkbox" style="width:auto;margin-right:6px;" /> Aquatic - can plant on pool tiles</label>
+          <label><input id="traitTilegrown" type="checkbox" style="width:auto;margin-right:6px;" /> Tilegrown - can plant on roof tiles</label>
+        </div>
+        <p class="miniNote">Normal plants can only be planted on land tiles. Aquatic plants can be planted on pool tiles. Tilegrown plants can be planted on roof tiles.</p>
         <h2>3.0 Tuning</h2>
         <div class="triple">
           <div><label>Attack Range</label><input id="attackRange" type="number" value="760" /></div>
@@ -607,6 +662,37 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         <button id="deleteTemplate" class="danger">Delete Template</button>
       </div>
 
+      <h2>Wave Scripter / Level Editor</h2>
+      <div class="card">
+        <p class="sectionNote">Uses your saved zombie/boss templates as the zombie library. Start Level shows READY, SET, PREPARE! before enemies spawn.</p>
+        <label>Zombie Library</label>
+        <select id="waveZombieSelect"></select>
+        <div class="triple">
+          <div><label>Start Time</label><input id="waveTime" type="number" value="0" step="0.5" /></div>
+          <div><label>Count</label><input id="waveCount" type="number" value="3" min="1" /></div>
+          <div><label>Interval</label><input id="waveInterval" type="number" value="1" step="0.1" /></div>
+        </div>
+        <div class="triple">
+          <div><label>Spawn X</label><input id="waveX" type="number" value="-1" /></div>
+          <div><label>Lane / Y</label><input id="waveY" type="number" value="180" /></div>
+          <div><label>Y Jitter</label><input id="waveJitter" type="number" value="30" /></div>
+        </div>
+        <div class="row">
+          <button id="refreshZombieLibrary" class="blue">Refresh Library</button>
+          <button id="addWaveEntry">Add Spawn</button>
+        </div>
+        <label>Level Script JSON</label>
+        <textarea id="waveScript" placeholder='[{"time":0,"template":"Basic Zombie","count":5,"interval":1,"x":-1,"y":180,"jitter":30}]'></textarea>
+        <div class="row">
+          <button id="startLevel" class="warn">Start Level</button>
+          <button id="stopLevel" class="danger">Stop Level</button>
+        </div>
+        <div class="row">
+          <button id="clearWaveScript" class="danger">Clear Script</button>
+          <button id="spawnWaveNow" class="blue">Spawn Selected Now</button>
+        </div>
+      </div>
+
       <h2>World</h2>
       <div class="card">
         <label>Display Options</label>
@@ -644,7 +730,6 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       </div>
       <label>Import JSON</label>
       <input id="importWorld" type="file" accept="application/json" />
-      <button id="downloadHTML" class="warn">Download This HTML</button>
       <p class="tiny">Project: BUILD controls: click to place. Plants snap to the initialized grid; zombies do not. Select mode lets you drag, click NPCs for dialog, mouse wheel to scale, Shift + wheel to rotate, Delete to remove selected.</p>
     </aside>
 
@@ -653,6 +738,8 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       <canvas id="gameCanvas"></canvas>
       <div id="gifLayer"></div>
       <div id="gridOverlay"></div>
+      <div id="readyOverlay"></div>
+      <div id="tileHint">Tile Paint Mode</div>
       <div id="toast"></div>
       <div id="dialogBox">
         <div id="dialogName"></div>
@@ -701,13 +788,13 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
     const defaultTemplate = {
       name: 'Custom Plant', side: 'plant', role: 'fighter', type: 'plant', hp: 100, maxHp: 100, damage: 10, speed: 0,
-      w: 80, h: 80, cooldown: 1.5, abilities: ['shoot'], imageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null,
+      w: 80, h: 80, cooldown: 1.5, traits: { aquatic: false, tilegrown: false }, abilities: ['shoot'], imageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null,
       collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null, dialog: [], script: '', color: '#7dd3fc', rotation: 0, layer: 0
     };
 
     const npcTemplate = {
       name: 'Custom NPC', side: 'npc', role: 'npc', type: 'npc', hp: 999, maxHp: 999, damage: 0, speed: 0,
-      w: 88, h: 88, cooldown: 1.5, abilities: [], imageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null,
+      w: 88, h: 88, cooldown: 1.5, traits: { aquatic: false, tilegrown: false }, abilities: [], imageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null,
       collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null, dialog: ['Hi there.', 'Add multiple dialog slides in the template maker.', 'NPCs cannot use abilities.'],
       script: '', color: '#fbbf24', rotation: 0, layer: 2
     };
@@ -1801,16 +1888,6 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       reader.readAsText(file);
     };
 
-    document.getElementById('downloadHTML').onclick = () => {
-      const source = '<!DOCTYPE html>' + String.fromCharCode(10) + document.documentElement.outerHTML;
-      const blob = new Blob([source], { type: 'text/html' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'pvz-style-html5-sandbox.html';
-      a.click();
-    };
-
-
     function installProjectBuild3() {
       const extraAbilities = [
         'plantSniperShot','plantBackShot','plantSelfHeal','plantFortify','plantMineDrop','plantWideSensor','plantSplashHeal','plantCharmShot','plantDecoySpawn','plantTimeBomb','plantAntiAir','plant ricochet'.replace(' ','R'),
@@ -2091,7 +2168,314 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       };
     }
 
+
+    function installProjectBuildLevelTools() {
+      const byId = id => document.getElementById(id);
+      const readyOverlay = byId('readyOverlay');
+      const tileHint = byId('tileHint');
+      const tileOverlayEnabledDefault = true;
+
+      state.tiles ??= {};
+      state.tileOverlay ??= true;
+      state.level ??= { running: false, elapsed: 0, prepare: 0, events: [], queue: [], started: false };
+
+      function gridKeyFromPoint(x, y) {
+        const g = state.grid || { cellW: 80, cellH: 100, offsetX: 40, offsetY: 80 };
+        const col = Math.round((x - g.offsetX) / g.cellW);
+        const row = Math.round((y - g.offsetY) / g.cellH);
+        return `${col},${row}`;
+      }
+
+      function cellCenterFromKey(key) {
+        const [col, row] = key.split(',').map(Number);
+        const g = state.grid || { cellW: 80, cellH: 100, offsetX: 40, offsetY: 80 };
+        return { x: g.offsetX + col * g.cellW, y: g.offsetY + row * g.cellH, col, row };
+      }
+
+      function tileTypeAt(x, y) {
+        return state.tiles?.[gridKeyFromPoint(x, y)] || 'land';
+      }
+
+      function plantCanUseTile(template, x, y) {
+        const tile = tileTypeAt(x, y);
+        const traits = template.traits || {};
+        if (tile === 'pool' && !traits.aquatic) return { ok: false, reason: 'Needs Aquatic trait for pool tiles' };
+        if (tile === 'roof' && !traits.tilegrown) return { ok: false, reason: 'Needs Tilegrown trait for roof tiles' };
+        return { ok: true, reason: '' };
+      }
+
+      function syncTileOverlayButton() {
+        const btn = byId('toggleTileOverlay');
+        if (btn) btn.textContent = state.tileOverlay ? 'Tile Overlay: On' : 'Tile Overlay: Off';
+      }
+      syncTileOverlayButton();
+
+      const oldGetTemplateFormTraits = getTemplateForm;
+      getTemplateForm = function() {
+        const t = oldGetTemplateFormTraits();
+        t.traits = {
+          ...(t.traits || {}),
+          aquatic: !!byId('traitAquatic')?.checked,
+          tilegrown: !!byId('traitTilegrown')?.checked
+        };
+        return t;
+      };
+
+      const oldLoadTemplateTraits = loadTemplateToForm;
+      loadTemplateToForm = function(t) {
+        oldLoadTemplateTraits(t);
+        if (byId('traitAquatic')) byId('traitAquatic').checked = !!t.traits?.aquatic;
+        if (byId('traitTilegrown')) byId('traitTilegrown').checked = !!t.traits?.tilegrown;
+      };
+
+      const oldEntityFromTemplateTraits = entityFromTemplate;
+      entityFromTemplate = function(template, x, y, override = {}) {
+        const e = oldEntityFromTemplateTraits(template, x, y, override);
+        const t = { ...template, ...override };
+        e.traits = { ...(t.traits || {}) };
+        return e;
+      };
+
+      const oldPlaceEntityAtLevel = placeEntityAt;
+      placeEntityAt = function(m) {
+        if (state.tool === 'tilePaint') {
+          const key = gridKeyFromPoint(m.x, m.y);
+          const type = byId('tilePaintType')?.value || 'land';
+          if (type === 'land') delete state.tiles[key];
+          else state.tiles[key] = type;
+          showToast(`Tile set to ${type}`);
+          return;
+        }
+
+        const index = Number(byId('templateSelect').value) || 0;
+        const template = structuredClone(state.templates[index]);
+        template.type = state.placeType;
+        if (state.placeType === 'boss') { template.side = 'boss'; template.role = 'boss'; }
+        if (state.placeType === 'npc') { template.side = 'npc'; template.role = 'npc'; template.abilities = []; template.script = ''; }
+        if ((state.placeType === 'zombie' || state.placeType === 'plant') && (!template.side || template.side === 'neutral')) template.side = state.placeType;
+        if (['lawnItem','decoration','wall','trap','spawner','hazard','triggerZone','portal','weather'].includes(state.placeType) && template.side !== 'npc' && template.side !== 'plant' && template.side !== 'zombie' && template.side !== 'boss') template.side = 'neutral';
+        const placePoint = template.side === 'plant' ? snapPlantPosition(m.x, m.y) : m;
+        if (template.side === 'plant') {
+          const check = plantCanUseTile(template, placePoint.x, placePoint.y);
+          if (!check.ok) { showToast(check.reason); return; }
+        }
+        const ent = entityFromTemplate(template, placePoint.x, placePoint.y);
+        state.entities.push(ent);
+        if (isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7);
+        state.selected = ent;
+      };
+
+      const oldMaybeSnapEntityTile = maybeSnapEntity;
+      maybeSnapEntity = function(ent) {
+        if (!ent) return;
+        const oldX = ent.x, oldY = ent.y;
+        oldMaybeSnapEntityTile(ent);
+        if (ent.side === 'plant') {
+          const check = plantCanUseTile(ent, ent.x, ent.y);
+          if (!check.ok) { ent.x = oldX; ent.y = oldY; showToast(check.reason); }
+        }
+      };
+
+      function refreshZombieLibrary() {
+        const sel = byId('waveZombieSelect');
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '';
+        state.templates.forEach((t, i) => {
+          if (t.side === 'zombie' || t.side === 'boss' || t.type === 'zombie' || t.type === 'boss') {
+            const opt = document.createElement('option');
+            opt.value = String(i);
+            opt.textContent = `${t.name} (${t.side}/${t.role || t.type})`;
+            sel.appendChild(opt);
+          }
+        });
+        if (!sel.options.length) {
+          const opt = document.createElement('option');
+          opt.value = '-1';
+          opt.textContent = 'No zombie templates saved yet';
+          sel.appendChild(opt);
+        } else if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+      }
+
+      const oldRefreshTemplatesLevel = refreshTemplates;
+      refreshTemplates = function() { oldRefreshTemplatesLevel(); refreshZombieLibrary(); };
+      refreshZombieLibrary();
+
+      function readWaveScript() {
+        const raw = byId('waveScript')?.value.trim();
+        if (!raw) return [];
+        try {
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          showToast('Wave JSON error: ' + err.message);
+          return [];
+        }
+      }
+
+      function writeWaveScript(events) {
+        const area = byId('waveScript');
+        if (area) area.value = JSON.stringify(events, null, 2);
+      }
+
+      function waveEventFromControls() {
+        const idx = Number(byId('waveZombieSelect')?.value);
+        const t = state.templates[idx];
+        return {
+          time: Number(byId('waveTime')?.value) || 0,
+          templateIndex: idx,
+          template: t?.name || 'Zombie',
+          count: Math.max(1, Number(byId('waveCount')?.value) || 1),
+          interval: Math.max(0.05, Number(byId('waveInterval')?.value) || 1),
+          x: Number(byId('waveX')?.value) || -1,
+          y: Number(byId('waveY')?.value) || 180,
+          jitter: Number(byId('waveJitter')?.value) || 0
+        };
+      }
+
+      function getTemplateForWave(ev) {
+        if (Number.isFinite(ev.templateIndex) && state.templates[ev.templateIndex]) return structuredClone(state.templates[ev.templateIndex]);
+        return structuredClone(state.templates.find(t => t.name === ev.template && (t.side === 'zombie' || t.side === 'boss' || t.type === 'zombie' || t.type === 'boss')) || state.templates.find(t => t.side === 'zombie') || defaultTemplate);
+      }
+
+      function spawnWaveEvent(ev, number = 0) {
+        const template = getTemplateForWave(ev);
+        if (!template) return;
+        if (template.side !== 'boss') template.side = 'zombie';
+        const x = ev.x === -1 ? canvas.clientWidth + 80 : ev.x;
+        const y = (Number(ev.y) || 180) + rand(-(ev.jitter || 0), ev.jitter || 0) + number * 6;
+        const ent = entityFromTemplate(template, x, y);
+        state.entities.push(ent);
+        if (isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7);
+      }
+
+      function showReadyText(text) {
+        if (!readyOverlay) return;
+        readyOverlay.textContent = text;
+        readyOverlay.style.display = text ? 'flex' : 'none';
+      }
+
+      function startLevel() {
+        const events = readWaveScript().sort((a,b) => (a.time || 0) - (b.time || 0));
+        state.level = { running: true, elapsed: -3, prepare: 3, events, queue: [], started: false };
+        showReadyText('READY');
+        showToast('Level starting');
+      }
+
+      function stopLevel() {
+        state.level.running = false;
+        state.level.queue = [];
+        showReadyText('');
+        showToast('Level stopped');
+      }
+
+      const oldUpdateLevelTools = update;
+      update = function(dt) {
+        oldUpdateLevelTools(dt);
+        const level = state.level;
+        if (!level?.running || state.paused) return;
+        level.elapsed += dt;
+        if (level.elapsed < -2) showReadyText('READY');
+        else if (level.elapsed < -1) showReadyText('SET');
+        else if (level.elapsed < 0) showReadyText('PREPARE!');
+        else {
+          showReadyText('');
+          level.events.forEach(ev => {
+            if (!ev._queued && level.elapsed >= (ev.time || 0)) {
+              ev._queued = true;
+              for (let i = 0; i < (ev.count || 1); i++) {
+                level.queue.push({ at: level.elapsed + i * (ev.interval || 1), ev, number: i });
+              }
+            }
+          });
+          level.queue.forEach(item => {
+            if (!item.done && level.elapsed >= item.at) { item.done = true; spawnWaveEvent(item.ev, item.number); }
+          });
+          level.queue = level.queue.filter(item => !item.done);
+          if (level.events.every(ev => ev._queued) && level.queue.length === 0) level.running = false;
+        }
+      };
+
+      const oldDrawLevelTools = draw;
+      draw = function() {
+        oldDrawLevelTools();
+        if (state.tileOverlay) {
+          const g = state.grid || { cellW: 80, cellH: 100 };
+          Object.entries(state.tiles || {}).forEach(([key, type]) => {
+            const c = cellCenterFromKey(key);
+            ctx.save();
+            ctx.globalAlpha = 0.33;
+            ctx.fillStyle = type === 'pool' ? '#38bdf8' : type === 'roof' ? '#a16207' : '#22c55e';
+            ctx.fillRect(c.x - g.cellW / 2, c.y - g.cellH / 2, g.cellW, g.cellH);
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = '#f8fafc';
+            ctx.font = '12px system-ui';
+            ctx.textAlign = 'center';
+            ctx.fillText(type.toUpperCase(), c.x, c.y + 4);
+            ctx.restore();
+          });
+        }
+      };
+
+      const oldSerializableLevelTools = serializableState;
+      serializableState = function() {
+        const data = oldSerializableLevelTools();
+        data.version = '3.1-level-tools';
+        data.tiles = { ...(state.tiles || {}) };
+        data.tileOverlay = !!state.tileOverlay;
+        data.levelScript = readWaveScript();
+        return data;
+      };
+
+      const oldImportLevelTools = byId('importWorld')?.onchange;
+      if (byId('importWorld')) byId('importWorld').onchange = e => {
+        oldImportLevelTools?.(e);
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            setTimeout(() => {
+              state.tiles = data.tiles || {};
+              state.tileOverlay = data.tileOverlay ?? true;
+              if (Array.isArray(data.levelScript)) writeWaveScript(data.levelScript);
+              syncTileOverlayButton();
+              refreshZombieLibrary();
+            }, 120);
+          } catch {}
+        };
+        reader.readAsText(file);
+      };
+
+      if (byId('tilePaintTool')) byId('tilePaintTool').onclick = () => {
+        state.tool = state.tool === 'tilePaint' ? 'place' : 'tilePaint';
+        canvas.style.cursor = state.tool === 'tilePaint' ? 'cell' : 'crosshair';
+        if (tileHint) tileHint.style.display = state.tool === 'tilePaint' ? 'block' : 'none';
+        showToast(state.tool === 'tilePaint' ? 'Tile paint mode' : 'Place mode');
+      };
+      if (byId('toggleTileOverlay')) byId('toggleTileOverlay').onclick = () => { state.tileOverlay = !state.tileOverlay; syncTileOverlayButton(); };
+      if (byId('clearTileTypes')) byId('clearTileTypes').onclick = () => { state.tiles = {}; showToast('Pool/roof tiles cleared'); };
+      if (byId('refreshZombieLibrary')) byId('refreshZombieLibrary').onclick = () => { refreshZombieLibrary(); showToast('Zombie library refreshed'); };
+      if (byId('addWaveEntry')) byId('addWaveEntry').onclick = () => { const evs = readWaveScript(); evs.push(waveEventFromControls()); writeWaveScript(evs); showToast('Wave spawn added'); };
+      if (byId('startLevel')) byId('startLevel').onclick = startLevel;
+      if (byId('stopLevel')) byId('stopLevel').onclick = stopLevel;
+      if (byId('clearWaveScript')) byId('clearWaveScript').onclick = () => { writeWaveScript([]); showToast('Wave script cleared'); };
+      if (byId('spawnWaveNow')) byId('spawnWaveNow').onclick = () => { const ev = waveEventFromControls(); for (let i = 0; i < ev.count; i++) spawnWaveEvent(ev, i); showToast('Spawned selected wave'); };
+
+      window.ProjectBuildLevel = {
+        version: '3.1-level-tools',
+        startLevel,
+        stopLevel,
+        spawnWaveEvent,
+        refreshZombieLibrary,
+        tileTypeAt,
+        state
+      };
+    }
+
     installProjectBuild3();
+    installProjectBuildLevelTools();
 
 
     renderAbilityPills();
