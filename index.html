@@ -324,6 +324,12 @@
         <input id="lawnName" value="Main Lawn" />
         <label>Override Background PNG/GIF</label>
         <input id="lawnImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+        <label>Lawn Display Mode</label>
+        <select id="lawnFitMode">
+          <option value="fitAll" selected>Fit All - no crop, no stretch</option>
+          <option value="stretch">Stretch - fill entire screen</option>
+          <option value="sizeToFit">Size to Fit - fill screen, crop edges if needed</option>
+        </select>
         <label>Override Music</label>
         <input id="lawnMusic" type="file" accept="audio/*" />
         <div class="row">
@@ -501,7 +507,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       paused: false,
       tool: 'place',
       placeType: 'plant',
-      lawn: { name: 'Main Lawn', imageSrc: 'main.png', image: null, musicSrc: 'main.mp3' },
+      lawn: { name: 'Main Lawn', imageSrc: 'main.png', image: null, musicSrc: 'main.mp3', fitMode: 'fitAll' },
       templates: [structuredClone(defaultTemplate), structuredClone(npcTemplate)],
       entities: [],
       projectiles: [],
@@ -574,10 +580,17 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       return img;
     }
 
+    function applyGifLawnFit() {
+      const mode = state.lawn.fitMode || 'fitAll';
+      gifLawn.style.objectFit = mode === 'stretch' ? 'fill' : mode === 'sizeToFit' ? 'cover' : 'contain';
+      gifLawn.style.background = mode === 'fitAll' ? '#365314' : 'transparent';
+    }
+
     function setGifLawn(src) {
       if (isGifSrc(src)) {
         gifLawn.src = src;
         gifLawn.style.display = 'block';
+        applyGifLawnFit();
       } else {
         gifLawn.removeAttribute('src');
         gifLawn.style.display = 'none';
@@ -879,6 +892,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
     document.getElementById('applyLawn').onclick = async () => {
       state.lawn.name = document.getElementById('lawnName').value || 'Main Lawn';
+      state.lawn.fitMode = document.getElementById('lawnFitMode').value || 'fitAll';
       const imgFile = document.getElementById('lawnImage').files[0];
       const musicFile = document.getElementById('lawnMusic').files[0];
       if (imgFile) {
@@ -906,6 +920,12 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       showToast('Lawn applied');
     };
     document.getElementById('toggleMusic').onclick = () => music.paused ? music.play().catch(() => showToast('Browser blocked autoplay. Click again.')) : music.pause();
+
+    document.getElementById('lawnFitMode').onchange = e => {
+      state.lawn.fitMode = e.target.value;
+      applyGifLawnFit();
+      showToast('Lawn display mode changed');
+    };
 
     function makeProjectile(owner, angle = 0, speed = 420, damageMult = 1) {
       const p = {
@@ -1161,10 +1181,30 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       hud.textContent = `${state.lawn.name} | Entities: ${state.entities.length} | Projectiles: ${state.projectiles.length} | Collectibles: ${state.collectibles.length} | Tool: ${state.tool} | Free placement + overlap enabled`;
     }
 
+    function drawImageWithFit(img, x, y, w, h, mode = 'fitAll') {
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
+      if (!iw || !ih) return;
+      if (mode === 'stretch') {
+        ctx.drawImage(img, x, y, w, h);
+        return;
+      }
+      const scale = mode === 'sizeToFit' ? Math.max(w / iw, h / ih) : Math.min(w / iw, h / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = x + (w - dw) / 2;
+      const dy = y + (h - dh) / 2;
+      ctx.drawImage(img, dx, dy, dw, dh);
+    }
+
     function drawLawn() {
       const w = canvas.clientWidth, h = canvas.clientHeight;
       if (isGifSrc(state.lawn.imageSrc)) return;
-      if (state.lawn.image && state.lawn.image.complete && state.lawn.image.naturalWidth) ctx.drawImage(state.lawn.image, 0, 0, w, h);
+      if (state.lawn.image && state.lawn.image.complete && state.lawn.image.naturalWidth) {
+        ctx.fillStyle = '#365314';
+        ctx.fillRect(0, 0, w, h);
+        drawImageWithFit(state.lawn.image, 0, 0, w, h, state.lawn.fitMode || 'fitAll');
+      }
       else {
         const grd = ctx.createLinearGradient(0, 0, 0, h);
         grd.addColorStop(0, '#47751b');
@@ -1288,7 +1328,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
     function serializableState() {
       return {
-        lawn: { name: state.lawn.name, imageSrc: state.lawn.imageSrc, musicSrc: state.lawn.musicSrc },
+        lawn: { name: state.lawn.name, imageSrc: state.lawn.imageSrc, musicSrc: state.lawn.musicSrc, fitMode: state.lawn.fitMode || 'fitAll' },
         templates: state.templates,
         entities: state.entities.map(serializableEntity),
         projectiles: [], collectibles: []
@@ -1309,9 +1349,12 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const reader = new FileReader();
       reader.onload = () => {
         const data = JSON.parse(reader.result);
-        state.lawn = data.lawn || state.lawn;
+        state.lawn = { ...state.lawn, ...(data.lawn || {}) };
+        state.lawn.fitMode = state.lawn.fitMode || 'fitAll';
+        document.getElementById('lawnFitMode').value = state.lawn.fitMode;
         state.lawn.image = makeImage(state.lawn.imageSrc);
         setGifLawn(state.lawn.imageSrc);
+        applyGifLawnFit();
         if (state.lawn.musicSrc) music.src = state.lawn.musicSrc;
         state.templates = data.templates || state.templates;
         state.entities = (data.entities || []).map(e => {
