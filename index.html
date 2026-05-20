@@ -5,11 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Project: BUILD</title>
   <style>
+    @font-face {
+      font-family: 'GameFolderFont';
+      src: url('custom.ttf') format('truetype'), url('game.ttf') format('truetype'), url('main.ttf') format('truetype');
+      font-weight: normal;
+      font-style: normal;
+      font-display: swap;
+    }
+
     :root {
       --panel: rgba(8, 13, 24, 0.94);
       --panel-2: rgba(17, 27, 45, 0.96);
       --panel-3: rgba(30, 45, 68, 0.96);
-      --text: #f8fafc;
+      --text: #0da807;
       --muted: #cbd5e1;
       --soft: #94a3b8;
       --accent: #a7f3d0;
@@ -26,9 +34,9 @@
       height: 100%;
       margin: 0;
       overflow: hidden;
-      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'GameFolderFont', Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0f172a;
-      color: var(--text);
+      color: #0da807;
     }
 
     #app {
@@ -36,6 +44,11 @@
       grid-template-columns: 390px 1fr;
       height: 100vh;
       width: 100vw;
+      transition: grid-template-columns 260ms ease;
+    }
+
+    #app.sidebar-collapsed {
+      grid-template-columns: 0 1fr;
     }
 
     #sidebar {
@@ -45,6 +58,56 @@
       overflow-y: auto;
       z-index: 8;
       box-shadow: var(--shadow);
+      transform: translateX(0);
+      transition: transform 260ms ease, opacity 220ms ease;
+      min-width: 390px;
+    }
+
+    #app.sidebar-collapsed #sidebar {
+      transform: translateX(-100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #sidebarToggle {
+      position: fixed;
+      left: 374px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.25);
+      background: rgba(8, 13, 24, 0.88);
+      color: var(--accent);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      z-index: 30;
+      box-shadow: var(--shadow);
+      font-size: 20px;
+      line-height: 1;
+      padding: 0;
+      transition: left 260ms ease, transform 260ms ease, background 160ms ease;
+    }
+
+    #sidebarToggle:hover {
+      background: rgba(17, 27, 45, 0.96);
+      transform: translateY(-50%) scale(1.06);
+    }
+
+    #app.sidebar-collapsed #sidebarToggle {
+      left: 8px;
+    }
+
+    #sidebarToggleIcon {
+      display: block;
+      transition: transform 260ms ease;
+      transform: rotate(180deg);
+    }
+
+    #app.sidebar-collapsed #sidebarToggleIcon {
+      transform: rotate(0deg);
     }
 
     h1 {
@@ -77,7 +140,7 @@
       width: 100%;
       border: 1px solid rgba(255,255,255,0.14);
       background: rgba(15, 23, 42, 0.96);
-      color: var(--text);
+      color: #0da807;
       border-radius: 12px;
       padding: 9px 10px;
       font: inherit;
@@ -98,18 +161,26 @@
 
     button {
       cursor: pointer;
-      background: rgba(167, 243, 208, 0.15);
-      border-color: rgba(167, 243, 208, 0.34);
+      background-color: rgba(31, 70, 24, 0.9);
+      background-image: url('button.png');
+      background-size: 100% 100%;
+      background-position: center;
+      background-repeat: no-repeat;
+      border-color: rgba(190, 255, 120, 0.42);
+      color: #0da807;
+      text-shadow: 0 2px 2px rgba(0,0,0,0.75);
       font-weight: 800;
       margin-top: 8px;
-      transition: transform 120ms ease, background 120ms ease, border 120ms ease;
+      position: relative;
+      overflow: hidden;
+      transition: transform 120ms ease, background 120ms ease, border 120ms ease, filter 120ms ease;
     }
 
-    button:hover { background: rgba(167, 243, 208, 0.24); transform: translateY(-1px); }
+    button:hover { filter: brightness(1.12); transform: translateY(-1px); }
     button:active { transform: translateY(0); }
-    button.danger { background: rgba(252, 165, 165, 0.13); border-color: rgba(252, 165, 165, 0.36); }
-    button.warn { background: rgba(253, 230, 138, 0.14); border-color: rgba(253, 230, 138, 0.38); }
-    button.blue { background: rgba(186, 230, 253, 0.14); border-color: rgba(186, 230, 253, 0.38); }
+    button.danger { background-image: url('button-danger.png'), url('button.png'); border-color: rgba(252, 165, 165, 0.45); }
+    button.warn { background-image: url('button-warn.png'), url('button.png'); border-color: rgba(253, 230, 138, 0.48); }
+    button.blue { background-image: url('button-blue.png'), url('button.png'); border-color: rgba(186, 230, 253, 0.48); }
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -146,7 +217,7 @@
 
     .pill.active {
       background: rgba(167, 243, 208, 0.22);
-      color: var(--text);
+      color: #0da807;
       border-color: rgba(167, 243, 208, 0.52);
     }
 
@@ -205,6 +276,24 @@
       will-change: transform, left, top, width, height, opacity;
     }
 
+    #gridOverlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 3;
+      opacity: 0.55;
+      display: none;
+      background-image:
+        linear-gradient(rgba(183,255,122,0.35) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(183,255,122,0.35) 1px, transparent 1px);
+      background-size: 80px 100px;
+      background-position: 40px 80px;
+    }
+
+    #gridOverlay.show {
+      display: block;
+    }
+
     #hud {
       position: absolute;
       left: 14px;
@@ -244,7 +333,7 @@
     }
 
     #dialogText {
-      color: var(--text);
+      color: #0da807;
       line-height: 1.42;
       min-height: 42px;
     }
@@ -278,13 +367,20 @@
 
     @media (max-width: 950px) {
       #app { grid-template-columns: 1fr; grid-template-rows: 52vh 48vh; }
-      #sidebar { border-right: 0; border-bottom: 1px solid rgba(255,255,255,0.12); }
+      #app.sidebar-collapsed { grid-template-rows: 0 1fr; grid-template-columns: 1fr; }
+      #sidebar { border-right: 0; border-bottom: 1px solid rgba(255,255,255,0.12); min-width: 0; transform: translateY(0); }
+      #app.sidebar-collapsed #sidebar { transform: translateY(-100%); }
+      #sidebarToggle { left: auto; right: 10px; top: calc(52vh - 17px); }
+      #app.sidebar-collapsed #sidebarToggle { left: auto; right: 10px; top: 12px; }
+      #sidebarToggleIcon { transform: rotate(270deg); }
+      #app.sidebar-collapsed #sidebarToggleIcon { transform: rotate(90deg); }
       #dialogBox { width: calc(100vw - 28px); bottom: 76px; }
     }
   </style>
 </head>
 <body>
   <div id="app">
+    <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
       <h1>Project: BUILD</h1>
       <p>Free-placement sandbox. Make custom plants, zombies, lawns, bosses, NPCs, props, traps, spawners, projectiles, and collectibles. No grid. Overlap is allowed.</p>
@@ -316,6 +412,24 @@
         <button id="deleteSelected" class="danger">Delete Selected</button>
       </div>
       <button id="clearEntities" class="danger">Clear Entities</button>
+
+      <h2>Placement Grid</h2>
+      <div class="card">
+        <p class="sectionNote">Configure the grid, preview it, then initialize it. Once initialized, the grid hides. Plants snap to it; zombies, bosses, NPCs, and props do not.</p>
+        <div class="row">
+          <div><label>Cell Width</label><input id="gridCellW" type="number" value="80" min="8" /></div>
+          <div><label>Cell Height</label><input id="gridCellH" type="number" value="100" min="8" /></div>
+        </div>
+        <div class="row">
+          <div><label>Offset X</label><input id="gridOffsetX" type="number" value="40" /></div>
+          <div><label>Offset Y</label><input id="gridOffsetY" type="number" value="80" /></div>
+        </div>
+        <div class="row">
+          <button id="previewGrid" class="blue">Preview Grid</button>
+          <button id="initGrid">Initialize / Hide Grid</button>
+        </div>
+        <button id="disableGrid" class="danger">Disable Plant Snapping</button>
+      </div>
 
       <h2>Main Lawn</h2>
       <div class="card">
@@ -376,8 +490,22 @@
           </div>
         </div>
 
-        <label>Asset PNG/GIF</label>
+        <label>Base Asset PNG/GIF, used as fallback</label>
         <input id="entityImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+        <div class="triple">
+          <div>
+            <label>Idle PNG/GIF</label>
+            <input id="idleImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+          </div>
+          <div>
+            <label>Action PNG/GIF</label>
+            <input id="actionImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+          </div>
+          <div>
+            <label>Death PNG/GIF</label>
+            <input id="deathImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+          </div>
+        </div>
         <div class="triple">
           <div><label>HP</label><input id="hp" type="number" value="100" /></div>
           <div><label>Damage</label><input id="damage" type="number" value="10" /></div>
@@ -437,6 +565,13 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       </div>
 
       <h2>World</h2>
+      <div class="card">
+        <label>Display Options</label>
+        <div class="row">
+          <button id="toggleLabels" class="blue">Labels: On</button>
+          <button id="toggleHealthBars" class="blue">Health Bars: On</button>
+        </div>
+      </div>
       <div class="row">
         <button id="pauseToggle">Pause</button>
         <button id="exportWorld">Export JSON</button>
@@ -444,13 +579,14 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       <label>Import JSON</label>
       <input id="importWorld" type="file" accept="application/json" />
       <button id="downloadHTML" class="warn">Download This HTML</button>
-      <p class="tiny">Controls: click to place. Select mode lets you drag, click NPCs for dialog, mouse wheel to scale, Shift + wheel to rotate, Delete to remove selected. GIF assets are displayed as live image overlays so they animate. Combat entities get shadows; props/objects hide health bars.</p>
+      <p class="tiny">Project: BUILD controls: click to place. Plants snap to the initialized grid; zombies do not. Select mode lets you drag, click NPCs for dialog, mouse wheel to scale, Shift + wheel to rotate, Delete to remove selected.</p>
     </aside>
 
     <main id="stageWrap">
       <img id="gifLawn" alt="Animated lawn background" />
       <canvas id="gameCanvas"></canvas>
       <div id="gifLayer"></div>
+      <div id="gridOverlay"></div>
       <div id="toast"></div>
       <div id="dialogBox">
         <div id="dialogName"></div>
@@ -464,6 +600,9 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
   <audio id="music" loop preload="auto" src="main.mp3"></audio>
 
   <script>
+    const app = document.getElementById('app');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebarToggleIcon = document.getElementById('sidebarToggleIcon');
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const gifLayer = document.getElementById('gifLayer');
@@ -474,6 +613,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     const dialogBox = document.getElementById('dialogBox');
     const dialogName = document.getElementById('dialogName');
     const dialogText = document.getElementById('dialogText');
+    const gridOverlay = document.getElementById('gridOverlay');
 
     const abilityList = [
       'shoot', 'tripleShot', 'spreadShot', 'lobShot', 'laser', 'pierceShot', 'rapidFire', 'slowProjectile',
@@ -486,19 +626,22 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       'rageAtLowHp', 'stunAttack', 'chomp', 'eatCollectibles', 'reflect', 'invisible', 'clone',
       'bossPhase', 'scripted', 'trapDamage', 'slowTrap', 'healPad', 'portalLink', 'weatherRain', 'weatherFog',
       'plantRoot', 'plantThorns', 'plantBurstHeal', 'plantSunNova', 'plantWallRepair', 'plantSeedVolley',
+      'plantReflectiveShell', 'plantStickySap', 'plantSporeCloud', 'plantOrbitShots', 'plantReviveAlly', 'plantTimeSlow',
       'zombieBite', 'zombieSprint', 'zombieTank', 'zombieDodge', 'zombieLeech', 'zombieGraveSpawn',
-      'bossStomp', 'bossLaserSweep', 'bossSummonHorde', 'bossShieldPulse', 'bossEnrage', 'bossMeteorRain'
+      'zombieShieldBreak', 'zombieToxicTrail', 'zombieBurrowAmbush', 'zombieThrowRock', 'zombieCallBackup', 'zombieFearAura',
+      'bossStomp', 'bossLaserSweep', 'bossSummonHorde', 'bossShieldPulse', 'bossEnrage', 'bossMeteorRain',
+      'bossGroundCrack', 'bossPoisonStorm', 'bossBlackHole', 'bossPhaseWarp', 'bossMinionBuff', 'bossFinalStand'
     ];
 
     const defaultTemplate = {
       name: 'Custom Plant', side: 'plant', role: 'fighter', type: 'plant', hp: 100, maxHp: 100, damage: 10, speed: 0,
-      w: 80, h: 80, cooldown: 1.5, abilities: ['shoot'], imageSrc: null, projectileSrc: null,
+      w: 80, h: 80, cooldown: 1.5, abilities: ['shoot'], imageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null,
       collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null, dialog: [], script: '', color: '#7dd3fc', rotation: 0, layer: 0
     };
 
     const npcTemplate = {
       name: 'Custom NPC', side: 'npc', role: 'npc', type: 'npc', hp: 999, maxHp: 999, damage: 0, speed: 0,
-      w: 88, h: 88, cooldown: 1.5, abilities: [], imageSrc: null, projectileSrc: null,
+      w: 88, h: 88, cooldown: 1.5, abilities: [], imageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null,
       collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null, dialog: ['Hi there.', 'Add multiple dialog slides in the template maker.', 'NPCs cannot use abilities.'],
       script: '', color: '#fbbf24', rotation: 0, layer: 2
     };
@@ -519,7 +662,9 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       lastTime: performance.now(),
       nextId: 1,
       worldTime: 0,
-      dialog: { entity: null, index: 0 }
+      dialog: { entity: null, index: 0 },
+      grid: { enabled: true, visible: true, cellW: 80, cellH: 100, offsetX: 40, offsetY: 80 },
+      display: { labels: true, healthBars: true }
     };
 
     function resizeCanvas() {
@@ -531,6 +676,64 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
+    syncGridInputs();
+    syncDisplayButtons();
+
+    sidebarToggle.addEventListener('click', () => {
+      const collapsed = app.classList.toggle('sidebar-collapsed');
+      sidebarToggle.title = collapsed ? 'Show toolbar' : 'Hide toolbar';
+      sidebarToggle.setAttribute('aria-label', collapsed ? 'Show toolbar' : 'Hide toolbar');
+      window.setTimeout(resizeCanvas, 270);
+    });
+
+    function updateGridFromInputs() {
+      if (!gridOverlay) return;
+      const cellWInput = document.getElementById('gridCellW');
+      const cellHInput = document.getElementById('gridCellH');
+      const offsetXInput = document.getElementById('gridOffsetX');
+      const offsetYInput = document.getElementById('gridOffsetY');
+      state.grid.cellW = Math.max(8, Number(cellWInput?.value) || 80);
+      state.grid.cellH = Math.max(8, Number(cellHInput?.value) || 100);
+      state.grid.offsetX = Number(offsetXInput?.value) || 0;
+      state.grid.offsetY = Number(offsetYInput?.value) || 0;
+      gridOverlay.style.backgroundSize = `${state.grid.cellW}px ${state.grid.cellH}px`;
+      gridOverlay.style.backgroundPosition = `${state.grid.offsetX}px ${state.grid.offsetY}px`;
+      gridOverlay.classList.toggle('show', !!state.grid.visible);
+    }
+
+    function syncGridInputs() {
+      const cellWInput = document.getElementById('gridCellW');
+      const cellHInput = document.getElementById('gridCellH');
+      const offsetXInput = document.getElementById('gridOffsetX');
+      const offsetYInput = document.getElementById('gridOffsetY');
+      if (cellWInput) cellWInput.value = state.grid.cellW;
+      if (cellHInput) cellHInput.value = state.grid.cellH;
+      if (offsetXInput) offsetXInput.value = state.grid.offsetX;
+      if (offsetYInput) offsetYInput.value = state.grid.offsetY;
+      updateGridFromInputs();
+    }
+
+    function syncDisplayButtons() {
+      const labelsBtn = document.getElementById('toggleLabels');
+      const healthBtn = document.getElementById('toggleHealthBars');
+      if (labelsBtn) labelsBtn.textContent = state.display.labels ? 'Labels: On' : 'Labels: Off';
+      if (healthBtn) healthBtn.textContent = state.display.healthBars ? 'Health Bars: On' : 'Health Bars: Off';
+    }
+
+    function snapPlantPosition(x, y) {
+      if (!state.grid.enabled) return { x, y };
+      const gx = state.grid.offsetX + Math.round((x - state.grid.offsetX) / state.grid.cellW) * state.grid.cellW;
+      const gy = state.grid.offsetY + Math.round((y - state.grid.offsetY) / state.grid.cellH) * state.grid.cellH;
+      return { x: gx, y: gy };
+    }
+
+    function maybeSnapEntity(ent) {
+      if (ent && ent.side === 'plant') {
+        const snapped = snapPlantPosition(ent.x, ent.y);
+        ent.x = snapped.x;
+        ent.y = snapped.y;
+      }
+    }
 
     function showToast(text) {
       toastEl.textContent = text;
@@ -667,6 +870,9 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         cooldown: Number(document.getElementById('cooldown').value) || 1.5,
         abilities: isNpc ? [] : selectedAbilities(),
         imageSrc: currentAssetCache.entityImageSrc || null,
+        idleSrc: currentAssetCache.idleSrc || null,
+        actionSrc: currentAssetCache.actionSrc || null,
+        deathSrc: currentAssetCache.deathSrc || null,
         projectileSrc: currentAssetCache.projectileSrc || null,
         collectibleSrc: currentAssetCache.collectibleSrc || null,
         npcSoundSrc: isNpc ? (currentAssetCache.npcSoundSrc || null) : null,
@@ -695,6 +901,9 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       document.getElementById('scriptText').value = t.script || '';
       document.getElementById('npcDialog').value = (t.dialog || []).join(String.fromCharCode(10)) || 'Hi there.';
       currentAssetCache.entityImageSrc = t.imageSrc || null;
+      currentAssetCache.idleSrc = t.idleSrc || null;
+      currentAssetCache.actionSrc = t.actionSrc || null;
+      currentAssetCache.deathSrc = t.deathSrc || null;
       currentAssetCache.projectileSrc = t.projectileSrc || null;
       currentAssetCache.collectibleSrc = t.collectibleSrc || null;
       currentAssetCache.npcSoundSrc = t.npcSoundSrc || null;
@@ -705,11 +914,23 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       syncNpcUI();
     }
 
-    const currentAssetCache = { entityImageSrc: null, projectileSrc: null, collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null };
+    const currentAssetCache = { entityImageSrc: null, idleSrc: null, actionSrc: null, deathSrc: null, projectileSrc: null, collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null };
 
     document.getElementById('entityImage').addEventListener('change', async e => {
       currentAssetCache.entityImageSrc = await fileToDataURL(e.target.files[0]);
-      showToast('Entity image loaded');
+      showToast('Base image loaded');
+    });
+    document.getElementById('idleImage').addEventListener('change', async e => {
+      currentAssetCache.idleSrc = await fileToDataURL(e.target.files[0]);
+      showToast('Idle image loaded');
+    });
+    document.getElementById('actionImage').addEventListener('change', async e => {
+      currentAssetCache.actionSrc = await fileToDataURL(e.target.files[0]);
+      showToast('Action image loaded');
+    });
+    document.getElementById('deathImage').addEventListener('change', async e => {
+      currentAssetCache.deathSrc = await fileToDataURL(e.target.files[0]);
+      showToast('Death image loaded');
     });
     document.getElementById('projectileImage').addEventListener('change', async e => {
       currentAssetCache.projectileSrc = await fileToDataURL(e.target.files[0]);
@@ -747,7 +968,10 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         w: t.w || 80, h: t.h || 80, scale: t.scale || 1, rotation: t.rotation || 0, layer: t.layer || 0,
         hp: t.hp || t.maxHp || 100, maxHp: t.maxHp || t.hp || 100, damage: isNpc ? 0 : (t.damage || 0),
         cooldown: t.cooldown || 1.5, timer: 0, age: 0, facing: t.side === 'zombie' || t.side === 'boss' ? -1 : 1,
-        abilities: isNpc ? [] : [...(t.abilities || [])], imageSrc: t.imageSrc || null, image: makeImage(t.imageSrc), gifEl: makeGifElement(t.imageSrc),
+        abilities: isNpc ? [] : [...(t.abilities || [])], imageSrc: t.imageSrc || null, idleSrc: t.idleSrc || null, actionSrc: t.actionSrc || null, deathSrc: t.deathSrc || null,
+        image: makeImage(t.imageSrc), gifEl: makeGifElement(t.imageSrc),
+        idleImage: makeImage(t.idleSrc || t.imageSrc), actionImage: makeImage(t.actionSrc), deathImage: makeImage(t.deathSrc),
+        idleGifEl: makeGifElement(t.idleSrc || t.imageSrc), actionGifEl: makeGifElement(t.actionSrc), deathGifEl: makeGifElement(t.deathSrc), visualState: 'idle', actionUntil: 0, deathUntil: 0,
         projectileSrc: t.projectileSrc || null, collectibleSrc: t.collectibleSrc || null,
         npcSoundSrc: isNpc ? (t.npcSoundSrc || null) : null, spawnSoundSrc: isNpc ? null : (t.spawnSoundSrc || null), attackSoundSrc: isNpc ? null : (t.attackSoundSrc || null), deathSoundSrc: isNpc ? null : (t.deathSoundSrc || null), dialog: isNpc ? [...(t.dialog || [])] : [],
         script: isNpc ? '' : (t.script || ''), color: t.color || '#ffffff', dataTimers: {}, phase: 1,
@@ -777,6 +1001,24 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         if (x >= e.x - w/2 && x <= e.x + w/2 && y >= e.y - h/2 && y <= e.y + h/2) return e;
       }
       return null;
+    }
+
+    function setActionVisual(e, seconds = 0.35) {
+      if (!e) return;
+      e.visualState = 'action';
+      e.actionUntil = state.worldTime + seconds;
+    }
+
+    function getVisualImage(e) {
+      if (e.visualState === 'death' && e.deathImage) return e.deathImage;
+      if (e.visualState === 'action' && e.actionImage) return e.actionImage;
+      return e.idleImage || e.image;
+    }
+
+    function getVisualGif(e) {
+      if (e.visualState === 'death' && e.deathGifEl) return e.deathGifEl;
+      if (e.visualState === 'action' && e.actionGifEl) return e.actionGifEl;
+      return e.idleGifEl || e.gifEl;
     }
 
     function playSfx(src, volume = 0.8) {
@@ -814,7 +1056,8 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       if (state.placeType === 'npc') { template.side = 'npc'; template.role = 'npc'; template.abilities = []; template.script = ''; }
       if ((state.placeType === 'zombie' || state.placeType === 'plant') && (!template.side || template.side === 'neutral')) template.side = state.placeType;
       if (['lawnItem','decoration','wall','trap','spawner','hazard','triggerZone','portal','weather'].includes(state.placeType) && template.side !== 'npc' && template.side !== 'plant' && template.side !== 'zombie' && template.side !== 'boss') template.side = 'neutral';
-      const ent = entityFromTemplate(template, m.x, m.y);
+      const placePoint = template.side === 'plant' ? snapPlantPosition(m.x, m.y) : m;
+      const ent = entityFromTemplate(template, placePoint.x, placePoint.y);
       state.entities.push(ent);
       if (isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7);
       state.selected = ent;
@@ -838,7 +1081,11 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       state.mouse = m;
       if (state.drag) {
         const ent = state.entities.find(x => x.id === state.drag.id);
-        if (ent) { ent.x = m.x + state.drag.dx; ent.y = m.y + state.drag.dy; }
+        if (ent) {
+          ent.x = m.x + state.drag.dx;
+          ent.y = m.y + state.drag.dy;
+          maybeSnapEntity(ent);
+        }
       }
     });
     window.addEventListener('mouseup', () => state.drag = null);
@@ -859,6 +1106,16 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     document.getElementById('selectTool').onclick = () => { state.tool = 'select'; canvas.style.cursor = 'grab'; showToast('Select / drag mode'); };
     document.getElementById('placeTool').onclick = () => { state.tool = 'place'; canvas.style.cursor = 'crosshair'; state.placeType = document.getElementById('placeType').value; showToast('Place mode'); };
     document.getElementById('pauseToggle').onclick = () => { state.paused = !state.paused; document.getElementById('pauseToggle').textContent = state.paused ? 'Resume' : 'Pause'; };
+    document.getElementById('toggleLabels').onclick = () => {
+      state.display.labels = !state.display.labels;
+      syncDisplayButtons();
+      showToast(state.display.labels ? 'Labels shown' : 'Labels hidden');
+    };
+    document.getElementById('toggleHealthBars').onclick = () => {
+      state.display.healthBars = !state.display.healthBars;
+      syncDisplayButtons();
+      showToast(state.display.healthBars ? 'Health bars shown' : 'Health bars hidden');
+    };
     document.getElementById('deleteSelected').onclick = () => {
       if (!state.selected) return;
       state.entities = state.entities.filter(e => e.id !== state.selected.id);
@@ -921,6 +1178,29 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     };
     document.getElementById('toggleMusic').onclick = () => music.paused ? music.play().catch(() => showToast('Browser blocked autoplay. Click again.')) : music.pause();
 
+    document.getElementById('previewGrid').onclick = () => {
+      updateGridFromInputs();
+      state.grid.enabled = true;
+      state.grid.visible = true;
+      updateGridFromInputs();
+      showToast('Grid preview visible');
+    };
+
+    document.getElementById('initGrid').onclick = () => {
+      updateGridFromInputs();
+      state.grid.enabled = true;
+      state.grid.visible = false;
+      updateGridFromInputs();
+      showToast('Grid initialized and hidden. Plants will snap.');
+    };
+
+    document.getElementById('disableGrid').onclick = () => {
+      state.grid.enabled = false;
+      state.grid.visible = false;
+      updateGridFromInputs();
+      showToast('Plant snapping disabled');
+    };
+
     document.getElementById('lawnFitMode').onchange = e => {
       state.lawn.fitMode = e.target.value;
       applyGifLawnFit();
@@ -963,6 +1243,14 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     }
 
 
+    function entityTimer(e, key, seconds) {
+      e.dataTimers ??= {};
+      e.dataTimers[key] ??= 0;
+      e.dataTimers[key] -= 1 / 60;
+      if (e.dataTimers[key] <= 0) { e.dataTimers[key] = seconds; return true; }
+      return false;
+    }
+
     function damageEntity(target, amount, source = null) {
       if (!target || target.dead) return;
       let dmg = Number(amount) || 0;
@@ -978,6 +1266,22 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       return state.entities.filter(o => o !== e && enemyOf(e, o) && !o.dead).sort((a, b) => dist(e, a) - dist(e, b)).slice(0, limit);
     }
 
+    function entityTouching(a, b, pad = 0) {
+      const aw = a.w * (a.scale || 1), ah = a.h * (a.scale || 1);
+      const bw = b.w * (b.scale || 1), bh = b.h * (b.scale || 1);
+      return Math.abs(a.x - b.x) < (aw + bw) * 0.42 + pad && Math.abs(a.y - b.y) < (ah + bh) * 0.38 + pad;
+    }
+
+    function canPlantShoot(e, enemies) {
+      if (e.side !== 'plant') return true;
+      return enemies.some(o => (o.side === 'zombie' || o.side === 'boss') && Math.abs(o.y - e.y) < Math.max(90, e.h * e.scale) && Math.abs(o.x - e.x) < 760 && o.x > e.x - 80);
+    }
+
+    function zombieEatingTarget(e) {
+      if (!(e.side === 'zombie' || e.side === 'boss')) return null;
+      return state.entities.find(o => o.side === 'plant' && !o.dead && entityTouching(e, o));
+    }
+
     function getMoveSpeed(e) {
       const raw = Number(e.speed ?? e.vx ?? 0) || 0;
       if (!raw) return 0;
@@ -989,6 +1293,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
     function applyAbilityLogic(e, dt) {
       e.age += dt;
+      if (e.dead) return;
       e.timer -= dt;
       if (e.side === 'npc' || e.role === 'npc') return;
 
@@ -1008,25 +1313,28 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       if (e.abilities.includes('zombieSprint') && e.hp < e.maxHp * 0.5) e.x += e.facing * 35 * dt;
       if (e.abilities.includes('bossEnrage') && e.hp < e.maxHp * 0.45) { e.damage += 0.03; e.x += e.facing * 20 * dt; }
 
+      const eatingTarget = zombieEatingTarget(e);
       const moveSpeed = getMoveSpeed(e);
-      if (moveSpeed) e.x += moveSpeed * dt;
+      if (moveSpeed && !eatingTarget) e.x += moveSpeed * dt;
       if (e.side === 'zombie' || e.side === 'boss') e.facing = -1;
       if (e.side === 'plant') e.facing = 1;
 
       const enemies = nearestEnemies(e);
       const nearest = enemies[0];
 
+      const plantCanShoot = canPlantShoot(e, enemies);
+
       if (e.timer <= 0) {
-        if (e.abilities.includes('shoot')) makeProjectile(e, 0);
-        if (e.abilities.includes('rapidFire')) { makeProjectile(e, 0, 520, 0.55); e.timer = Math.max(0.08, e.cooldown * 0.25); }
-        if (e.abilities.includes('tripleShot')) [-0.22, 0, 0.22].forEach(a => makeProjectile(e, a, 420, 0.75));
-        if (e.abilities.includes('spreadShot')) [-0.5, -0.25, 0, 0.25, 0.5].forEach(a => makeProjectile(e, a, 360, 0.45));
-        if (e.abilities.includes('lobShot')) makeProjectile(e, -0.55, 270, 1.4);
-        if (e.abilities.includes('meteorShot')) makeProjectile(e, -1.0, 390, 1.8);
-        if (e.abilities.includes('mineShot')) makeProjectile(e, 0.8, 180, 2.2);
-        if (e.abilities.includes('chainShot')) for (let i = 0; i < 3; i++) setTimeout(() => makeProjectile(e, 0, 430, 0.55), i * 120);
-        if (e.abilities.includes('laser') && nearest) nearest.hp -= e.damage * 1.8;
-        if (e.abilities.includes('beamSweep')) enemies.slice(0, 5).forEach(o => o.hp -= e.damage * 0.8);
+        if (e.abilities.includes('shoot') && plantCanShoot) { makeProjectile(e, 0); setActionVisual(e); }
+        if (e.abilities.includes('rapidFire') && plantCanShoot) { makeProjectile(e, 0, 520, 0.55); setActionVisual(e); e.timer = Math.max(0.08, e.cooldown * 0.25); }
+        if (e.abilities.includes('tripleShot') && plantCanShoot) { [-0.22, 0, 0.22].forEach(a => makeProjectile(e, a, 420, 0.75)); setActionVisual(e); }
+        if (e.abilities.includes('spreadShot') && plantCanShoot) { [-0.5, -0.25, 0, 0.25, 0.5].forEach(a => makeProjectile(e, a, 360, 0.45)); setActionVisual(e); }
+        if (e.abilities.includes('lobShot') && plantCanShoot) { makeProjectile(e, -0.55, 270, 1.4); setActionVisual(e); }
+        if (e.abilities.includes('meteorShot') && plantCanShoot) { makeProjectile(e, -1.0, 390, 1.8); setActionVisual(e); }
+        if (e.abilities.includes('mineShot') && plantCanShoot) { makeProjectile(e, 0.8, 180, 2.2); setActionVisual(e); }
+        if (e.abilities.includes('chainShot') && plantCanShoot) { for (let i = 0; i < 3; i++) setTimeout(() => makeProjectile(e, 0, 430, 0.55), i * 120); setActionVisual(e); }
+        if (e.abilities.includes('laser') && nearest && plantCanShoot) nearest.hp -= e.damage * 1.8;
+        if (e.abilities.includes('beamSweep') && plantCanShoot) enemies.slice(0, 5).forEach(o => o.hp -= e.damage * 0.8);
         if (e.abilities.includes('produce')) makeCollectible(e, 'sun');
         if (e.abilities.includes('coinProduce')) makeCollectible(e, 'coin');
         if (e.abilities.includes('healProduce')) makeCollectible(e, 'heal');
@@ -1040,30 +1348,51 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         if (e.abilities.includes('teleport')) { e.x += rand(-120, 120); e.y += rand(-90, 90); }
         if (e.abilities.includes('dash')) e.x += e.facing * 60;
         if (e.abilities.includes('jump')) e.y += rand(-80, 80);
-        if (e.abilities.includes('plantSeedVolley')) [-0.4, -0.2, 0, 0.2, 0.4].forEach(a => makeProjectile(e, a, 470, 0.65));
+        if (e.abilities.includes('plantSeedVolley') && plantCanShoot) { [-0.4, -0.2, 0, 0.2, 0.4].forEach(a => makeProjectile(e, a, 470, 0.65)); setActionVisual(e, 0.55); }
         if (e.abilities.includes('plantBurstHeal')) state.entities.forEach(o => { if (!enemyOf(e, o) && isCombatEntity(o) && dist(e, o) < 150) o.hp = Math.min(o.maxHp, o.hp + 25); });
         if (e.abilities.includes('plantSunNova')) { for (let i = 0; i < 5; i++) makeCollectible(e, 'sun'); }
         if (e.abilities.includes('plantRoot')) enemies.slice(0, 3).forEach(o => { o.speed = 0; o.vx = 0; });
         if (e.abilities.includes('zombieGraveSpawn')) spawn('zombie', e.x + rand(-40, 40), e.y + rand(-45, 45), { name: 'Grave Minion', side: 'zombie', hp: 25, maxHp: 25, speed: 2, abilities: ['zombieBite'], w: 46, h: 46 });
         if (e.abilities.includes('bossSummonHorde')) for (let i = 0; i < 4; i++) spawn('zombie', e.x - rand(40, 100), e.y + rand(-100, 100), { name: 'Boss Minion', side: 'zombie', hp: 60, maxHp: 60, speed: 2, abilities: ['zombieBite'], w: 56, h: 56 });
-        if (e.abilities.includes('bossStomp')) enemies.forEach(o => { if (dist(e, o) < 190) { damageEntity(o, e.damage * 2.2, e); o.x += e.facing * 80; } });
-        if (e.abilities.includes('bossLaserSweep')) enemies.slice(0, 8).forEach(o => damageEntity(o, e.damage * 1.4, e));
+        if (e.abilities.includes('bossStomp')) { enemies.forEach(o => { if (dist(e, o) < 190) { damageEntity(o, e.damage * 2.2, e); o.x += e.facing * 80; } }); setActionVisual(e, 0.7); }
+        if (e.abilities.includes('bossLaserSweep')) { enemies.slice(0, 8).forEach(o => damageEntity(o, e.damage * 1.4, e)); setActionVisual(e, 0.7); }
         if (e.abilities.includes('bossShieldPulse')) e.hp = Math.min(e.maxHp, e.hp + 40);
-        if (e.abilities.includes('bossMeteorRain')) for (let i = 0; i < 6; i++) makeProjectile(e, rand(-1.2, -0.35), 420, 1.5);
+        if (e.abilities.includes('bossMeteorRain')) { for (let i = 0; i < 6; i++) makeProjectile(e, rand(-1.2, -0.35), 420, 1.5); setActionVisual(e, 0.8); }
+        if (e.abilities.includes('plantReflectiveShell')) e.hp = Math.min(e.maxHp, e.hp + 20);
+        if (e.abilities.includes('plantStickySap')) enemies.slice(0, 4).forEach(o => { o.speed *= 0.4; o.vx *= 0.4; });
+        if (e.abilities.includes('plantSporeCloud')) enemies.forEach(o => { if (dist(e, o) < 160) damageEntity(o, e.damage * 0.9, e); });
+        if (e.abilities.includes('plantOrbitShots') && plantCanShoot) for (let i = 0; i < 8; i++) makeProjectile(e, i * Math.PI / 4, 300, 0.5);
+        if (e.abilities.includes('plantReviveAlly')) state.entities.forEach(o => { if (!enemyOf(e, o) && isCombatEntity(o) && o.hp < o.maxHp * 0.25 && dist(e, o) < 190) o.hp = Math.min(o.maxHp, o.hp + 55); });
+        if (e.abilities.includes('plantTimeSlow')) enemies.forEach(o => { if (dist(e, o) < 220) o.speed *= 0.65; });
+        if (e.abilities.includes('zombieShieldBreak') && nearest) damageEntity(nearest, e.damage * 2.5, e);
+        if (e.abilities.includes('zombieThrowRock')) makeProjectile(e, -0.2, 330, 1.3);
+        if (e.abilities.includes('zombieCallBackup')) for (let i = 0; i < 2; i++) spawn('zombie', e.x - rand(30, 80), e.y + rand(-50, 50), { name: 'Backup Zombie', side: 'zombie', hp: 45, maxHp: 45, speed: 2, abilities: ['zombieBite'] });
+        if (e.abilities.includes('bossGroundCrack')) enemies.forEach(o => { if (Math.abs(o.y - e.y) < 70) damageEntity(o, e.damage * 1.8, e); });
+        if (e.abilities.includes('bossPoisonStorm')) enemies.forEach(o => { if (dist(e, o) < 260) damageEntity(o, e.damage * 0.7, e); });
+        if (e.abilities.includes('bossBlackHole')) enemies.forEach(o => { o.x += (e.x - o.x) * 0.08; o.y += (e.y - o.y) * 0.08; damageEntity(o, e.damage * 0.35, e); });
+        if (e.abilities.includes('bossPhaseWarp')) { e.x += rand(-140, 80); e.y += rand(-100, 100); }
+        if (e.abilities.includes('bossMinionBuff')) state.entities.forEach(o => { if (o.side === 'zombie' && dist(e, o) < 260) { o.damage += 2; o.hp = Math.min(o.maxHp, o.hp + 20); } });
+        if (e.abilities.includes('bossFinalStand') && e.hp < e.maxHp * 0.2) { e.damage += 5; e.cooldown = Math.max(0.25, e.cooldown * 0.9); }
         if (e.attackSoundSrc && (e.abilities.length || nearest)) playSfx(e.attackSoundSrc, 0.65);
         e.timer = Math.max(0.1, e.cooldown / (e.phase || 1));
       }
 
-      if (nearest && dist(e, nearest) < (e.w + nearest.w) * 0.35) {
+      if (e.abilities.includes('zombieToxicTrail')) enemies.forEach(o => { if (dist(e, o) < 95) damageEntity(o, 7 * dt, e); });
+      if (e.abilities.includes('zombieFearAura')) enemies.forEach(o => { if (dist(e, o) < 150) o.damage = Math.max(0, o.damage - 0.02); });
+      if (e.abilities.includes('zombieBurrowAmbush') && nearest && e.age > 1 && entityTimer(e, 'burrowAmbush', 5)) { e.x = nearest.x + 90; e.y = nearest.y; setActionVisual(e, 0.6); }
+
+      const contactTarget = eatingTarget || nearest;
+      if (contactTarget && (eatingTarget || dist(e, contactTarget) < (e.w + contactTarget.w) * 0.35)) {
         const biteMult = e.abilities.includes('zombieBite') ? 2.2 : 1;
-        if (!(nearest.abilities?.includes('zombieDodge') && Math.random() < 0.015)) {
-          if (e.abilities.includes('chomp')) damageEntity(nearest, e.damage * 8 * dt, e);
-          else damageEntity(nearest, e.damage * biteMult * dt, e);
+        if (!(contactTarget.abilities?.includes('zombieDodge') && Math.random() < 0.015)) {
+          if (e.abilities.includes('chomp')) damageEntity(contactTarget, e.damage * 8 * dt, e);
+          else damageEntity(contactTarget, e.damage * biteMult * dt, e);
         }
-        if (e.abilities.includes('stunAttack')) nearest.speed *= 0.995;
+        if (eatingTarget) setActionVisual(e, 0.25);
+        if (e.abilities.includes('stunAttack')) contactTarget.speed *= 0.995;
         if (e.abilities.includes('lifesteal')) e.hp = Math.min(e.maxHp, e.hp + e.damage * 0.25 * dt);
-        if (e.abilities.includes('knockback')) nearest.x += e.facing * 90 * dt;
-        if (e.abilities.includes('pull')) nearest.x -= e.facing * 70 * dt;
+        if (e.abilities.includes('knockback')) contactTarget.x += e.facing * 90 * dt;
+        if (e.abilities.includes('pull')) contactTarget.x -= e.facing * 70 * dt;
       }
 
       for (const other of state.entities) {
@@ -1157,6 +1486,8 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         if (e.side === 'npc') continue;
         if (e.hp > 0 || e.dead) continue;
         e.dead = true;
+        e.visualState = 'death';
+        e.deathUntil = state.worldTime + (e.deathSrc ? 0.9 : 0.05);
         if (isCombatEntity(e)) playSfx(e.deathSoundSrc, 0.75);
         if (e.abilities.includes('explode')) {
           for (const o of state.entities) if (o !== e && enemyOf(e, o) && dist(e, o) < 150) o.hp -= e.damage * 4;
@@ -1164,15 +1495,18 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         if (e.abilities.includes('splitOnDeath')) {
           for (let i = 0; i < 2; i++) spawn(e.type, e.x + rand(-30, 30), e.y + rand(-30, 30), { ...e, hp: e.maxHp * 0.35, maxHp: e.maxHp * 0.35, w: e.w * 0.65, h: e.h * 0.65, abilities: e.abilities.filter(a => a !== 'splitOnDeath') });
         }
-        if (e.abilities.includes('revive') && !e.revived) { e.dead = false; e.revived = true; e.hp = e.maxHp * 0.45; }
+        if (e.abilities.includes('revive') && !e.revived) { e.dead = false; e.visualState = 'idle'; e.revived = true; e.hp = e.maxHp * 0.45; }
       }
-      state.entities = state.entities.filter(e => !e.dead);
+      state.entities = state.entities.filter(e => !e.dead || state.worldTime < (e.deathUntil || 0));
     }
 
     function update(dt) {
       if (state.paused) return;
       state.worldTime += dt;
-      state.entities.forEach(e => applyAbilityLogic(e, dt));
+      state.entities.forEach(e => {
+        if (!e.dead && e.visualState === 'action' && state.worldTime > (e.actionUntil || 0)) e.visualState = 'idle';
+        applyAbilityLogic(e, dt);
+      });
       updateProjectiles(dt);
       updateCollectibles(dt);
       updateDeaths();
@@ -1234,13 +1568,15 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
     function drawEntity(e) {
       const w = e.w * e.scale, h = e.h * e.scale;
+      const visualImg = getVisualImage(e);
+      const visualGif = getVisualGif(e);
       if (isCombatEntity(e)) drawShadow(e, w, h);
       ctx.save();
       ctx.translate(e.x, e.y);
       ctx.rotate(e.rotation || 0);
-      ctx.globalAlpha = e.gifEl ? 0 : (e.invisibleAlpha ?? 1);
-      if (!e.gifEl && e.image && e.image.complete && e.image.naturalWidth) ctx.drawImage(e.image, -w/2, -h/2, w, h);
-      else if (!e.gifEl) {
+      ctx.globalAlpha = visualGif ? 0 : (e.invisibleAlpha ?? 1);
+      if (!visualGif && visualImg && visualImg.complete && visualImg.naturalWidth) ctx.drawImage(visualImg, -w/2, -h/2, w, h);
+      else if (!visualGif) {
         ctx.fillStyle = e.side === 'zombie' ? '#84cc16' : e.side === 'boss' ? '#c084fc' : e.side === 'npc' ? '#fbbf24' : e.side === 'neutral' ? '#cbd5e1' : '#38bdf8';
         if (['trap','triggerZone','portal'].includes(e.role)) ctx.strokeStyle = ctx.fillStyle, ctx.lineWidth = 4, ctx.strokeRect(-w/2, -h/2, w, h);
         else { ctx.beginPath(); ctx.ellipse(0, 0, w/2, h/2, 0, 0, Math.PI * 2); ctx.fill(); }
@@ -1249,13 +1585,15 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       ctx.globalAlpha = 1;
       ctx.restore();
 
-      if (isCombatEntity(e)) {
+      if (state.display.healthBars && isCombatEntity(e) && !e.dead) {
         ctx.fillStyle = 'rgba(15,23,42,0.85)'; ctx.fillRect(e.x - w/2, e.y - h/2 - 17, w, 7);
         ctx.fillStyle = e.hp / e.maxHp > 0.4 ? '#86efac' : '#fca5a5'; ctx.fillRect(e.x - w/2, e.y - h/2 - 17, w * Math.max(0, e.hp / e.maxHp), 7);
       }
-      ctx.fillStyle = '#f8fafc'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(e.name, e.x, e.y + h/2 + 14);
-      if (e.side === 'npc') { ctx.fillStyle = '#fde68a'; ctx.fillText('dialog', e.x, e.y - h/2 - 9); }
-      if (state.selected && state.selected.id === e.id) {
+      if (state.display.labels) {
+        ctx.fillStyle = '#f8fafc'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(e.name, e.x, e.y + h/2 + 14);
+        if (e.side === 'npc') { ctx.fillStyle = '#fde68a'; ctx.fillText('dialog', e.x, e.y - h/2 - 9); }
+      }
+      if (!e.dead && state.selected && state.selected.id === e.id) {
         ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 3; ctx.strokeRect(e.x - w/2 - 4, e.y - h/2 - 4, w + 8, h + 8);
       }
     }
@@ -1276,16 +1614,17 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const wanted = new Set();
 
       function addGif(obj, w, h, z, opacity = 1, rotation = 0) {
-        if (!obj.gifEl) return;
-        wanted.add(obj.gifEl);
-        if (!obj.gifEl.parentNode) gifLayer.appendChild(obj.gifEl);
-        obj.gifEl.style.left = `${obj.x - w / 2}px`;
-        obj.gifEl.style.top = `${obj.y - h / 2}px`;
-        obj.gifEl.style.width = `${w}px`;
-        obj.gifEl.style.height = `${h}px`;
-        obj.gifEl.style.zIndex = String(z);
-        obj.gifEl.style.opacity = String(opacity);
-        obj.gifEl.style.transform = `rotate(${rotation}rad)`;
+        const el = obj.side ? getVisualGif(obj) : obj.gifEl;
+        if (!el) return;
+        wanted.add(el);
+        if (!el.parentNode) gifLayer.appendChild(el);
+        el.style.left = `${obj.x - w / 2}px`;
+        el.style.top = `${obj.y - h / 2}px`;
+        el.style.width = `${w}px`;
+        el.style.height = `${h}px`;
+        el.style.zIndex = String(z);
+        el.style.opacity = String(opacity);
+        el.style.transform = `rotate(${rotation}rad)`;
       }
 
       state.collectibles.forEach(c => addGif(c, 36, 36, 8000));
@@ -1322,13 +1661,15 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     }
 
     function serializableEntity(e) {
-      const { image, gifEl, dataTimers, dead, ...rest } = e;
+      const { image, gifEl, idleImage, actionImage, deathImage, idleGifEl, actionGifEl, deathGifEl, dataTimers, dead, ...rest } = e;
       return rest;
     }
 
     function serializableState() {
       return {
         lawn: { name: state.lawn.name, imageSrc: state.lawn.imageSrc, musicSrc: state.lawn.musicSrc, fitMode: state.lawn.fitMode || 'fitAll' },
+        grid: { ...state.grid },
+        display: { ...state.display },
         templates: state.templates,
         entities: state.entities.map(serializableEntity),
         projectiles: [], collectibles: []
@@ -1350,6 +1691,10 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       reader.onload = () => {
         const data = JSON.parse(reader.result);
         state.lawn = { ...state.lawn, ...(data.lawn || {}) };
+        state.grid = { ...state.grid, ...(data.grid || {}) };
+        state.display = { ...state.display, ...(data.display || {}) };
+        syncGridInputs();
+        syncDisplayButtons();
         state.lawn.fitMode = state.lawn.fitMode || 'fitAll';
         document.getElementById('lawnFitMode').value = state.lawn.fitMode;
         state.lawn.image = makeImage(state.lawn.imageSrc);
@@ -1368,6 +1713,15 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
             vx: fixedSpeed,
             image: makeImage(e.imageSrc),
             gifEl: makeGifElement(e.imageSrc),
+            idleImage: makeImage(e.idleSrc || e.imageSrc),
+            actionImage: makeImage(e.actionSrc),
+            deathImage: makeImage(e.deathSrc),
+            idleGifEl: makeGifElement(e.idleSrc || e.imageSrc),
+            actionGifEl: makeGifElement(e.actionSrc),
+            deathGifEl: makeGifElement(e.deathSrc),
+            visualState: 'idle',
+            actionUntil: 0,
+            deathUntil: 0,
             dataTimers: {},
             dead: false,
             abilities: (fixedSide || e.side) === 'npc' ? [] : (e.abilities || []),
