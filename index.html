@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PVZ-Style HTML5 Sandbox</title>
+  <title>Project: BUILD</title>
   <style>
     :root {
       --panel: rgba(8, 13, 24, 0.94);
@@ -286,7 +286,7 @@
 <body>
   <div id="app">
     <aside id="sidebar">
-      <h1>PVZ-Style Sandbox</h1>
+      <h1>Project: BUILD</h1>
       <p>Free-placement sandbox. Make custom plants, zombies, lawns, bosses, NPCs, props, traps, spawners, projectiles, and collectibles. No grid. Overlap is allowed.</p>
 
       <h2>Tool</h2>
@@ -402,6 +402,16 @@ Click me again to advance.</textarea>
         <input id="projectileImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
         <label>Collectible Image PNG/GIF, for producer abilities</label>
         <input id="collectibleImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+
+        <div id="combatSfxSection">
+          <label>Spawn SFX for plants, zombies, and bosses</label>
+          <input id="spawnSound" type="file" accept="audio/*" />
+          <label>Attack / Ability SFX for plants, zombies, and bosses</label>
+          <input id="attackSound" type="file" accept="audio/*" />
+          <label>Death SFX for plants, zombies, and bosses</label>
+          <input id="deathSound" type="file" accept="audio/*" />
+        </div>
+
         <label>Script, mainly for bosses, spawners, hazards, triggers, and special objects</label>
         <textarea id="scriptText">// Runs every frame for each scripted entity.
 // Available: self, game, spawn(type,x,y,template), say(text), rand(min,max)
@@ -428,7 +438,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       <label>Import JSON</label>
       <input id="importWorld" type="file" accept="application/json" />
       <button id="downloadHTML" class="warn">Download This HTML</button>
-      <p class="tiny">Controls: click to place. Select mode lets you drag, click NPCs for dialog, mouse wheel to scale, Shift + wheel to rotate, Delete to remove selected. GIF assets are displayed as live image overlays so they animate.</p>
+      <p class="tiny">Controls: click to place. Select mode lets you drag, click NPCs for dialog, mouse wheel to scale, Shift + wheel to rotate, Delete to remove selected. GIF assets are displayed as live image overlays so they animate. Combat entities get shadows; props/objects hide health bars.</p>
     </aside>
 
     <main id="stageWrap">
@@ -468,19 +478,22 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       'shield', 'armor', 'regenerate', 'lifesteal', 'knockback', 'pull', 'dash', 'jump',
       'burrow', 'fly', 'teleport', 'phaseThrough', 'summonMinions', 'spawnWave', 'splitOnDeath', 'revive',
       'rageAtLowHp', 'stunAttack', 'chomp', 'eatCollectibles', 'reflect', 'invisible', 'clone',
-      'bossPhase', 'scripted', 'trapDamage', 'slowTrap', 'healPad', 'portalLink', 'weatherRain', 'weatherFog'
+      'bossPhase', 'scripted', 'trapDamage', 'slowTrap', 'healPad', 'portalLink', 'weatherRain', 'weatherFog',
+      'plantRoot', 'plantThorns', 'plantBurstHeal', 'plantSunNova', 'plantWallRepair', 'plantSeedVolley',
+      'zombieBite', 'zombieSprint', 'zombieTank', 'zombieDodge', 'zombieLeech', 'zombieGraveSpawn',
+      'bossStomp', 'bossLaserSweep', 'bossSummonHorde', 'bossShieldPulse', 'bossEnrage', 'bossMeteorRain'
     ];
 
     const defaultTemplate = {
       name: 'Custom Plant', side: 'plant', role: 'fighter', type: 'plant', hp: 100, maxHp: 100, damage: 10, speed: 0,
       w: 80, h: 80, cooldown: 1.5, abilities: ['shoot'], imageSrc: null, projectileSrc: null,
-      collectibleSrc: null, npcSoundSrc: null, dialog: [], script: '', color: '#7dd3fc', rotation: 0, layer: 0
+      collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null, dialog: [], script: '', color: '#7dd3fc', rotation: 0, layer: 0
     };
 
     const npcTemplate = {
       name: 'Custom NPC', side: 'npc', role: 'npc', type: 'npc', hp: 999, maxHp: 999, damage: 0, speed: 0,
       w: 88, h: 88, cooldown: 1.5, abilities: [], imageSrc: null, projectileSrc: null,
-      collectibleSrc: null, npcSoundSrc: null, dialog: ['Hi there.', 'Add multiple dialog slides in the template maker.', 'NPCs cannot use abilities.'],
+      collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null, dialog: ['Hi there.', 'Add multiple dialog slides in the template maker.', 'NPCs cannot use abilities.'],
       script: '', color: '#fbbf24', rotation: 0, layer: 2
     };
 
@@ -607,6 +620,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const isNpc = side === 'npc' || role === 'npc';
       document.getElementById('npcSection').classList.toggle('hidden', !isNpc);
       document.getElementById('abilitySection').classList.toggle('hidden', isNpc);
+      document.getElementById('combatSfxSection').classList.toggle('hidden', isNpc);
       if (isNpc) setActiveAbilities([]);
     }
 
@@ -643,6 +657,9 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         projectileSrc: currentAssetCache.projectileSrc || null,
         collectibleSrc: currentAssetCache.collectibleSrc || null,
         npcSoundSrc: isNpc ? (currentAssetCache.npcSoundSrc || null) : null,
+        spawnSoundSrc: isNpc ? null : (currentAssetCache.spawnSoundSrc || null),
+        attackSoundSrc: isNpc ? null : (currentAssetCache.attackSoundSrc || null),
+        deathSoundSrc: isNpc ? null : (currentAssetCache.deathSoundSrc || null),
         dialog: isNpc ? dialog : [],
         script: isNpc ? '' : (document.getElementById('scriptText').value || ''),
         color: isNpc ? '#fbbf24' : side === 'zombie' ? '#a3e635' : side === 'boss' ? '#c084fc' : '#7dd3fc',
@@ -668,11 +685,14 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       currentAssetCache.projectileSrc = t.projectileSrc || null;
       currentAssetCache.collectibleSrc = t.collectibleSrc || null;
       currentAssetCache.npcSoundSrc = t.npcSoundSrc || null;
+      currentAssetCache.spawnSoundSrc = t.spawnSoundSrc || null;
+      currentAssetCache.attackSoundSrc = t.attackSoundSrc || null;
+      currentAssetCache.deathSoundSrc = t.deathSoundSrc || null;
       setActiveAbilities(t.abilities || []);
       syncNpcUI();
     }
 
-    const currentAssetCache = { entityImageSrc: null, projectileSrc: null, collectibleSrc: null, npcSoundSrc: null };
+    const currentAssetCache = { entityImageSrc: null, projectileSrc: null, collectibleSrc: null, npcSoundSrc: null, spawnSoundSrc: null, attackSoundSrc: null, deathSoundSrc: null };
 
     document.getElementById('entityImage').addEventListener('change', async e => {
       currentAssetCache.entityImageSrc = await fileToDataURL(e.target.files[0]);
@@ -690,6 +710,18 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       currentAssetCache.npcSoundSrc = await fileToDataURL(e.target.files[0]);
       showToast('NPC sound loaded');
     });
+    document.getElementById('spawnSound').addEventListener('change', async e => {
+      currentAssetCache.spawnSoundSrc = await fileToDataURL(e.target.files[0]);
+      showToast('Spawn SFX loaded');
+    });
+    document.getElementById('attackSound').addEventListener('change', async e => {
+      currentAssetCache.attackSoundSrc = await fileToDataURL(e.target.files[0]);
+      showToast('Attack SFX loaded');
+    });
+    document.getElementById('deathSound').addEventListener('change', async e => {
+      currentAssetCache.deathSoundSrc = await fileToDataURL(e.target.files[0]);
+      showToast('Death SFX loaded');
+    });
     document.getElementById('entitySide').addEventListener('change', syncNpcUI);
     document.getElementById('entityRole').addEventListener('change', syncNpcUI);
 
@@ -698,13 +730,13 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const isNpc = t.side === 'npc' || t.role === 'npc' || t.type === 'npc';
       return {
         id: state.nextId++, name: t.name || 'Entity', type: t.type || t.side, role: isNpc ? 'npc' : (t.role || 'fighter'),
-        side: isNpc ? 'npc' : (t.side || 'neutral'), x, y, vx: t.speed || 0, vy: 0,
+        side: isNpc ? 'npc' : (t.side || 'neutral'), x, y, speed: Number(t.speed ?? t.vx ?? 0) || 0, vx: Number(t.speed ?? t.vx ?? 0) || 0, vy: 0,
         w: t.w || 80, h: t.h || 80, scale: t.scale || 1, rotation: t.rotation || 0, layer: t.layer || 0,
         hp: t.hp || t.maxHp || 100, maxHp: t.maxHp || t.hp || 100, damage: isNpc ? 0 : (t.damage || 0),
         cooldown: t.cooldown || 1.5, timer: 0, age: 0, facing: t.side === 'zombie' || t.side === 'boss' ? -1 : 1,
         abilities: isNpc ? [] : [...(t.abilities || [])], imageSrc: t.imageSrc || null, image: makeImage(t.imageSrc), gifEl: makeGifElement(t.imageSrc),
         projectileSrc: t.projectileSrc || null, collectibleSrc: t.collectibleSrc || null,
-        npcSoundSrc: isNpc ? (t.npcSoundSrc || null) : null, dialog: isNpc ? [...(t.dialog || [])] : [],
+        npcSoundSrc: isNpc ? (t.npcSoundSrc || null) : null, spawnSoundSrc: isNpc ? null : (t.spawnSoundSrc || null), attackSoundSrc: isNpc ? null : (t.attackSoundSrc || null), deathSoundSrc: isNpc ? null : (t.deathSoundSrc || null), dialog: isNpc ? [...(t.dialog || [])] : [],
         script: isNpc ? '' : (t.script || ''), color: t.color || '#ffffff', dataTimers: {}, phase: 1,
         invisibleAlpha: t.abilities?.includes('invisible') ? 0.35 : 1, dead: false
       };
@@ -716,6 +748,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       if (type === 'boss') ent.side = 'boss';
       if (type === 'npc') { ent.side = 'npc'; ent.role = 'npc'; ent.abilities = []; ent.script = ''; }
       state.entities.push(ent);
+      if (isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7);
       return ent;
     }
 
@@ -733,13 +766,20 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       return null;
     }
 
+    function playSfx(src, volume = 0.8) {
+      if (!src) return;
+      const a = new Audio(src);
+      a.volume = volume;
+      a.play().catch(() => {});
+    }
+
+    function isCombatEntity(e) {
+      return e && (e.side === 'plant' || e.side === 'zombie' || e.side === 'boss');
+    }
+
     function playNpc(ent) {
       if (!ent || ent.side !== 'npc') return;
-      if (ent.npcSoundSrc) {
-        const a = new Audio(ent.npcSoundSrc);
-        a.volume = 0.9;
-        a.play().catch(() => {});
-      }
+      playSfx(ent.npcSoundSrc, 0.9);
       if (!ent.dialog || !ent.dialog.length) return;
       if (state.dialog.entity?.id !== ent.id) state.dialog = { entity: ent, index: 0 };
       else state.dialog.index = (state.dialog.index + 1) % ent.dialog.length;
@@ -757,13 +797,13 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const index = Number(document.getElementById('templateSelect').value) || 0;
       const template = structuredClone(state.templates[index]);
       template.type = state.placeType;
-      if (state.placeType === 'boss') template.side = 'boss';
+      if (state.placeType === 'boss') { template.side = 'boss'; template.role = 'boss'; }
       if (state.placeType === 'npc') { template.side = 'npc'; template.role = 'npc'; template.abilities = []; template.script = ''; }
-      if (state.placeType === 'zombie') template.side = 'zombie';
-      if (state.placeType === 'plant') template.side = 'plant';
-      if (['lawnItem','decoration','wall','trap','spawner','hazard','triggerZone','portal','weather'].includes(state.placeType) && template.side !== 'npc') template.side = 'neutral';
+      if ((state.placeType === 'zombie' || state.placeType === 'plant') && (!template.side || template.side === 'neutral')) template.side = state.placeType;
+      if (['lawnItem','decoration','wall','trap','spawner','hazard','triggerZone','portal','weather'].includes(state.placeType) && template.side !== 'npc' && template.side !== 'plant' && template.side !== 'zombie' && template.side !== 'boss') template.side = 'neutral';
       const ent = entityFromTemplate(template, m.x, m.y);
       state.entities.push(ent);
+      if (isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7);
       state.selected = ent;
     }
 
@@ -902,6 +942,31 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       return a.side !== b.side;
     }
 
+
+    function damageEntity(target, amount, source = null) {
+      if (!target || target.dead) return;
+      let dmg = Number(amount) || 0;
+      if (target.abilities?.includes('armor')) dmg *= 0.55;
+      if (target.abilities?.includes('shield')) dmg *= 0.65;
+      if (target.abilities?.includes('zombieTank')) dmg *= 0.45;
+      target.hp -= dmg;
+      if (source?.abilities?.includes('zombieLeech')) source.hp = Math.min(source.maxHp, source.hp + dmg * 0.25);
+      if (source) state.particles.push({ x: target.x, y: target.y, age: 0, text: Math.round(dmg).toString() });
+    }
+
+    function nearestEnemies(e, limit = 999) {
+      return state.entities.filter(o => o !== e && enemyOf(e, o) && !o.dead).sort((a, b) => dist(e, a) - dist(e, b)).slice(0, limit);
+    }
+
+    function getMoveSpeed(e) {
+      const raw = Number(e.speed ?? e.vx ?? 0) || 0;
+      if (!raw) return 0;
+      const pixelsPerSecond = Math.abs(raw) * 24;
+      if (e.side === 'zombie' || e.side === 'boss') return -pixelsPerSecond;
+      if (e.side === 'plant') return pixelsPerSecond;
+      return raw * 24;
+    }
+
     function applyAbilityLogic(e, dt) {
       e.age += dt;
       e.timer -= dt;
@@ -914,13 +979,22 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       if (e.abilities.includes('burrow')) e.invisibleAlpha = 0.55 + Math.sin(e.age * 4) * 0.15;
       if (e.abilities.includes('weatherRain')) state.particles.push({ x: rand(0, canvas.clientWidth), y: -10, age: 0, text: '|', rain: true });
       if (e.abilities.includes('weatherFog')) e.invisibleAlpha = 0.55;
+      if (e.abilities.includes('plantThorns')) {
+        state.entities.forEach(o => { if (enemyOf(e, o) && dist(e, o) < 70) damageEntity(o, 3 * dt, e); });
+      }
+      if (e.abilities.includes('plantWallRepair')) {
+        state.entities.forEach(o => { if (!enemyOf(e, o) && o.role === 'wall' && dist(e, o) < 130) o.hp = Math.min(o.maxHp, o.hp + 14 * dt); });
+      }
+      if (e.abilities.includes('zombieSprint') && e.hp < e.maxHp * 0.5) e.x += e.facing * 35 * dt;
+      if (e.abilities.includes('bossEnrage') && e.hp < e.maxHp * 0.45) { e.damage += 0.03; e.x += e.facing * 20 * dt; }
 
-      if (e.speed) e.x += e.speed * dt;
+      const moveSpeed = getMoveSpeed(e);
+      if (moveSpeed) e.x += moveSpeed * dt;
       if (e.side === 'zombie' || e.side === 'boss') e.facing = -1;
       if (e.side === 'plant') e.facing = 1;
 
-      const enemies = state.entities.filter(o => o !== e && enemyOf(e, o) && !o.dead);
-      const nearest = enemies.sort((a, b) => dist(e, a) - dist(e, b))[0];
+      const enemies = nearestEnemies(e);
+      const nearest = enemies[0];
 
       if (e.timer <= 0) {
         if (e.abilities.includes('shoot')) makeProjectile(e, 0);
@@ -946,12 +1020,26 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         if (e.abilities.includes('teleport')) { e.x += rand(-120, 120); e.y += rand(-90, 90); }
         if (e.abilities.includes('dash')) e.x += e.facing * 60;
         if (e.abilities.includes('jump')) e.y += rand(-80, 80);
+        if (e.abilities.includes('plantSeedVolley')) [-0.4, -0.2, 0, 0.2, 0.4].forEach(a => makeProjectile(e, a, 470, 0.65));
+        if (e.abilities.includes('plantBurstHeal')) state.entities.forEach(o => { if (!enemyOf(e, o) && isCombatEntity(o) && dist(e, o) < 150) o.hp = Math.min(o.maxHp, o.hp + 25); });
+        if (e.abilities.includes('plantSunNova')) { for (let i = 0; i < 5; i++) makeCollectible(e, 'sun'); }
+        if (e.abilities.includes('plantRoot')) enemies.slice(0, 3).forEach(o => { o.speed = 0; o.vx = 0; });
+        if (e.abilities.includes('zombieGraveSpawn')) spawn('zombie', e.x + rand(-40, 40), e.y + rand(-45, 45), { name: 'Grave Minion', side: 'zombie', hp: 25, maxHp: 25, speed: 2, abilities: ['zombieBite'], w: 46, h: 46 });
+        if (e.abilities.includes('bossSummonHorde')) for (let i = 0; i < 4; i++) spawn('zombie', e.x - rand(40, 100), e.y + rand(-100, 100), { name: 'Boss Minion', side: 'zombie', hp: 60, maxHp: 60, speed: 2, abilities: ['zombieBite'], w: 56, h: 56 });
+        if (e.abilities.includes('bossStomp')) enemies.forEach(o => { if (dist(e, o) < 190) { damageEntity(o, e.damage * 2.2, e); o.x += e.facing * 80; } });
+        if (e.abilities.includes('bossLaserSweep')) enemies.slice(0, 8).forEach(o => damageEntity(o, e.damage * 1.4, e));
+        if (e.abilities.includes('bossShieldPulse')) e.hp = Math.min(e.maxHp, e.hp + 40);
+        if (e.abilities.includes('bossMeteorRain')) for (let i = 0; i < 6; i++) makeProjectile(e, rand(-1.2, -0.35), 420, 1.5);
+        if (e.attackSoundSrc && (e.abilities.length || nearest)) playSfx(e.attackSoundSrc, 0.65);
         e.timer = Math.max(0.1, e.cooldown / (e.phase || 1));
       }
 
       if (nearest && dist(e, nearest) < (e.w + nearest.w) * 0.35) {
-        if (e.abilities.includes('chomp')) nearest.hp -= e.damage * 8 * dt;
-        else nearest.hp -= e.damage * dt;
+        const biteMult = e.abilities.includes('zombieBite') ? 2.2 : 1;
+        if (!(nearest.abilities?.includes('zombieDodge') && Math.random() < 0.015)) {
+          if (e.abilities.includes('chomp')) damageEntity(nearest, e.damage * 8 * dt, e);
+          else damageEntity(nearest, e.damage * biteMult * dt, e);
+        }
         if (e.abilities.includes('stunAttack')) nearest.speed *= 0.995;
         if (e.abilities.includes('lifesteal')) e.hp = Math.min(e.maxHp, e.hp + e.damage * 0.25 * dt);
         if (e.abilities.includes('knockback')) nearest.x += e.facing * 90 * dt;
@@ -1049,6 +1137,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         if (e.side === 'npc') continue;
         if (e.hp > 0 || e.dead) continue;
         e.dead = true;
+        if (isCombatEntity(e)) playSfx(e.deathSoundSrc, 0.75);
         if (e.abilities.includes('explode')) {
           for (const o of state.entities) if (o !== e && enemyOf(e, o) && dist(e, o) < 150) o.hp -= e.damage * 4;
         }
@@ -1091,8 +1180,21 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       }
     }
 
+    function drawShadow(e, w, h) {
+      ctx.save();
+      ctx.globalAlpha = e.side === 'boss' ? 0.34 : 0.24;
+      ctx.filter = 'blur(6px)';
+      ctx.fillStyle = 'black';
+      ctx.beginPath();
+      ctx.ellipse(e.x, e.y + h * 0.42, w * 0.42, Math.max(8, h * 0.105), 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.filter = 'none';
+      ctx.restore();
+    }
+
     function drawEntity(e) {
       const w = e.w * e.scale, h = e.h * e.scale;
+      if (isCombatEntity(e)) drawShadow(e, w, h);
       ctx.save();
       ctx.translate(e.x, e.y);
       ctx.rotate(e.rotation || 0);
@@ -1107,7 +1209,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       ctx.globalAlpha = 1;
       ctx.restore();
 
-      if (e.side !== 'npc' && e.role !== 'decoration' && e.role !== 'prop') {
+      if (isCombatEntity(e)) {
         ctx.fillStyle = 'rgba(15,23,42,0.85)'; ctx.fillRect(e.x - w/2, e.y - h/2 - 17, w, 7);
         ctx.fillStyle = e.hp / e.maxHp > 0.4 ? '#86efac' : '#fca5a5'; ctx.fillRect(e.x - w/2, e.y - h/2 - 17, w * Math.max(0, e.hp / e.maxHp), 7);
       }
@@ -1212,7 +1314,23 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         setGifLawn(state.lawn.imageSrc);
         if (state.lawn.musicSrc) music.src = state.lawn.musicSrc;
         state.templates = data.templates || state.templates;
-        state.entities = (data.entities || []).map(e => ({ ...e, image: makeImage(e.imageSrc), gifEl: makeGifElement(e.imageSrc), dataTimers: {}, dead: false, abilities: e.side === 'npc' ? [] : (e.abilities || []), script: e.side === 'npc' ? '' : (e.script || '') }));
+        state.entities = (data.entities || []).map(e => {
+          const matchingTemplate = state.templates.find(t => t.name === e.name && (t.type === e.type || !e.type) && (t.role === e.role || !e.role));
+          const fixedSide = matchingTemplate ? matchingTemplate.side : e.side;
+          const fixedSpeed = Number(e.speed ?? e.vx ?? 0) || 0;
+          return {
+            ...e,
+            side: fixedSide || e.side || 'neutral',
+            speed: fixedSpeed,
+            vx: fixedSpeed,
+            image: makeImage(e.imageSrc),
+            gifEl: makeGifElement(e.imageSrc),
+            dataTimers: {},
+            dead: false,
+            abilities: (fixedSide || e.side) === 'npc' ? [] : (e.abilities || []),
+            script: (fixedSide || e.side) === 'npc' ? '' : (e.script || '')
+          };
+        });
         state.nextId = Math.max(1, ...state.entities.map(e => e.id || 1)) + 1;
         refreshTemplates();
         showToast('World imported');
