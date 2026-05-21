@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 3.1</title>
+  <title>Project: BUILD 4.0</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -420,6 +420,218 @@
     .mutedBox { border: 1px dashed rgba(255,255,255,0.16); border-radius: 12px; padding: 9px; color: var(--soft); font-size: 12px; }
     .hidden { display: none !important; }
 
+
+
+    /* Project: BUILD 4.0 mockup layout */
+    #app {
+      grid-template-columns: 254px 1fr;
+      background: #7c0000;
+    }
+
+    #sidebar {
+      min-width: 254px;
+      background: #1c0078;
+      border-right: 0;
+      color: #fff;
+      box-shadow: none;
+      padding: 14px 10px;
+    }
+
+    #sidebar h1 {
+      color: #ffffff;
+      font-size: 14px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    #sidebar p:first-of-type {
+      margin-top: 140px;
+      color: #ffffff;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    .pb4TitleIcon {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      background: #000;
+      image-rendering: pixelated;
+    }
+
+    #sidebarToggle { left: 238px; background:#000; color:#fff; border:0; }
+    #app.sidebar-collapsed #sidebarToggle { left: 8px; }
+
+    #stageWrap {
+      background: #7c0000;
+      padding-top: 99px;
+      padding-right: 75px;
+      padding-bottom: 32px;
+    }
+
+    #gameCanvas {
+      background: #44ff00;
+    }
+
+    #gifLawn {
+      top: 99px;
+      right: 75px;
+      bottom: 32px;
+      left: 0;
+      width: auto;
+      height: auto;
+    }
+
+    #gifLayer,
+    #gridOverlay {
+      top: 99px;
+      right: 75px;
+      bottom: 32px;
+      left: 0;
+      width: auto;
+      height: auto;
+    }
+
+    #pbTopPackets {
+      position: absolute;
+      top: 18px;
+      left: 22px;
+      right: 24px;
+      height: 68px;
+      background: #ecf8ec;
+      color: #111;
+      z-index: 12;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 38px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      transition: transform 220ms ease;
+      white-space: nowrap;
+    }
+
+    #pbTopPackets::before {
+      content: 'saved plant packets';
+      color:#111;
+      margin-right: 10px;
+      flex: 0 0 auto;
+      font-size: 13px;
+    }
+
+    #pbRightPackets {
+      position: absolute;
+      top: 88px;
+      right: 0;
+      width: 64px;
+      bottom: 16px;
+      background: #e59be9;
+      color: #111;
+      z-index: 12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 48px 7px 12px;
+      overflow-y: auto;
+      transition: transform 220ms ease;
+    }
+
+    #pbRightPackets::before {
+      content: 'zombie packets';
+      color:#111;
+      font-size: 13px;
+      line-height: 1.1;
+      text-align: center;
+      margin-bottom: 4px;
+    }
+
+    #pbBottomLevel {
+      position: absolute;
+      left: 136px;
+      right: 94px;
+      bottom: 0;
+      height: 65px;
+      background: #0038ff;
+      color: #e8efff;
+      z-index: 12;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      font-size: 12px;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: transform 220ms ease;
+    }
+
+    .pbPacket {
+      flex: 0 0 auto;
+      width: 58px;
+      height: 58px;
+      border: 2px solid rgba(0,0,0,.22);
+      background: rgba(255,255,255,.5);
+      color: #111;
+      position: relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      overflow:hidden;
+    }
+
+    .pbPacket img { max-width: 48px; max-height: 48px; object-fit: contain; }
+    .pbPacketName { display:none; }
+    .pbPacket.selected { outline: 3px solid #111; background:#fff; }
+
+    .pbArrow {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 0;
+      background: #000;
+      color:#fff;
+      z-index: 20;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size: 28px;
+      padding:0;
+      line-height:1;
+      cursor:pointer;
+      box-shadow:none;
+    }
+
+    #pbTopArrow { top: 88px; left: 50%; transform: translateX(-50%) rotate(90deg); }
+    #pbRightArrow { right: 52px; top: 45%; transform: rotate(180deg); }
+    #pbBottomArrow { bottom: 50px; left: 48%; transform: rotate(-90deg); }
+
+    body.pbTopHidden #pbTopPackets { transform: translateY(-130%); }
+    body.pbTopHidden #pbTopArrow { top: 8px; transform: translateX(-50%) rotate(-90deg); }
+    body.pbRightHidden #pbRightPackets { transform: translateX(105%); }
+    body.pbRightHidden #pbRightArrow { right: 4px; transform: rotate(0deg); }
+    body.pbBottomHidden #pbBottomLevel { transform: translateY(110%); }
+    body.pbBottomHidden #pbBottomArrow { bottom: 6px; transform: rotate(90deg); }
+
+    #projectileStack .projRow {
+      border: 1px dashed rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 8px;
+      margin-top: 8px;
+      background: rgba(0,0,0,0.18);
+    }
+
+    #projectileStack .projPreview {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.08);
+    }
+
     @media (max-width: 950px) {
       #app { grid-template-columns: 1fr; grid-template-rows: 52vh 48vh; }
       #app.sidebar-collapsed { grid-template-rows: 0 1fr; grid-template-columns: 1fr; }
@@ -437,8 +649,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1>Project: BUILD <span class="versionBadge">3.1</span></h1>
-      <p>Project: BUILD 3.0 sandbox. Make custom plants, zombies, lawns, bosses, NPCs, props, traps, spawners, projectiles, collectibles, scripted encounters, and layered scenes. Plants can snap to grid; everything else stays free-placement.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">4.0</span></h1>
+      <p>Project: BUILD 4.0 sandbox. Mockup-style packet UI, level tools, custom packets, multi-projectiles, and broader PVZ1 recreation abilities while keeping the full editor stack.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -737,6 +949,12 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       <img id="gifLawn" alt="Animated lawn background" />
       <canvas id="gameCanvas"></canvas>
       <div id="gifLayer"></div>
+      <div id="pbTopPackets"></div>
+      <button id="pbTopArrow" class="pbArrow" title="Toggle plant packets">›</button>
+      <div id="pbRightPackets"></div>
+      <button id="pbRightArrow" class="pbArrow" title="Toggle zombie packets">‹</button>
+      <div id="pbBottomLevel">LEVEL EDITOR</div>
+      <button id="pbBottomArrow" class="pbArrow" title="Toggle level editor">›</button>
       <div id="gridOverlay"></div>
       <div id="readyOverlay"></div>
       <div id="tileHint">Tile Paint Mode</div>
@@ -2464,7 +2682,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       if (byId('spawnWaveNow')) byId('spawnWaveNow').onclick = () => { const ev = waveEventFromControls(); for (let i = 0; i < ev.count; i++) spawnWaveEvent(ev, i); showToast('Spawned selected wave'); };
 
       window.ProjectBuildLevel = {
-        version: '3.1-level-tools',
+        version: '4.0-level-tools',
         startLevel,
         stopLevel,
         spawnWaveEvent,
@@ -2474,8 +2692,276 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       };
     }
 
+
+
+    function installProjectBuild4() {
+      document.title = 'Project: BUILD 4.0';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.0');
+
+      const pvzAbilities = [
+        'plantPeashooter','plantSunflower','plantCherryBomb','plantWallNut','plantPotatoMine','plantSnowPea','plantChomper','plantRepeater',
+        'plantPuffShroom','plantSunShroom','plantFumeShroom','plantGraveBuster','plantHypnoShroom','plantScaredyShroom','plantIceShroom','plantDoomShroom',
+        'plantLilyPad','plantSquash','plantThreepeater','plantTangleKelp','plantJalapeno','plantSpikeweed','plantTorchwood','plantTallNut',
+        'plantSeaShroom','plantPlantern','plantCactus','plantBlover','plantSplitPea','plantStarfruit','plantPumpkin','plantMagnetShroom',
+        'plantCabbagePult','plantFlowerPot','plantKernelPult','plantCoffeeBean','plantGarlic','plantUmbrellaLeaf','plantMarigold','plantMelonPult',
+        'plantGatlingPea','plantTwinSunflower','plantGloomShroom','plantCattail','plantWinterMelon','plantGoldMagnet','plantSpikerock','plantCobCannon',
+        'zombieBasic','zombieConehead','zombieBuckethead','zombieFlag','zombiePoleVault','zombieNewspaper','zombieScreenDoor','zombieFootball',
+        'zombieDancing','zombieBackupDancer','zombieDuckyTube','zombieSnorkel','zombieZomboni','zombieBobsledTeam','zombieDolphinRider','zombieJackInBox',
+        'zombieBalloon','zombieDigger','zombiePogo','zombieYeti','zombieBungee','zombieLadder','zombieCatapult','zombieGargantuar','zombieImp','zombieDrZomboss'
+      ];
+      pvzAbilities.forEach(a => { if (!abilityList.includes(a)) abilityList.push(a); });
+
+      const projectileInput = document.getElementById('projectileImage');
+      if (projectileInput && !document.getElementById('projectileStack')) {
+        projectileInput.insertAdjacentHTML('afterend', `
+          <div class="card" id="multiProjectileCard">
+            <label>4.0 Multi-Projectile Stack</label>
+            <p class="sectionNote">Add two or more projectile rows. Each row can have its own image, damage, speed, angle, size, and forward spacing.</p>
+            <div id="projectileStack"></div>
+            <button id="addProjectileDef" type="button" class="blue">+ Add Projectile</button>
+          </div>`);
+      }
+
+      window.addProjectileRow = function(def = {}) {
+        const stack = document.getElementById('projectileStack');
+        if (!stack) return;
+        const row = document.createElement('div');
+        row.className = 'projRow';
+        row.dataset.src = def.imageSrc || '';
+        row.innerHTML = `
+          <div class="row">
+            <div><label>Damage Mult</label><input class="projDamage" type="number" value="${def.damageMult ?? 1}" step="0.1"></div>
+            <div><label>Speed</label><input class="projSpeed" type="number" value="${def.speed ?? 420}" step="10"></div>
+          </div>
+          <div class="triple">
+            <div><label>Angle</label><input class="projAngle" type="number" value="${def.angle ?? 0}" step="0.05"></div>
+            <div><label>Size</label><input class="projSize" type="number" value="${def.size ?? 12}" step="1"></div>
+            <div><label>Spacing</label><input class="projSpacing" type="number" value="${def.spacing ?? ''}" placeholder="auto"></div>
+          </div>
+          <label>Projectile Row Image/GIF</label>
+          <input class="projImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
+          <div class="row"><img class="projPreview" alt=""><button type="button" class="danger projRemove">Remove</button></div>`;
+        const preview = row.querySelector('.projPreview');
+        if (def.imageSrc) preview.src = def.imageSrc;
+        row.querySelector('.projImage').addEventListener('change', async e => {
+          const src = await fileToDataURL(e.target.files[0]);
+          row.dataset.src = src || '';
+          preview.src = src || '';
+          showToast('Projectile row image loaded');
+        });
+        row.querySelector('.projRemove').onclick = () => row.remove();
+        stack.appendChild(row);
+      };
+
+      window.readProjectileStack = function() {
+        return [...document.querySelectorAll('#projectileStack .projRow')].map(row => ({
+          imageSrc: row.dataset.src || null,
+          damageMult: Number(row.querySelector('.projDamage')?.value) || 1,
+          speed: Number(row.querySelector('.projSpeed')?.value) || 420,
+          angle: Number(row.querySelector('.projAngle')?.value) || 0,
+          size: Number(row.querySelector('.projSize')?.value) || 12,
+          spacing: Number(row.querySelector('.projSpacing')?.value) || null,
+          enabled: true
+        }));
+      };
+
+      window.setProjectileStack = function(defs = []) {
+        const stack = document.getElementById('projectileStack');
+        if (!stack) return;
+        stack.innerHTML = '';
+        (Array.isArray(defs) ? defs : []).forEach(d => addProjectileRow(d));
+      };
+
+      const addBtn = document.getElementById('addProjectileDef');
+      if (addBtn && !addBtn.dataset.ready) {
+        addBtn.dataset.ready = '1';
+        addBtn.onclick = () => addProjectileRow({});
+      }
+
+      const oldGetTemplateForm4 = getTemplateForm;
+      getTemplateForm = function() {
+        const t = oldGetTemplateForm4();
+        const stack = typeof readProjectileStack === 'function' ? readProjectileStack() : [];
+        t.projectileDefs = stack;
+        t.projectiles = stack;
+        return t;
+      };
+
+      const oldLoadTemplateToForm4 = loadTemplateToForm;
+      loadTemplateToForm = function(t) {
+        oldLoadTemplateToForm4(t);
+        if (typeof setProjectileStack === 'function') setProjectileStack(t.projectileDefs || t.projectiles || []);
+      };
+
+      const oldEntityFromTemplate4 = entityFromTemplate;
+      entityFromTemplate = function(template, x, y, override = {}) {
+        const e = oldEntityFromTemplate4(template, x, y, override);
+        const t = { ...template, ...override };
+        e.projectileDefs = structuredClone(t.projectileDefs || t.projectiles || []);
+        e.projectiles = structuredClone(t.projectiles || t.projectileDefs || []);
+        return e;
+      };
+
+      makeProjectile = function(owner, angle = 0, speed = null, damageMult = 1) {
+        const stack = Array.isArray(owner.projectileDefs) && owner.projectileDefs.length ? owner.projectileDefs : (Array.isArray(owner.projectiles) ? owner.projectiles : []);
+        const active = stack.filter(p => p && (p.enabled ?? true));
+        if (active.length) {
+          active.forEach((row, index) => {
+            const rawAngle = Number(row.angle ?? row.angleOffset ?? 0) || 0;
+            const rowAngle = angle + (Math.abs(rawAngle) > Math.PI * 2 ? rawAngle * Math.PI / 180 : rawAngle);
+            const rowSpeed = Number(row.speed ?? speed ?? owner.projectileSpeed ?? 420) || 420;
+            const rowDamage = damageMult * (Number(row.damageMult ?? row.damage ?? 1) || 1);
+            const rowSize = Number(row.size ?? row.radius ?? owner.projectileSize ?? 12) || 12;
+            const rowImage = row.imageSrc || row.src || row.projectileSrc || owner.projectileSrc || null;
+            const rowSpacing = Number(row.spacing ?? row.forwardOffset ?? 0) || rowSize * 2 + 8;
+            spawnSingleProjectile(owner, rowAngle, rowSpeed, rowDamage, rowSize, rowImage, index, rowSpacing);
+          });
+          return;
+        }
+        spawnSingleProjectile(owner, angle, speed ?? owner.projectileSpeed ?? 420, damageMult, Number(owner.projectileSize || 12), owner.projectileSrc || null, 0, 0);
+      };
+
+      window.spawnSingleProjectile = function(owner, angle = 0, speed = 420, damageMult = 1, radius = 12, imageSrc = null, stackIndex = 0, rowSpacing = 0) {
+        const facing = owner.facing || 1;
+        const p = {
+          isProjectile: true,
+          x: owner.x + facing * owner.w * owner.scale * 0.45 + facing * stackIndex * rowSpacing,
+          y: owner.y - owner.h * owner.scale * 0.08 + stackIndex * 1.5,
+          vx: Math.cos(angle) * speed * facing,
+          vy: Math.sin(angle) * speed,
+          damage: owner.damage * damageMult,
+          side: owner.side,
+          ownerId: owner.id,
+          radius,
+          pierce: owner.abilities.includes('pierceShot') || owner.abilities.includes('plantCactus') ? 3 : 0,
+          slow: owner.abilities.includes('slowProjectile') || owner.abilities.includes('plantSnowPea') || owner.abilities.includes('plantWinterMelon'),
+          homing: owner.abilities.includes('homingShot') || owner.abilities.includes('plantCattail'),
+          splash: owner.abilities.includes('splashShot') || owner.abilities.includes('plantMelonPult') || owner.abilities.includes('plantWinterMelon'),
+          boomerang: owner.abilities.includes('boomerangShot'),
+          imageSrc, image: makeImage(imageSrc), gifEl: makeGifElement(imageSrc), age: 0, dead: false
+        };
+        state.projectiles.push(p);
+      };
+
+      function renderPackets() {
+        const plantBar = document.getElementById('pbTopPackets');
+        const zombieBar = document.getElementById('pbRightPackets');
+        if (!plantBar || !zombieBar) return;
+        plantBar.querySelectorAll('.pbPacket').forEach(n => n.remove());
+        zombieBar.querySelectorAll('.pbPacket').forEach(n => n.remove());
+        state.templates.forEach((t, i) => {
+          const side = t.side || t.type;
+          if (!['plant','zombie','boss'].includes(side)) return;
+          const packet = document.createElement('div');
+          packet.className = 'pbPacket';
+          packet.title = t.name;
+          packet.dataset.index = i;
+          const imgSrc = t.idleSrc || t.imageSrc || t.actionSrc || t.deathSrc || '';
+          packet.innerHTML = imgSrc ? `<img src="${imgSrc}" alt=""><span class="pbPacketName">${t.name}</span>` : `<span>${t.name.slice(0,2)}</span>`;
+          packet.onclick = () => {
+            const sel = document.getElementById('templateSelect');
+            if (sel) sel.value = String(i);
+            state.placeType = side === 'boss' ? 'boss' : side;
+            const typeSel = document.getElementById('placeType');
+            if (typeSel) typeSel.value = state.placeType;
+            state.tool = 'place';
+            canvas.style.cursor = 'crosshair';
+            document.querySelectorAll('.pbPacket').forEach(p => p.classList.remove('selected'));
+            packet.classList.add('selected');
+            showToast(`${t.name} selected`);
+          };
+          (side === 'plant' ? plantBar : zombieBar).appendChild(packet);
+        });
+      }
+      window.renderProjectBuildPackets = renderPackets;
+      const oldRefreshTemplates4 = refreshTemplates;
+      refreshTemplates = function() { oldRefreshTemplates4(); renderPackets(); };
+
+      const topArrow = document.getElementById('pbTopArrow');
+      const rightArrow = document.getElementById('pbRightArrow');
+      const bottomArrow = document.getElementById('pbBottomArrow');
+      if (topArrow) topArrow.onclick = () => document.body.classList.toggle('pbTopHidden');
+      if (rightArrow) rightArrow.onclick = () => document.body.classList.toggle('pbRightHidden');
+      if (bottomArrow) bottomArrow.onclick = () => document.body.classList.toggle('pbBottomHidden');
+      const bottom = document.getElementById('pbBottomLevel');
+      if (bottom) bottom.onclick = () => {
+        const heads = [...document.querySelectorAll('#sidebar h2')];
+        const target = heads.find(h => /Wave Scripter|Level Editor/i.test(h.textContent));
+        if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+        showToast('Level editor');
+      };
+
+      const oldApplyAbilityLogic4 = applyAbilityLogic;
+      applyAbilityLogic = function(e, dt) {
+        const ab = e.abilities || [];
+        const enemies = nearestEnemies(e, 20);
+        const nearest = enemies[0];
+        if (!e.dead && e.side !== 'npc') {
+          if (ab.includes('plantSunflower') && entityTimer(e,'sunflower',7)) makeCollectible(e,'sun');
+          if (ab.includes('plantTwinSunflower') && entityTimer(e,'twinsun',7)) { makeCollectible(e,'sun'); makeCollectible(e,'sun'); }
+          if (ab.includes('plantMarigold') && entityTimer(e,'marigold',8)) makeCollectible(e,'coin');
+          if (ab.includes('plantCherryBomb') && e.age > .7 && !e.didCherry) { e.didCherry = true; enemies.forEach(o=>{ if(dist(e,o)<170) damageEntity(o, 180, e); }); e.hp = 0; }
+          if (ab.includes('plantDoomShroom') && e.age > 1 && !e.didDoom) { e.didDoom = true; enemies.forEach(o=>{ if(dist(e,o)<320) damageEntity(o, 320, e); }); e.hp = 0; }
+          if (ab.includes('plantIceShroom') && e.age > .7 && !e.didIce) { e.didIce = true; enemies.forEach(o=>{ o.speed *= .15; damageEntity(o, 35, e); }); e.hp = 0; }
+          if (ab.includes('plantPotatoMine') && e.age > 3 && enemies.some(o=>dist(e,o)<55)) { enemies.forEach(o=>{ if(dist(e,o)<80) damageEntity(o, 180, e); }); e.hp = 0; }
+          if (ab.includes('plantSquash') && nearest && dist(e,nearest)<130 && entityTimer(e,'squash',99)) { e.x = nearest.x; e.y = nearest.y; damageEntity(nearest, 260, e); e.hp = 0; }
+          if (ab.includes('plantTangleKelp') && nearest && dist(e,nearest)<120 && entityTimer(e,'kelp',99)) { damageEntity(nearest, 9999, e); e.hp = 0; }
+          if (ab.includes('plantJalapeno') && e.age > .7 && !e.didJala) { e.didJala = true; enemies.forEach(o=>{ if(Math.abs(o.y-e.y)<80) damageEntity(o, 260, e); }); e.hp = 0; }
+          if ((ab.includes('plantSpikeweed') || ab.includes('plantSpikerock')) && nearestEnemies(e,99).length) enemies.forEach(o=>{ if(dist(e,o)<65) damageEntity(o, ab.includes('plantSpikerock') ? 16*dt : 8*dt, e); });
+          if (ab.includes('plantFumeShroom')) enemies.forEach(o=>{ if(Math.abs(o.y-e.y)<70 && Math.abs(o.x-e.x)<250 && o.x>e.x-50) damageEntity(o, 18*dt, e); });
+          if (ab.includes('plantGloomShroom')) enemies.forEach(o=>{ if(dist(e,o)<145) damageEntity(o, 30*dt, e); });
+          if (ab.includes('plantChomper') && nearest && dist(e,nearest)<90 && entityTimer(e,'chompPvz',7)) damageEntity(nearest, 999, e);
+          if (ab.includes('plantGraveBuster') && e.role === 'trap') e.hp = Math.min(e.maxHp, e.hp + 1);
+          if (ab.includes('plantHypnoShroom') && nearest && dist(e,nearest)<80 && entityTimer(e,'hypno',99)) { nearest.side='plant'; nearest.facing=1; e.hp=0; }
+          if (ab.includes('plantGarlic') && nearest && dist(e,nearest)<80) nearest.y += (nearest.y < e.y ? -1 : 1) * 45 * dt;
+          if (ab.includes('plantBlover') && entityTimer(e,'blover',5)) enemies.forEach(o=>{ if(o.abilities?.includes('zombieBalloon') || o.abilities?.includes('fly')) damageEntity(o,9999,e); else o.x -= 90; });
+          if (ab.includes('plantMagnetShroom') && entityTimer(e,'magnet',4)) enemies.forEach(o=>{ if(dist(e,o)<260) o.abilities = (o.abilities||[]).filter(a => !['zombieBuckethead','zombieScreenDoor','zombieLadder','zombieFootball','armor','shield'].includes(a)); });
+          if (ab.includes('plantGoldMagnet') && entityTimer(e,'goldmagnet',2)) state.collectibles.forEach(c=>{ c.x += (e.x-c.x)*.25; c.y += (e.y-c.y)*.25; });
+          if (ab.includes('plantTorchwood')) state.projectiles.forEach(p=>{ if(p.side==='plant' && dist(p,e)<80) { p.damage *= 1.01; p.splash = true; } });
+          if (ab.includes('plantCabbagePult') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,-.45,300,1.2); setActionVisual(e,.35); }
+          if (ab.includes('plantKernelPult') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,-.45,280,Math.random()<.25?2.2:.8); if(nearest && Math.random()<.25) nearest.speed*=.5; setActionVisual(e,.35); }
+          if (ab.includes('plantMelonPult') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,-.45,330,2.0); setActionVisual(e,.35); }
+          if (ab.includes('plantWinterMelon') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,-.45,320,2.0); enemies.forEach(o=>{ if(dist(e,o)<260) o.speed*=.92; }); setActionVisual(e,.35); }
+          if (ab.includes('plantCobCannon') && entityTimer(e,'cob',12) && nearest) { makeProjectile(e,-.35,430,6); setActionVisual(e,.8); }
+          if (ab.includes('plantRepeater') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,0, e.projectileSpeed||420, .9); setTimeout(()=>makeProjectile(e,0,e.projectileSpeed||420,.9), 120); }
+          if (ab.includes('plantGatlingPea') && e.timer <= 0 && canPlantShoot(e,enemies)) for(let i=0;i<4;i++) setTimeout(()=>makeProjectile(e,0,e.projectileSpeed||500,.75), i*70);
+          if (ab.includes('plantThreepeater') && e.timer <= 0 && canPlantShoot(e,enemies)) [-.18,0,.18].forEach(a=>makeProjectile(e,a,e.projectileSpeed||420,.85));
+          if (ab.includes('plantSplitPea') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,0,e.projectileSpeed||420,1); const f=e.facing; e.facing=-f; makeProjectile(e,0,e.projectileSpeed||420,1); e.facing=f; }
+          if (ab.includes('plantStarfruit') && entityTimer(e,'starfruit',1.8)) [-.65,-.25,0,.25,.65].forEach(a=>makeProjectile(e,a,380,.7));
+          if (ab.includes('plantCactus') && e.timer <= 0 && canPlantShoot(e,enemies)) makeProjectile(e,0,620,1.2);
+          if (ab.includes('plantCattail') && entityTimer(e,'cattail',1.1)) makeProjectile(e,0,520,1.1);
+          if (ab.includes('plantTallNut')) e.maxHp = Math.max(e.maxHp, 300);
+          if (ab.includes('plantPumpkin')) e.hp = Math.min(e.maxHp, e.hp + 3*dt);
+
+          if (ab.includes('zombieConehead')) e.maxHp = Math.max(e.maxHp, 160);
+          if (ab.includes('zombieBuckethead')) e.maxHp = Math.max(e.maxHp, 280);
+          if (ab.includes('zombieScreenDoor')) e.hp = Math.min(e.maxHp, e.hp + 2*dt);
+          if (ab.includes('zombieFootball')) { e.speed = Math.max(e.speed, 4); e.damage += .01; }
+          if (ab.includes('zombieNewspaper') && e.hp < e.maxHp*.45) { e.speed = Math.max(e.speed,5); e.damage += .04; }
+          if ((ab.includes('zombiePoleVault') || ab.includes('zombieDolphinRider') || ab.includes('zombiePogo')) && nearest && dist(e,nearest)<120 && !e.didPvzJump) { e.didPvzJump=true; e.x += e.facing*150; e.y += (nearest.y-e.y)*.25; }
+          if (ab.includes('zombieDancing') && entityTimer(e,'danceSpawn',7)) for(let i=0;i<2;i++) spawn('zombie', e.x+30, e.y+rand(-60,60), {name:'Backup Dancer', side:'zombie', hp:60, maxHp:60, speed:2, damage:5, abilities:['zombieBackupDancer','zombieBite']});
+          if (ab.includes('zombieZomboni')) { e.maxHp=Math.max(e.maxHp,340); if(entityTimer(e,'zomboniIce',.6)) state.particles.push({x:e.x,y:e.y+30,age:0,text:'ice'}); }
+          if (ab.includes('zombieJackInBox') && nearest && dist(e,nearest)<120 && entityTimer(e,'jackbox',8)) { enemies.forEach(o=>{ if(dist(e,o)<150) damageEntity(o,170,e); }); e.hp=0; }
+          if (ab.includes('zombieBalloon')) { e.y += Math.sin(e.age*2)*.4; e.invisibleAlpha = .88; }
+          if (ab.includes('zombieDigger') && e.age < 4) { e.x += e.facing * 70 * dt; e.invisibleAlpha=.45; } else if(ab.includes('zombieDigger')) e.invisibleAlpha=1;
+          if (ab.includes('zombieBungee') && entityTimer(e,'bungee',6)) { const plants = state.entities.filter(o=>o.side==='plant'); const p = plants[Math.floor(rand(0,plants.length||1))]; if(p) p.hp=0; }
+          if (ab.includes('zombieLadder') && nearest && dist(e,nearest)<90) { nearest.hp -= 8*dt; e.x += e.facing*20*dt; }
+          if (ab.includes('zombieCatapult') && entityTimer(e,'catapult',2.5)) makeProjectile(e,-.45,360,1.5);
+          if (ab.includes('zombieGargantuar')) { e.maxHp=Math.max(e.maxHp,600); if(e.hp<e.maxHp*.5 && !e.threwImp){ e.threwImp=true; spawn('zombie',e.x+e.facing*80,e.y,{name:'Imp',side:'zombie',hp:45,maxHp:45,w:45,h:45,speed:4,damage:8,abilities:['zombieImp','zombieBite']}); } }
+          if (ab.includes('zombieImp')) { e.scale = Math.min(e.scale, .7); e.speed = Math.max(e.speed,4); }
+          if (ab.includes('zombieDrZomboss') && entityTimer(e,'zomboss',3)) { for(let i=-2;i<=2;i++) makeProjectile(e,i*.18,420,1.5); if(Math.random()<.35) spawn('zombie',e.x-120,e.y+rand(-100,100),{name:'Zomboss Minion',side:'zombie',hp:120,maxHp:120,speed:3,damage:9,abilities:['zombieBuckethead','zombieBite']}); }
+        }
+        oldApplyAbilityLogic4(e, dt);
+      };
+
+      renderPackets();
+      if (typeof addProjectileRow === 'function' && document.querySelectorAll('#projectileStack .projRow').length === 0) addProjectileRow({});
+    }
+
+
     installProjectBuild3();
     installProjectBuildLevelTools();
+    installProjectBuild4();
 
 
     renderAbilityPills();
