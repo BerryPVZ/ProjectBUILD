@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 4.0</title>
+  <title>Project: BUILD 4.5</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -632,6 +632,80 @@
       background: rgba(255,255,255,.08);
     }
 
+
+
+    /* Project: BUILD 4.1 separate level editor + template SFX */
+    #pbLevelModal {
+      position: absolute;
+      inset: 76px 90px 84px 28px;
+      z-index: 40;
+      display: none;
+      align-items: stretch;
+      justify-content: center;
+      pointer-events: auto;
+    }
+    #pbLevelModal.open { display: flex; }
+    .pbLevelWindow {
+      width: min(980px, 100%);
+      max-height: 100%;
+      overflow: auto;
+      background: linear-gradient(180deg, rgba(0, 30, 130, 0.98), rgba(0, 14, 58, 0.98));
+      color: #e8efff;
+      border: 4px solid rgba(255,255,255,0.72);
+      box-shadow: 0 18px 70px rgba(0,0,0,0.72);
+      padding: 14px;
+      border-radius: 6px;
+    }
+    .pbLevelWindow h2 {
+      color: #ffffff;
+      margin: 0 0 8px;
+      font-size: 18px;
+      letter-spacing: 0.06em;
+    }
+    .pbLevelWindow label,
+    .pbLevelWindow p,
+    .pbLevelWindow .sectionNote { color: #e8efff; }
+    .pbLevelHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .pbLevelClose {
+      width: auto;
+      padding: 7px 12px;
+      margin: 0;
+      background: #1d1d1d;
+      color: #fff;
+      border-radius: 999px;
+    }
+    .pbLevelGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .pbLevelPanel {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    #levelScriptModal {
+      min-height: 240px;
+      background: rgba(0,0,0,0.58);
+      color: #d9ff9f;
+    }
+    .sfxStatus {
+      font-size: 11px;
+      color: #94a3b8;
+      margin-top: 3px;
+    }
+    @media (max-width: 950px) {
+      #pbLevelModal { inset: 54px 10px 54px 10px; }
+      .pbLevelGrid { grid-template-columns: 1fr; }
+    }
+
     @media (max-width: 950px) {
       #app { grid-template-columns: 1fr; grid-template-rows: 52vh 48vh; }
       #app.sidebar-collapsed { grid-template-rows: 0 1fr; grid-template-columns: 1fr; }
@@ -643,14 +717,99 @@
       #app.sidebar-collapsed #sidebarToggleIcon { transform: rotate(90deg); }
       #dialogBox { width: calc(100vw - 28px); bottom: 76px; }
     }
+  
+    /* Project: BUILD 4.5 boost/fusion/heavy wave update */
+    .pb45Panel {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .pb45SmallGrid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .pb45BoostList, .pb45FusionList {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+      max-height: 110px;
+      overflow: auto;
+    }
+    .pb45Chip {
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(0,0,0,0.28);
+      color: #d9ff9f;
+      border-radius: 999px;
+      padding: 5px 9px;
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .pb45Chip.active { background: rgba(183,255,122,0.22); border-color: rgba(183,255,122,0.7); }
+    #pbLevelModal .pbLevelWindow {
+      background: linear-gradient(180deg, rgba(9, 63, 162, 0.98), rgba(0, 25, 92, 0.98));
+      border-radius: 18px;
+      border: 3px solid rgba(217,255,159,0.8);
+    }
+    .pb45FriendlySteps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin: 8px 0 12px;
+    }
+    .pb45Step {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 12px;
+      padding: 8px;
+      color: #fff;
+      font-size: 12px;
+      min-height: 52px;
+    }
+    .pb45LaneButtons {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .pb45LaneButtons button { padding: 6px; font-size: 11px; }
+    .pb45WaveCards {
+      display: grid;
+      gap: 6px;
+      max-height: 180px;
+      overflow: auto;
+      margin-top: 8px;
+    }
+    .pb45WaveCard {
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px;
+      padding: 7px;
+      color: #e8efff;
+      font-size: 12px;
+    }
+    .pb45TwoCol {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 950px) {
+      .pb45FriendlySteps, .pb45TwoCol { grid-template-columns: 1fr; }
+      .pb45LaneButtons { grid-template-columns: repeat(2, 1fr); }
+    }
+
   </style>
 </head>
 <body>
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">4.0</span></h1>
-      <p>Project: BUILD 4.0 sandbox. Mockup-style packet UI, level tools, custom packets, multi-projectiles, and broader PVZ1 recreation abilities while keeping the full editor stack.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">4.5</span></h1>
+      <p>Project: BUILD 4.5 sandbox. Mockup packet UI, separate level editor GUI, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -848,12 +1007,20 @@ Click me again to advance.</textarea>
         <input id="collectibleImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
 
         <div id="combatSfxSection">
-          <label>Spawn SFX for plants, zombies, and bosses</label>
+          <label>Spawn SFX for this template only</label>
           <input id="spawnSound" type="file" accept="audio/*" />
-          <label>Attack / Ability SFX for plants, zombies, and bosses</label>
+          <label>Attack / Ability SFX for this template only</label>
           <input id="attackSound" type="file" accept="audio/*" />
-          <label>Death SFX for plants, zombies, and bosses</label>
+          <label>Death SFX for this template only</label>
           <input id="deathSound" type="file" accept="audio/*" />
+
+          <label>Hit / Hurt SFX for this template only</label>
+          <input id="hitSound" type="file" accept="audio/*" />
+          <div id="hitSoundStatus" class="sfxStatus">No hit SFX loaded for this template.</div>
+          <label>Special / Plant Food SFX for this template only</label>
+          <input id="specialSound" type="file" accept="audio/*" />
+          <div id="specialSoundStatus" class="sfxStatus">No special SFX loaded for this template.</div>
+          <button id="clearTemplateSfx" type="button" class="danger">Clear SFX For Current Template Form</button>
         </div>
 
         <label>Script, mainly for bosses, spawners, hazards, triggers, and special objects</label>
@@ -955,6 +1122,51 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       <button id="pbRightArrow" class="pbArrow" title="Toggle zombie packets">‹</button>
       <div id="pbBottomLevel">LEVEL EDITOR</div>
       <button id="pbBottomArrow" class="pbArrow" title="Toggle level editor">›</button>
+
+      <div id="pbLevelModal" aria-hidden="true">
+        <div class="pbLevelWindow">
+          <div class="pbLevelHeader">
+            <div>
+              <h2>LEVEL EDITOR</h2>
+              <p class="sectionNote">Separate level GUI. It uses your saved zombie/boss template library and syncs into the world JSON wave script.</p>
+            </div>
+            <button id="levelModalClose" class="pbLevelClose" type="button">Close</button>
+          </div>
+          <div class="pbLevelGrid">
+            <div class="pbLevelPanel">
+              <label>Zombie/Boss Packet</label>
+              <select id="levelZombieSelect"></select>
+              <div class="triple">
+                <div><label>Start Time</label><input id="levelTime" type="number" value="0" step="0.5" /></div>
+                <div><label>Count</label><input id="levelCount" type="number" value="3" min="1" /></div>
+                <div><label>Interval</label><input id="levelInterval" type="number" value="1" step="0.1" /></div>
+              </div>
+              <div class="triple">
+                <div><label>Spawn X</label><input id="levelX" type="number" value="-1" /></div>
+                <div><label>Lane / Y</label><input id="levelY" type="number" value="180" /></div>
+                <div><label>Y Jitter</label><input id="levelJitter" type="number" value="30" /></div>
+              </div>
+              <div class="row">
+                <button id="levelRefreshLibrary" class="blue" type="button">Refresh Library</button>
+                <button id="levelAddSpawn" type="button">Add Spawn</button>
+              </div>
+              <div class="row">
+                <button id="levelSpawnNow" class="blue" type="button">Spawn Selected Now</button>
+                <button id="levelClearScript" class="danger" type="button">Clear Script</button>
+              </div>
+              <div class="row">
+                <button id="levelStart" class="warn" type="button">Start Level</button>
+                <button id="levelStop" class="danger" type="button">Stop Level</button>
+              </div>
+            </div>
+            <div class="pbLevelPanel">
+              <label>Level Script JSON</label>
+              <textarea id="levelScriptModal" placeholder='[{"time":0,"template":"Basic Zombie","count":5,"interval":1,"x":-1,"y":180,"jitter":30}]'></textarea>
+              <p class="sectionNote">This is separate from the maker sidebar, but it syncs with the same level script and exports/imports with the world.</p>
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="gridOverlay"></div>
       <div id="readyOverlay"></div>
       <div id="tileHint">Tile Paint Mode</div>
@@ -2959,9 +3171,791 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     }
 
 
+
+    function installProjectBuild4_1() {
+      document.title = 'Project: BUILD 4.1';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.1');
+
+      const pvz2Abilities = [
+        'plantBloomerang','plantBonkChoy','plantSnapdragon','plantColdSnapdragon','plantLightningReed','plantSpringBean','plantCoconutCannon','plantLaserBean','plantCitron','plantMagnifyingGrass',
+        'plantTileTurnip','plantRotobaga','plantAkiEeBean','plantEndurian','plantBowlingBulb','plantPrimalPeashooter','plantPrimalSunflower','plantPrimalWallNut','plantPerfumeShroom','plantIntensiveCarrot',
+        'plantGoldBloom','plantMoonflower','plantShadowPeashooter','plantDuskLobber','plantWasabiWhip','plantElectricPeashooter','plantFirePeashooter','plantPokra','plantDazeyChain','plantHurrikale',
+        'plantBananaLauncher','plantAppleMortar','plantPeaNut','plantElectricBlueberry','plantGhostPepper','plantBloomingHeart','plantGuacodile','plantHotDate','plantSporeShroom','plantSolarTomato','plantEscapeRoot',
+        'zombieRa','zombieCamel','zombieExplorer','zombieTombRaiser','zombiePharaoh','zombieSeagull','zombiePirateCaptain','zombieBarrelRoller','zombieSwashbuckler','zombiePianist',
+        'zombieProspector','zombieChickenWrangler','zombieMechaFootball','zombieJetpack','zombieWizard','zombieKnight','zombieOcto','zombieSurfer','zombieBugBotImp','zombieAllStar',
+        'zombieGlitter','zombieJurassicBully','zombieWeaselHoarder','zombieShieldBearer','zombieExcavator','zombieParasol','zombieImpCannon','zombieTroglobite','zombieMedusa','zombieSundayEdition'
+      ];
+      pvz2Abilities.forEach(a => { if (!abilityList.includes(a)) abilityList.push(a); });
+
+      currentAssetCache.hitSoundSrc ??= null;
+      currentAssetCache.specialSoundSrc ??= null;
+      const byId = id => document.getElementById(id);
+      function syncSfxStatus() {
+        const hit = byId('hitSoundStatus');
+        const special = byId('specialSoundStatus');
+        if (hit) hit.textContent = currentAssetCache.hitSoundSrc ? 'Hit SFX loaded for this template.' : 'No hit SFX loaded for this template.';
+        if (special) special.textContent = currentAssetCache.specialSoundSrc ? 'Special SFX loaded for this template.' : 'No special SFX loaded for this template.';
+      }
+      if (byId('hitSound')) byId('hitSound').addEventListener('change', async e => {
+        currentAssetCache.hitSoundSrc = await fileToDataURL(e.target.files[0]);
+        syncSfxStatus();
+        showToast('Template hit SFX loaded');
+      });
+      if (byId('specialSound')) byId('specialSound').addEventListener('change', async e => {
+        currentAssetCache.specialSoundSrc = await fileToDataURL(e.target.files[0]);
+        syncSfxStatus();
+        showToast('Template special SFX loaded');
+      });
+      if (byId('clearTemplateSfx')) byId('clearTemplateSfx').onclick = () => {
+        currentAssetCache.spawnSoundSrc = null;
+        currentAssetCache.attackSoundSrc = null;
+        currentAssetCache.deathSoundSrc = null;
+        currentAssetCache.hitSoundSrc = null;
+        currentAssetCache.specialSoundSrc = null;
+        ['spawnSound','attackSound','deathSound','hitSound','specialSound'].forEach(id => { const el = byId(id); if (el) el.value = ''; });
+        syncSfxStatus();
+        showToast('Current form SFX cleared');
+      };
+
+      const oldGetTemplateForm41 = getTemplateForm;
+      getTemplateForm = function() {
+        const t = oldGetTemplateForm41();
+        t.sfx = {
+          spawn: currentAssetCache.spawnSoundSrc || null,
+          attack: currentAssetCache.attackSoundSrc || null,
+          death: currentAssetCache.deathSoundSrc || null,
+          hit: currentAssetCache.hitSoundSrc || null,
+          special: currentAssetCache.specialSoundSrc || null
+        };
+        t.spawnSoundSrc = t.sfx.spawn;
+        t.attackSoundSrc = t.sfx.attack;
+        t.deathSoundSrc = t.sfx.death;
+        t.hitSoundSrc = t.sfx.hit;
+        t.specialSoundSrc = t.sfx.special;
+        return t;
+      };
+      const oldLoadTemplateToForm41 = loadTemplateToForm;
+      loadTemplateToForm = function(t) {
+        oldLoadTemplateToForm41(t);
+        currentAssetCache.spawnSoundSrc = t.sfx?.spawn ?? t.spawnSoundSrc ?? null;
+        currentAssetCache.attackSoundSrc = t.sfx?.attack ?? t.attackSoundSrc ?? null;
+        currentAssetCache.deathSoundSrc = t.sfx?.death ?? t.deathSoundSrc ?? null;
+        currentAssetCache.hitSoundSrc = t.sfx?.hit ?? t.hitSoundSrc ?? null;
+        currentAssetCache.specialSoundSrc = t.sfx?.special ?? t.specialSoundSrc ?? null;
+        syncSfxStatus();
+      };
+      const oldEntityFromTemplate41 = entityFromTemplate;
+      entityFromTemplate = function(template, x, y, override = {}) {
+        const e = oldEntityFromTemplate41(template, x, y, override);
+        const t = { ...template, ...override };
+        e.sfx = {
+          spawn: t.sfx?.spawn ?? t.spawnSoundSrc ?? null,
+          attack: t.sfx?.attack ?? t.attackSoundSrc ?? null,
+          death: t.sfx?.death ?? t.deathSoundSrc ?? null,
+          hit: t.sfx?.hit ?? t.hitSoundSrc ?? null,
+          special: t.sfx?.special ?? t.specialSoundSrc ?? null
+        };
+        e.spawnSoundSrc = e.sfx.spawn;
+        e.attackSoundSrc = e.sfx.attack;
+        e.deathSoundSrc = e.sfx.death;
+        e.hitSoundSrc = e.sfx.hit;
+        e.specialSoundSrc = e.sfx.special;
+        return e;
+      };
+      const oldDamageEntity41 = damageEntity;
+      damageEntity = function(target, amount, source = null) {
+        if (target && !target.dead && amount > 0 && target.hitSoundSrc && (!target._lastHitSfx || state.worldTime - target._lastHitSfx > 0.35)) {
+          target._lastHitSfx = state.worldTime;
+          playSfx(target.hitSoundSrc, 0.55);
+        }
+        return oldDamageEntity41(target, amount, source);
+      };
+      const oldMakeProjectile41 = makeProjectile;
+      makeProjectile = function(owner, angle = 0, speed = null, damageMult = 1) {
+        if (owner?.attackSoundSrc && (!owner._lastAttackSfx || state.worldTime - owner._lastAttackSfx > 0.18)) {
+          owner._lastAttackSfx = state.worldTime;
+          playSfx(owner.attackSoundSrc, 0.6);
+        }
+        return oldMakeProjectile41(owner, angle, speed, damageMult);
+      };
+
+      const modal = byId('pbLevelModal');
+      const bottom = byId('pbBottomLevel');
+      function refreshLevelModalLibrary() {
+        const sel = byId('levelZombieSelect');
+        if (!sel) return;
+        const prev = sel.value;
+        sel.innerHTML = '';
+        state.templates.forEach((t, i) => {
+          if (t.side === 'zombie' || t.side === 'boss' || t.type === 'zombie' || t.type === 'boss') {
+            const opt = document.createElement('option');
+            opt.value = String(i);
+            opt.textContent = `${t.name} (${t.side}/${t.role || t.type})`;
+            sel.appendChild(opt);
+          }
+        });
+        if (!sel.options.length) {
+          const opt = document.createElement('option'); opt.value = '-1'; opt.textContent = 'No zombie templates saved yet'; sel.appendChild(opt);
+        } else if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+      }
+      function readLevelModalScript() {
+        const raw = byId('levelScriptModal')?.value.trim();
+        if (!raw) return [];
+        try { const data = JSON.parse(raw); return Array.isArray(data) ? data : []; }
+        catch (err) { showToast('Level JSON error: ' + err.message); return []; }
+      }
+      function writeLevelModalScript(events) {
+        const area = byId('levelScriptModal');
+        if (area) area.value = JSON.stringify(events, null, 2);
+      }
+      function syncModalFromSidebar() {
+        refreshLevelModalLibrary();
+        const sidebarScript = byId('waveScript')?.value || '';
+        if (byId('levelScriptModal')) byId('levelScriptModal').value = sidebarScript;
+        const pairs = [['waveTime','levelTime'],['waveCount','levelCount'],['waveInterval','levelInterval'],['waveX','levelX'],['waveY','levelY'],['waveJitter','levelJitter']];
+        pairs.forEach(([a,b]) => { if (byId(a) && byId(b)) byId(b).value = byId(a).value; });
+        if (byId('waveZombieSelect') && byId('levelZombieSelect')) byId('levelZombieSelect').value = byId('waveZombieSelect').value;
+      }
+      function syncSidebarFromModal() {
+        if (byId('waveScript') && byId('levelScriptModal')) byId('waveScript').value = byId('levelScriptModal').value;
+        const pairs = [['levelTime','waveTime'],['levelCount','waveCount'],['levelInterval','waveInterval'],['levelX','waveX'],['levelY','waveY'],['levelJitter','waveJitter']];
+        pairs.forEach(([a,b]) => { if (byId(a) && byId(b)) byId(b).value = byId(a).value; });
+        if (byId('levelZombieSelect') && byId('waveZombieSelect')) byId('waveZombieSelect').value = byId('levelZombieSelect').value;
+      }
+      function modalEventFromControls() {
+        const idx = Number(byId('levelZombieSelect')?.value);
+        const t = state.templates[idx];
+        return {
+          time: Number(byId('levelTime')?.value) || 0,
+          templateIndex: idx,
+          template: t?.name || 'Zombie',
+          count: Math.max(1, Number(byId('levelCount')?.value) || 1),
+          interval: Math.max(0.05, Number(byId('levelInterval')?.value) || 1),
+          x: Number(byId('levelX')?.value) || -1,
+          y: Number(byId('levelY')?.value) || 180,
+          jitter: Number(byId('levelJitter')?.value) || 0
+        };
+      }
+      function openLevelModal() {
+        syncModalFromSidebar();
+        if (modal) { modal.classList.add('open'); modal.setAttribute('aria-hidden','false'); }
+        showToast('Separate level editor opened');
+      }
+      function closeLevelModal() {
+        syncSidebarFromModal();
+        if (modal) { modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); }
+      }
+      if (bottom) bottom.onclick = openLevelModal;
+      if (byId('levelModalClose')) byId('levelModalClose').onclick = closeLevelModal;
+      if (byId('levelRefreshLibrary')) byId('levelRefreshLibrary').onclick = () => { refreshLevelModalLibrary(); showToast('Level zombie library refreshed'); };
+      if (byId('levelAddSpawn')) byId('levelAddSpawn').onclick = () => { const evs = readLevelModalScript(); evs.push(modalEventFromControls()); writeLevelModalScript(evs); syncSidebarFromModal(); showToast('Level spawn added'); };
+      if (byId('levelClearScript')) byId('levelClearScript').onclick = () => { writeLevelModalScript([]); syncSidebarFromModal(); showToast('Level script cleared'); };
+      if (byId('levelStart')) byId('levelStart').onclick = () => { syncSidebarFromModal(); byId('startLevel')?.click(); };
+      if (byId('levelStop')) byId('levelStop').onclick = () => { byId('stopLevel')?.click(); };
+      if (byId('levelSpawnNow')) byId('levelSpawnNow').onclick = () => { syncSidebarFromModal(); byId('spawnWaveNow')?.click(); };
+      const oldRefreshTemplates41 = refreshTemplates;
+      refreshTemplates = function() { oldRefreshTemplates41(); refreshLevelModalLibrary(); };
+
+      const oldApplyAbilityLogic41 = applyAbilityLogic;
+      applyAbilityLogic = function(e, dt) {
+        const ab = e.abilities || [];
+        const enemies = nearestEnemies(e, 40);
+        const nearest = enemies[0];
+        if (!e.dead && e.side !== 'npc') {
+          if (ab.includes('plantPrimalSunflower') && entityTimer(e,'p2_primalSun',5.5)) { makeCollectible(e,'sun'); makeCollectible(e,'sun'); }
+          if (ab.includes('plantGoldBloom') && !e.didGoldBloom && e.age > .25) { e.didGoldBloom = true; for(let i=0;i<5;i++) makeCollectible(e,'sun'); playSfx(e.specialSoundSrc, .75); }
+          if (ab.includes('plantBloomerang') && e.timer <= 0 && canPlantShoot(e,enemies)) { makeProjectile(e,0,460,1.0); makeProjectile(e,Math.PI,320,.65); setActionVisual(e,.35); }
+          if (ab.includes('plantBonkChoy') && nearest && dist(e,nearest)<115) { damageEntity(nearest, 55*dt, e); setActionVisual(e,.22); }
+          if (ab.includes('plantSnapdragon') || ab.includes('plantColdSnapdragon')) enemies.forEach(o=>{ if(Math.abs(o.y-e.y)<95 && o.x>e.x-40 && o.x<e.x+230) { damageEntity(o,(ab.includes('plantColdSnapdragon')?34:42)*dt,e); if(ab.includes('plantColdSnapdragon')) o.speed *= .985; } });
+          if (ab.includes('plantLightningReed') && entityTimer(e,'p2_lightning',1.25)) enemies.slice(0,5).forEach((o,i)=>{ if(dist(e,o)<360) damageEntity(o, 24/(i+1), e); });
+          if (ab.includes('plantSpringBean') && nearest && dist(e,nearest)<130 && entityTimer(e,'p2_spring',5)) { nearest.x -= 210; nearest.y += rand(-35,35); }
+          if (ab.includes('plantCoconutCannon') && entityTimer(e,'p2_coconut',9) && nearest) { makeProjectile(e,-.18,480,4.5); setActionVisual(e,.9); playSfx(e.specialSoundSrc,.7); }
+          if (ab.includes('plantBananaLauncher') && entityTimer(e,'p2_banana',8) && nearest) { makeProjectile(e,-.7,430,4.2); setActionVisual(e,.8); }
+          if (ab.includes('plantLaserBean') && e.timer <= 0 && canPlantShoot(e,enemies)) { enemies.forEach(o=>{ if(Math.abs(o.y-e.y)<70 && o.x>e.x-80) damageEntity(o, e.damage*1.4, e); }); setActionVisual(e,.35); }
+          if (ab.includes('plantCitron') && entityTimer(e,'p2_citron',4.5) && canPlantShoot(e,enemies)) { makeProjectile(e,0,300,5.0); setActionVisual(e,.9); }
+          if (ab.includes('plantMagnifyingGrass') && entityTimer(e,'p2_magnify',2) && nearest) { damageEntity(nearest, e.damage*4, e); setActionVisual(e,.35); }
+          if (ab.includes('plantRotobaga') && entityTimer(e,'p2_roto',1.7)) [-.55,.55,Math.PI-.55,Math.PI+.55].forEach(a=>makeProjectile(e,a,360,.75));
+          if (ab.includes('plantEndurian')) { e.maxHp = Math.max(e.maxHp,260); enemies.forEach(o=>{ if(dist(e,o)<75) damageEntity(o,18*dt,e); }); }
+          if (ab.includes('plantPeaNut')) { e.maxHp = Math.max(e.maxHp,240); if(e.timer<=0 && canPlantShoot(e,enemies)) makeProjectile(e,0,420,.75); }
+          if (ab.includes('plantBowlingBulb') && entityTimer(e,'p2_bowling',2.4) && canPlantShoot(e,enemies)) makeProjectile(e,0,380,2.2);
+          if (ab.includes('plantPrimalPeashooter') && e.timer<=0 && canPlantShoot(e,enemies)) { makeProjectile(e,0,450,1.1); if(nearest) nearest.x += 70; }
+          if (ab.includes('plantPrimalWallNut')) e.maxHp = Math.max(e.maxHp,420);
+          if (ab.includes('plantPerfumeShroom') && nearest && dist(e,nearest)<160 && entityTimer(e,'p2_perfume',11)) { nearest.side='plant'; nearest.facing=1; playSfx(e.specialSoundSrc,.8); }
+          if (ab.includes('plantIntensiveCarrot') && entityTimer(e,'p2_carrot',10)) { const deadish = state.entities.find(o=>o.side==='plant' && o.hp < o.maxHp*.25); if(deadish) deadish.hp = deadish.maxHp*.75; }
+          if (ab.includes('plantMoonflower') && entityTimer(e,'p2_moon',6)) { makeCollectible(e,'sun'); state.entities.forEach(o=>{ if(o.side==='plant' && dist(e,o)<170) o.damage += .02; }); }
+          if (ab.includes('plantShadowPeashooter') && e.timer<=0 && canPlantShoot(e,enemies)) { makeProjectile(e,0,470,1.35); if(nearest && dist(e,nearest)<110) damageEntity(nearest,60,e); }
+          if (ab.includes('plantDuskLobber') && entityTimer(e,'p2_dusk',2.2) && canPlantShoot(e,enemies)) [-.55,-.4,-.25].forEach(a=>makeProjectile(e,a,330,1.2));
+          if (ab.includes('plantWasabiWhip') && nearest && dist(e,nearest)<135) damageEntity(nearest,70*dt,e);
+          if (ab.includes('plantElectricPeashooter') && e.timer<=0 && canPlantShoot(e,enemies)) { makeProjectile(e,0,520,1.25); enemies.slice(0,3).forEach(o=>{ if(dist(e,o)<220) damageEntity(o,8,e); }); }
+          if (ab.includes('plantFirePeashooter') && e.timer<=0 && canPlantShoot(e,enemies)) makeProjectile(e,0,520,1.45);
+          if (ab.includes('plantPokra') && nearest && dist(e,nearest)<155) { damageEntity(nearest,90*dt,e); nearest.speed*=.985; }
+          if (ab.includes('plantDazeyChain') && entityTimer(e,'p2_dazey',3)) enemies.forEach(o=>{ if(dist(e,o)<240) o.speed*=.78; });
+          if (ab.includes('plantHurrikale') && e.age>.4 && !e.didHurrikale) { e.didHurrikale=true; enemies.forEach(o=>{ if(Math.abs(o.y-e.y)<95) { o.x-=260; o.speed*=.45; }}); e.hp=0; }
+          if (ab.includes('plantAppleMortar') && entityTimer(e,'p2_apple',2.5) && canPlantShoot(e,enemies)) { makeProjectile(e,-.5,360,1.5); if(nearest) nearest.speed*=.7; }
+          if (ab.includes('plantElectricBlueberry') && entityTimer(e,'p2_blueberry',5) && nearest) damageEntity(nearest,999,e);
+          if (ab.includes('plantGhostPepper') && e.age>4 && !e.didGhost) { e.didGhost=true; enemies.forEach(o=>{ if(dist(e,o)<170) damageEntity(o,190,e); }); e.hp=0; }
+          if (ab.includes('plantBloomingHeart') && e.timer<=0 && canPlantShoot(e,enemies)) { e._heartPower=(e._heartPower||1)+.06; makeProjectile(e,0,390,Math.min(e._heartPower,3)); }
+          if (ab.includes('plantGuacodile') && nearest && dist(e,nearest)<95 && !e.didGuac) { e.didGuac=true; e.speed=8; e.facing=1; damageEntity(nearest,80,e); }
+          if (ab.includes('plantHotDate') && nearest && dist(e,nearest)<180) { nearest.y += (e.y-nearest.y)*.07; if(dist(e,nearest)<70 && !e.didHotDate){ e.didHotDate=true; enemies.forEach(o=>{if(dist(e,o)<150)damageEntity(o,170,e)}); e.hp=0; } }
+          if (ab.includes('plantSporeShroom') && nearest && dist(e,nearest)<300 && entityTimer(e,'p2_spore',2)) { makeProjectile(e,0,350,1); if(nearest.hp<25) spawn('plant',nearest.x,nearest.y,{name:'Spore Ally',side:'plant',hp:35,maxHp:35,damage:5,abilities:['shoot']}); }
+          if (ab.includes('plantSolarTomato') && e.age>.5 && !e.didSolar) { e.didSolar=true; enemies.forEach(o=>{if(dist(e,o)<180){o.speed*=.4; makeCollectible(e,'sun');}}); e.hp=0; }
+          if (ab.includes('plantEscapeRoot') && nearest && dist(e,nearest)<80 && entityTimer(e,'p2_escape',6)) { e.x -= 120; e.y += rand(-80,80); }
+
+          if (ab.includes('zombieRa') && entityTimer(e,'p2_ra',2)) state.collectibles.splice(0, Math.min(1,state.collectibles.length));
+          if (ab.includes('zombieCamel')) e.maxHp = Math.max(e.maxHp,190);
+          if (ab.includes('zombieExplorer')) enemies.forEach(o=>{ if(dist(e,o)<85) damageEntity(o,40*dt,e); });
+          if (ab.includes('zombieTombRaiser') && entityTimer(e,'p2_tomb',7)) spawn('wall',e.x-60,e.y,{name:'Tombstone',side:'neutral',role:'wall',hp:130,maxHp:130,w:55,h:80,damage:0,abilities:[]});
+          if (ab.includes('zombiePharaoh') || ab.includes('zombieKnight') || ab.includes('zombieShieldBearer')) e.maxHp = Math.max(e.maxHp, ab.includes('zombieKnight') ? 420 : 280);
+          if (ab.includes('zombieSeagull') || ab.includes('zombieJetpack')) { e.y += Math.sin(e.age*2.6)*.5; e.invisibleAlpha=.92; }
+          if (ab.includes('zombiePirateCaptain') && entityTimer(e,'p2_parrot',6)) { const plant = state.entities.find(o=>o.side==='plant'); if(plant) plant.hp -= 70; }
+          if (ab.includes('zombieBarrelRoller') && !e.droppedBarrel && e.hp<e.maxHp*.65) { e.droppedBarrel=true; spawn('zombie',e.x+35,e.y,{name:'Barrel',side:'zombie',hp:120,maxHp:120,w:60,h:60,speed:2,damage:14,abilities:['zombieBite']}); }
+          if (ab.includes('zombieSwashbuckler') && nearest && dist(e,nearest)<180 && !e.didSwing) { e.didSwing=true; e.x += e.facing*170; }
+          if (ab.includes('zombiePianist') && entityTimer(e,'p2_piano',3)) enemies.forEach(o=>{ if(o.side==='plant' && dist(e,o)<260) o.y += rand(-55,55); });
+          if (ab.includes('zombieProspector') && e.age<3) e.x += e.facing*65*dt;
+          if (ab.includes('zombieChickenWrangler') && !e.didChickens && e.hp<e.maxHp*.7) { e.didChickens=true; for(let i=0;i<5;i++) spawn('zombie',e.x+rand(-30,30),e.y+rand(-60,60),{name:'Chicken',side:'zombie',hp:18,maxHp:18,w:28,h:28,speed:7,damage:4,abilities:['zombieBite']}); }
+          if (ab.includes('zombieMechaFootball') || ab.includes('zombieAllStar')) { e.speed=Math.max(e.speed,5); if(nearest&&dist(e,nearest)<150) nearest.x += e.facing*90*dt; }
+          if (ab.includes('zombieWizard') && nearest && dist(e,nearest)<230 && entityTimer(e,'p2_wizard',6)) { nearest.oldSide = nearest.side; nearest.side='neutral'; setTimeout(()=>{ if(nearest && !nearest.dead) nearest.side=nearest.oldSide||'plant'; },2600); }
+          if (ab.includes('zombieOcto') && nearest && dist(e,nearest)<260 && entityTimer(e,'p2_octo',4)) { nearest.speed=0; nearest.invisibleAlpha=.6; damageEntity(nearest,12,e); }
+          if (ab.includes('zombieSurfer') && e.age<2.5) e.x += e.facing*80*dt;
+          if (ab.includes('zombieBugBotImp')) { e.scale=Math.min(e.scale,.65); e.speed=Math.max(e.speed,5.5); }
+          if (ab.includes('zombieGlitter') && entityTimer(e,'p2_glitter',4)) enemies.forEach(o=>{ if(o.side==='plant' && dist(e,o)<200) o.invisibleAlpha=.45; });
+          if (ab.includes('zombieJurassicBully') && nearest && dist(e,nearest)<130) { nearest.x += e.facing*130*dt; damageEntity(nearest,16*dt,e); }
+          if (ab.includes('zombieWeaselHoarder') && !e.didWeasels && e.hp<e.maxHp*.75) { e.didWeasels=true; for(let i=0;i<4;i++) spawn('zombie',e.x,e.y+rand(-50,50),{name:'Weasel',side:'zombie',hp:22,maxHp:22,w:34,h:24,speed:6,damage:5,abilities:['zombieBite']}); }
+          if (ab.includes('zombieExcavator')) e.invisibleAlpha = e.age<5 ? .55 : 1;
+          if (ab.includes('zombieParasol')) e.abilities = [...new Set([...(e.abilities||[]),'shield'])];
+          if (ab.includes('zombieImpCannon') && entityTimer(e,'p2_impCannon',5)) spawn('zombie',e.x+e.facing*80,e.y+rand(-60,60),{name:'Cannon Imp',side:'zombie',hp:35,maxHp:35,w:35,h:35,speed:4.5,damage:7,abilities:['zombieImp','zombieBite']});
+          if (ab.includes('zombieTroglobite') && nearest && dist(e,nearest)<120) nearest.x += e.facing*60*dt;
+          if (ab.includes('zombieMedusa') && nearest && entityTimer(e,'p2_medusa',5)) { nearest.speed=0; damageEntity(nearest,20,e); }
+          if (ab.includes('zombieSundayEdition') && e.hp<e.maxHp*.5) { e.speed=Math.max(e.speed,4); e.damage+=.025; }
+        }
+        oldApplyAbilityLogic41(e, dt);
+      };
+
+      syncSfxStatus();
+      refreshLevelModalLibrary();
+      window.ProjectBuild4_1 = { version:'4.5', openLevelModal, closeLevelModal, refreshLevelModalLibrary, state };
+    }
+
+
+
+    function installProjectBuild4_5() {
+      document.title = 'Project: BUILD 4.5';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.5');
+
+      const extra45Abilities = [
+        'boostCurrencyProduce','plantFoodProduce','plantFoodBurst','plantFoodMegaShot','plantFoodHealAll','plantFoodSummon',
+        'fusionIngredient','fusionResult','fusionOnly','fusedPowerBoost','fusedSplitShot','fusedArmor','fusedAura',
+        'spawnCustomHeavyPool','gargThrowCustom','bossSummonCustomPool','zombieGroanLoop','zombieMouseSqueak',
+        'pvz2AloeHeal','pvz2IntensiveCarrotRevive','pvz2TileTurnipPowerTile','pvz2PowerLilyFood','pvz2PrimalWallKnockback',
+        'pvz2ShadowBoosted','pvz2ConcealMint','pvz2AppeaseMint','pvz2BombardMint','pvz2WinterMint','pvz2ReinforceMint',
+        'pvz2TombTangler','pvz2GraveBusterPlus','pvz2SapFlingSlow','pvz2ElectricPeashooterArc','pvz2WasabiWhipSwipe',
+        'pvz2CeleryStalkerAmbush','pvz2RedStingerLaneMode','pvz2AkiAmmo','pvz2HomingThistle','pvz2MagnifyingGrassCharge',
+        'pvz2ShrinkingVioletShrink','pvz2PerfumeShroomCharmDino','pvz2SweetPotatoTaunt','pvz2GuacodileCharge',
+        'pvz2BoingsettaKnockback','pvz2DraftodilAntiAir','pvz2TurkeyPultSwarm','pvz2HeadbutterLettuceStun',
+        'pvz2IceweedFreeze','pvz2TeleportatoMineTeleport','pvz2PeaVineBoost','pvz2TorchVineIgnite','pvz2BlastberryVineBlast',
+        'pvz2ZCorpHelpDesk','pvz2ProspectorJump','pvz2MedusaStone','pvz2RelicHunterHook','pvz2HealerHeal',
+        'pvz2ShieldZombieGuard','pvz2LostPilotDrop','pvz2RomanShield','pvz2ImpCannon','pvz2CardioSpeedBuff'
+      ];
+      extra45Abilities.forEach(a => { if (!abilityList.includes(a)) abilityList.push(a); });
+      if (typeof renderAbilityPills === 'function') {
+        const active = typeof selectedAbilities === 'function' ? selectedAbilities() : [];
+        renderAbilityPills();
+        setActiveAbilities(active);
+      }
+
+      state.boostTemplates ??= [];
+      state.boostCurrency ??= 0;
+      state.plantFood ??= 0;
+      state.heavySpawnPool ??= [];
+
+      currentAssetCache.boostImageSrc ??= null;
+      currentAssetCache.boostSoundSrc ??= null;
+      currentAssetCache.groanSoundSrc ??= null;
+
+      function safeGet(id) { return document.getElementById(id); }
+      function makeOption(text, value = text) {
+        const o = document.createElement('option');
+        o.textContent = text;
+        o.value = value;
+        return o;
+      }
+
+      const templateCard = document.querySelector('#saveTemplate')?.closest('.card');
+      if (templateCard && !safeGet('groanSound')) {
+        const sfx = safeGet('combatSfxSection');
+        if (sfx) {
+          const groanBox = document.createElement('div');
+          groanBox.innerHTML = `
+            <label>Zombie Groan / Idle Loop SFX, zombie templates only</label>
+            <input id="groanSound" type="file" accept="audio/*" />
+            <div id="groanSoundStatus" class="sfxStatus">No zombie groan loaded for this template.</div>
+            <label>Groan Interval Seconds</label>
+            <input id="groanInterval" type="number" value="4" min="0.5" step="0.25" />
+          `;
+          sfx.appendChild(groanBox);
+        }
+
+        const fusionBox = document.createElement('div');
+        fusionBox.className = 'pb45Panel';
+        fusionBox.innerHTML = `
+          <h2>4.5 Fusion Rules</h2>
+          <p class="sectionNote">When this plant is placed over a matching plant, it can replace both with a fusion result. Leave result blank to auto-combine stats and abilities.</p>
+          <label>Can Fuse Onto Plant Names</label>
+          <input id="fusionTargets" placeholder="Example: Peashooter, Wall-nut" />
+          <label>Fusion Result Template Name</label>
+          <input id="fusionResultName" placeholder="Example: Pea-nut" />
+          <div class="row">
+            <label><input id="fusionKeepBasePos" type="checkbox" checked style="width:auto;margin-right:6px;" /> Keep base plant position</label>
+            <label><input id="fusionRequireOverlap" type="checkbox" checked style="width:auto;margin-right:6px;" /> Require overlap</label>
+          </div>
+        `;
+        templateCard.insertBefore(fusionBox, document.getElementById('saveTemplate'));
+
+        const heavyBox = document.createElement('div');
+        heavyBox.className = 'pb45Panel';
+        heavyBox.innerHTML = `
+          <h2>4.5 Heavy Spawn Pool</h2>
+          <p class="sectionNote">Used by gargantuars, bosses, and level waves. Select multiple zombie/garg/boss templates.</p>
+          <select id="heavySpawnTemplateSelect" multiple size="6"></select>
+          <div class="row">
+            <button id="refreshHeavySpawnPool" type="button" class="blue">Refresh Heavy List</button>
+            <button id="saveHeavySpawnPool" type="button">Save Heavy Pool</button>
+          </div>
+          <button id="spawnHeavyPoolNow" type="button" class="warn">Spawn Heavy Pool Now</button>
+        `;
+        templateCard.insertBefore(heavyBox, document.getElementById('saveTemplate'));
+      }
+
+      const templatesHeader = [...document.querySelectorAll('h2')].find(h => h.textContent.trim() === 'Templates');
+      if (templatesHeader && !safeGet('boostMakerCard')) {
+        const boostCard = document.createElement('div');
+        boostCard.id = 'boostMakerCard';
+        boostCard.className = 'card';
+        boostCard.innerHTML = `
+          <h2>4.5 Boost Currency / Plantfood Maker</h2>
+          <p class="sectionNote">Make custom boost drops, currency, or plantfood objects. Click a spawned boost on the lawn to collect it.</p>
+          <div class="row">
+            <div><label>Boost Name</label><input id="boostName" value="Plant Food" /></div>
+            <div><label>Type</label><select id="boostKind"><option value="plantfood">Plantfood</option><option value="currency">Currency</option><option value="heal">Heal Drop</option><option value="shield">Shield Drop</option><option value="custom">Custom</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Value</label><input id="boostValue" type="number" value="1" step="1" /></div>
+            <div><label>Lifetime Seconds</label><input id="boostLifetime" type="number" value="60" min="1" step="1" /></div>
+          </div>
+          <label>Boost PNG/GIF</label>
+          <input id="boostImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+          <label>Collect SFX</label>
+          <input id="boostSound" type="file" accept="audio/*" />
+          <div class="row">
+            <button id="saveBoostTemplate" type="button">Save Boost Object</button>
+            <button id="spawnBoostAtMouse" type="button" class="blue">Spawn Boost At Mouse</button>
+          </div>
+          <select id="boostTemplateSelect"></select>
+          <button id="usePlantFoodOnSelected" type="button" class="warn">Use Plantfood On Selected Plant</button>
+          <div id="boostTemplateChips" class="pb45BoostList"></div>
+        `;
+        templatesHeader.parentNode.insertBefore(boostCard, templatesHeader);
+      }
+
+      function refreshBoostTemplates() {
+        const sel = safeGet('boostTemplateSelect');
+        const chips = safeGet('boostTemplateChips');
+        if (!sel || !chips) return;
+        sel.innerHTML = '';
+        chips.innerHTML = '';
+        state.boostTemplates.forEach((b, i) => {
+          sel.appendChild(makeOption(`${b.name} (${b.kind})`, String(i)));
+          const c = document.createElement('span');
+          c.className = 'pb45Chip';
+          c.textContent = `${b.name} +${b.value}`;
+          c.onclick = () => { sel.value = String(i); };
+          chips.appendChild(c);
+        });
+      }
+
+      function collectBoost(c) {
+        if (!c || !c.boostMeta) return false;
+        const b = c.boostMeta;
+        playSfx(b.soundSrc, 0.85);
+        if (b.kind === 'currency') state.boostCurrency = (state.boostCurrency || 0) + (Number(b.value) || 1);
+        else if (b.kind === 'plantfood') state.plantFood = (state.plantFood || 0) + (Number(b.value) || 1);
+        else if (b.kind === 'heal' && state.selected) state.selected.hp = Math.min(state.selected.maxHp, state.selected.hp + (Number(b.value) || 25));
+        else state.boostCurrency = (state.boostCurrency || 0) + (Number(b.value) || 1);
+        c.dead = true;
+        showToast(`Collected ${b.name}`);
+        return true;
+      }
+
+      function spawnBoostObject(boost, x = state.mouse.x || canvas.clientWidth / 2, y = state.mouse.y || canvas.clientHeight / 2) {
+        const b = boost || state.boostTemplates[Number(safeGet('boostTemplateSelect')?.value) || 0];
+        if (!b) return showToast('Make a boost object first');
+        state.collectibles.push({
+          x, y, vx: 0, vy: -20, kind: b.kind, value: Number(b.value) || 1,
+          imageSrc: b.imageSrc || null, image: makeImage(b.imageSrc), gifEl: makeGifElement(b.imageSrc),
+          age: 0, radius: 20, boostMeta: structuredClone(b), lifetime: Number(b.lifetime) || 60
+        });
+        showToast(`Spawned ${b.name}`);
+      }
+
+      safeGet('boostImage')?.addEventListener('change', async e => {
+        currentAssetCache.boostImageSrc = await fileToDataURL(e.target.files[0]);
+        showToast('Boost image loaded');
+      });
+      safeGet('boostSound')?.addEventListener('change', async e => {
+        currentAssetCache.boostSoundSrc = await fileToDataURL(e.target.files[0]);
+        showToast('Boost collect SFX loaded');
+      });
+      safeGet('groanSound')?.addEventListener('change', async e => {
+        currentAssetCache.groanSoundSrc = await fileToDataURL(e.target.files[0]);
+        const st = safeGet('groanSoundStatus');
+        if (st) st.textContent = currentAssetCache.groanSoundSrc ? 'Groan SFX loaded for this template form.' : 'No zombie groan loaded.';
+        showToast('Zombie groan SFX loaded');
+      });
+
+      safeGet('saveBoostTemplate')?.addEventListener('click', () => {
+        const b = {
+          name: safeGet('boostName')?.value || 'Boost',
+          kind: safeGet('boostKind')?.value || 'custom',
+          value: Number(safeGet('boostValue')?.value) || 1,
+          lifetime: Number(safeGet('boostLifetime')?.value) || 60,
+          imageSrc: currentAssetCache.boostImageSrc || null,
+          soundSrc: currentAssetCache.boostSoundSrc || null
+        };
+        const existing = state.boostTemplates.findIndex(x => x.name === b.name);
+        if (existing >= 0) state.boostTemplates[existing] = b;
+        else state.boostTemplates.push(b);
+        refreshBoostTemplates();
+        showToast('Boost object saved');
+      });
+      safeGet('spawnBoostAtMouse')?.addEventListener('click', () => spawnBoostObject());
+      safeGet('usePlantFoodOnSelected')?.addEventListener('click', () => {
+        const e = state.selected;
+        if (!e || e.side !== 'plant') return showToast('Select a plant first');
+        if ((state.plantFood || 0) <= 0) return showToast('No plantfood available');
+        state.plantFood--;
+        e._plantFoodUntil = state.worldTime + 8;
+        e._oldCooldown ??= e.cooldown;
+        e.cooldown = Math.max(0.08, e.cooldown * 0.35);
+        e.damage = (e.damage || 1) * 1.35;
+        playSfx(e.specialSoundSrc || e.attackSoundSrc, 0.9);
+        setActionVisual(e, 0.75);
+        showToast(`${e.name} boosted`);
+      });
+
+      function refreshHeavySpawnOptions() {
+        const selects = [safeGet('heavySpawnTemplateSelect'), safeGet('levelHeavyPoolSelect')].filter(Boolean);
+        const list = state.templates
+          .map((t, i) => ({t, i}))
+          .filter(x => x.t.side === 'zombie' || x.t.side === 'boss' || /garg|boss|zomb|imp|mech|giant/i.test(x.t.name || ''));
+        selects.forEach(sel => {
+          const old = new Set([...sel.selectedOptions].map(o => o.value));
+          sel.innerHTML = '';
+          list.forEach(({t}) => {
+            const opt = makeOption(`${t.name} (${t.side}/${t.role || t.type})`, t.name);
+            opt.selected = old.has(t.name) || state.heavySpawnPool.includes(t.name);
+            sel.appendChild(opt);
+          });
+        });
+      }
+      function saveHeavyPoolFrom(selId = 'heavySpawnTemplateSelect') {
+        const sel = safeGet(selId);
+        if (!sel) return;
+        state.heavySpawnPool = [...sel.selectedOptions].map(o => o.value);
+        refreshHeavySpawnOptions();
+        showToast(`Heavy pool saved: ${state.heavySpawnPool.length}`);
+      }
+      function spawnHeavyPoolNow(x = canvas.clientWidth - 80, y = canvas.clientHeight / 2) {
+        const pool = state.heavySpawnPool || [];
+        if (!pool.length) return showToast('Pick heavy/garg/boss templates first');
+        pool.forEach((name, i) => {
+          const t = state.templates.find(t => t.name === name);
+          if (t) {
+            const ent = entityFromTemplate(t, x + i * 28, y + (i - pool.length/2) * 45);
+            ent.type = t.type || t.side;
+            state.entities.push(ent);
+            if (isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7);
+          }
+        });
+        showToast('Heavy pool spawned');
+      }
+      safeGet('refreshHeavySpawnPool')?.addEventListener('click', refreshHeavySpawnOptions);
+      safeGet('saveHeavySpawnPool')?.addEventListener('click', () => saveHeavyPoolFrom('heavySpawnTemplateSelect'));
+      safeGet('spawnHeavyPoolNow')?.addEventListener('click', () => spawnHeavyPoolNow());
+
+      const levelModalPanel = document.querySelector('#pbLevelModal .pbLevelGrid');
+      if (levelModalPanel && !safeGet('pb45FriendlyLevelTools')) {
+        const friendly = document.createElement('div');
+        friendly.id = 'pb45FriendlyLevelTools';
+        friendly.className = 'pbLevelPanel';
+        friendly.style.gridColumn = '1 / -1';
+        friendly.innerHTML = `
+          <h2>FRIENDLY LEVEL BUILDER</h2>
+          <div class="pb45FriendlySteps">
+            <div class="pb45Step"><b>1.</b> Pick a zombie/boss packet.</div>
+            <div class="pb45Step"><b>2.</b> Pick lane, timing, and count.</div>
+            <div class="pb45Step"><b>3.</b> Add spawn cards to the script.</div>
+            <div class="pb45Step"><b>4.</b> Start level and test.</div>
+          </div>
+          <div class="pb45TwoCol">
+            <div>
+              <label>Quick Lane Buttons</label>
+              <div class="pb45LaneButtons">
+                <button type="button" data-lane-y="120">Lane 1</button>
+                <button type="button" data-lane-y="210">Lane 2</button>
+                <button type="button" data-lane-y="300">Lane 3</button>
+                <button type="button" data-lane-y="390">Lane 4</button>
+                <button type="button" data-lane-y="480">Lane 5</button>
+              </div>
+              <label>Gargantuar / Boss Spawn Pool</label>
+              <select id="levelHeavyPoolSelect" multiple size="6"></select>
+              <div class="row">
+                <button id="levelSaveHeavyPool" type="button">Save Heavy Pool</button>
+                <button id="levelSpawnHeavyPool" type="button" class="warn">Spawn Heavy Pool</button>
+              </div>
+              <button id="levelAddHeavyPoolWave" type="button" class="blue">Add Heavy Pool To Wave Script</button>
+            </div>
+            <div>
+              <label>Wave Cards Preview</label>
+              <div id="pb45WaveCards" class="pb45WaveCards"></div>
+              <button id="pb45RefreshWaveCards" type="button" class="blue">Refresh Cards</button>
+            </div>
+          </div>
+        `;
+        levelModalPanel.appendChild(friendly);
+        friendly.querySelectorAll('[data-lane-y]').forEach(btn => btn.addEventListener('click', () => {
+          const y = btn.getAttribute('data-lane-y');
+          ['levelY','waveY'].forEach(id => { const el = safeGet(id); if (el) el.value = y; });
+        }));
+        safeGet('levelSaveHeavyPool')?.addEventListener('click', () => saveHeavyPoolFrom('levelHeavyPoolSelect'));
+        safeGet('levelSpawnHeavyPool')?.addEventListener('click', () => { saveHeavyPoolFrom('levelHeavyPoolSelect'); spawnHeavyPoolNow(); });
+        safeGet('levelAddHeavyPoolWave')?.addEventListener('click', () => {
+          saveHeavyPoolFrom('levelHeavyPoolSelect');
+          const scriptBox = safeGet('levelScriptModal') || safeGet('waveScript');
+          let script = [];
+          try { script = JSON.parse(scriptBox.value || '[]'); } catch { script = []; }
+          const t = Number(safeGet('levelTime')?.value || safeGet('waveTime')?.value || 0);
+          const intv = Number(safeGet('levelInterval')?.value || safeGet('waveInterval')?.value || 1);
+          const x = Number(safeGet('levelX')?.value || safeGet('waveX')?.value || -1);
+          const y = Number(safeGet('levelY')?.value || safeGet('waveY')?.value || 180);
+          state.heavySpawnPool.forEach((name, i) => script.push({ time: t + i * intv, template: name, count: 1, interval: intv, x, y, jitter: 20, heavy: true }));
+          scriptBox.value = JSON.stringify(script, null, 2);
+          if (safeGet('waveScript')) safeGet('waveScript').value = scriptBox.value;
+          renderWaveCards();
+          showToast('Heavy pool added to wave script');
+        });
+        safeGet('pb45RefreshWaveCards')?.addEventListener('click', renderWaveCards);
+      }
+
+      function renderWaveCards() {
+        const box = safeGet('pb45WaveCards');
+        if (!box) return;
+        const src = (safeGet('levelScriptModal')?.value || safeGet('waveScript')?.value || '[]');
+        let script = [];
+        try { script = JSON.parse(src || '[]'); } catch { script = []; }
+        box.innerHTML = '';
+        script.slice().sort((a,b)=>(a.time||0)-(b.time||0)).forEach((w, i) => {
+          const card = document.createElement('div');
+          card.className = 'pb45WaveCard';
+          card.textContent = `#${i+1} ${w.template || 'Unknown'} | t=${w.time || 0}s | count=${w.count || 1} | laneY=${w.y ?? 'auto'}${w.heavy ? ' | HEAVY' : ''}`;
+          box.appendChild(card);
+        });
+      }
+
+      // Wrap template save/load with 4.5 fields.
+      const oldGetTemplateForm45 = getTemplateForm;
+      getTemplateForm = function() {
+        const t = oldGetTemplateForm45();
+        const isZombie = t.side === 'zombie';
+        t.groanSoundSrc = isZombie ? (currentAssetCache.groanSoundSrc || null) : null;
+        t.groanInterval = isZombie ? Math.max(0.5, Number(safeGet('groanInterval')?.value) || 4) : 0;
+        t.fusion = {
+          targets: (safeGet('fusionTargets')?.value || '').split(',').map(x => x.trim()).filter(Boolean),
+          result: safeGet('fusionResultName')?.value || '',
+          keepBasePos: !!safeGet('fusionKeepBasePos')?.checked,
+          requireOverlap: !!safeGet('fusionRequireOverlap')?.checked
+        };
+        t.heavySpawnPool = [...(safeGet('heavySpawnTemplateSelect')?.selectedOptions || [])].map(o => o.value);
+        if (t.heavySpawnPool.length) state.heavySpawnPool = [...t.heavySpawnPool];
+        return t;
+      };
+
+      const oldLoadTemplateToForm45 = loadTemplateToForm;
+      loadTemplateToForm = function(t) {
+        oldLoadTemplateToForm45(t);
+        currentAssetCache.groanSoundSrc = t.groanSoundSrc || null;
+        if (safeGet('groanInterval')) safeGet('groanInterval').value = t.groanInterval || 4;
+        if (safeGet('groanSoundStatus')) safeGet('groanSoundStatus').textContent = t.groanSoundSrc ? 'Groan SFX loaded for this template.' : 'No zombie groan loaded for this template.';
+        if (safeGet('fusionTargets')) safeGet('fusionTargets').value = (t.fusion?.targets || []).join(', ');
+        if (safeGet('fusionResultName')) safeGet('fusionResultName').value = t.fusion?.result || '';
+        if (safeGet('fusionKeepBasePos')) safeGet('fusionKeepBasePos').checked = t.fusion?.keepBasePos ?? true;
+        if (safeGet('fusionRequireOverlap')) safeGet('fusionRequireOverlap').checked = t.fusion?.requireOverlap ?? true;
+        state.heavySpawnPool = [...(t.heavySpawnPool || state.heavySpawnPool || [])];
+        refreshHeavySpawnOptions();
+      };
+
+      const oldRefreshTemplates45 = refreshTemplates;
+      refreshTemplates = function() {
+        oldRefreshTemplates45();
+        refreshHeavySpawnOptions();
+        if (typeof renderPackets === 'function') renderPackets();
+      };
+
+      const oldEntityFromTemplate45 = entityFromTemplate;
+      entityFromTemplate = function(template, x, y, override = {}) {
+        const t = { ...template, ...override };
+        const ent = oldEntityFromTemplate45(template, x, y, override);
+        ent.groanSoundSrc = t.groanSoundSrc || null;
+        ent.groanInterval = Math.max(0.5, Number(t.groanInterval) || 4);
+        ent._nextGroan = state.worldTime + rand(0.3, ent.groanInterval || 4);
+        ent.fusion = structuredClone(t.fusion || {});
+        ent.heavySpawnPool = [...(t.heavySpawnPool || [])];
+        ent.specialSoundSrc = t.specialSoundSrc || ent.specialSoundSrc || null;
+        return ent;
+      };
+
+      const oldPlaceEntityAt45 = placeEntityAt;
+      placeEntityAt = function(m) {
+        const index = Number(safeGet('templateSelect')?.value) || 0;
+        const template = structuredClone(state.templates[index] || defaultTemplate);
+        const side = template.side || state.placeType;
+        if (state.placeType === 'plant' || side === 'plant') {
+          const fusion = template.fusion || {};
+          const targets = fusion.targets || [];
+          const base = state.entities.find(e => e.side === 'plant' && !e.dead && Math.abs(e.x - m.x) < (e.w * e.scale) / 2 && Math.abs(e.y - m.y) < (e.h * e.scale) / 2);
+          if (base && targets.length && (targets.includes(base.name) || targets.includes('*'))) {
+            const resultTemplate = state.templates.find(t => t.name === fusion.result);
+            const spawnX = fusion.keepBasePos !== false ? base.x : m.x;
+            const spawnY = fusion.keepBasePos !== false ? base.y : m.y;
+            const fused = resultTemplate
+              ? entityFromTemplate(resultTemplate, spawnX, spawnY)
+              : entityFromTemplate({ ...template,
+                  name: `${base.name} + ${template.name}`,
+                  hp: (base.hp || 0) + (template.hp || 0),
+                  maxHp: (base.maxHp || 0) + (template.maxHp || 0),
+                  damage: (base.damage || 0) + (template.damage || 0),
+                  abilities: [...new Set([...(base.abilities || []), ...(template.abilities || []), 'fusedPowerBoost'])],
+                  imageSrc: template.imageSrc || base.imageSrc,
+                  idleSrc: template.idleSrc || base.idleSrc,
+                  actionSrc: template.actionSrc || base.actionSrc,
+                  deathSrc: template.deathSrc || base.deathSrc
+                }, spawnX, spawnY);
+            state.entities = state.entities.filter(e => e.id !== base.id);
+            state.entities.push(fused);
+            state.selected = fused;
+            playSfx(fused.spawnSoundSrc || template.specialSoundSrc, 0.85);
+            showToast(`Fusion made: ${fused.name}`);
+            return;
+          }
+        }
+        oldPlaceEntityAt45(m);
+      };
+
+      const oldUpdate45 = update;
+      update = function(dt) {
+        oldUpdate45(dt);
+        if (state.paused) return;
+        for (const e of state.entities) {
+          if (e.dead) continue;
+          if (e.side === 'zombie' && e.groanSoundSrc && state.worldTime >= (e._nextGroan || 0)) {
+            playSfx(e.groanSoundSrc, 0.55);
+            e._nextGroan = state.worldTime + Math.max(0.5, Number(e.groanInterval) || 4) + rand(-0.4, 0.8);
+          }
+          if ((e.side === 'boss' || e.side === 'zombie') && e.abilities?.includes('spawnCustomHeavyPool') && entityTimer(e, 'heavyPoolSpawn45', Math.max(4, e.cooldown || 6))) {
+            const pool = e.heavySpawnPool?.length ? e.heavySpawnPool : state.heavySpawnPool;
+            (pool || []).slice(0, 3).forEach((name, i) => {
+              const t = state.templates.find(t => t.name === name);
+              if (t) state.entities.push(entityFromTemplate(t, e.x + 55 * e.facing, e.y + (i - 1) * 40));
+            });
+          }
+          if (e._plantFoodUntil && state.worldTime > e._plantFoodUntil) {
+            if (e._oldCooldown) e.cooldown = e._oldCooldown;
+            e._plantFoodUntil = 0;
+            e._oldCooldown = null;
+          }
+        }
+        state.collectibles.forEach(c => {
+          if (c.boostMeta && c.age > (c.lifetime || c.boostMeta.lifetime || 60)) c.dead = true;
+        });
+        hud.textContent += ` | Boost: ${state.boostCurrency || 0} | Plantfood: ${state.plantFood || 0}`;
+      };
+
+      const oldDrawCollectible45 = drawCollectible;
+      drawCollectible = function(c) {
+        oldDrawCollectible45(c);
+        if (c.boostMeta && state.display.labels && !c.gifEl) {
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '11px system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText(c.boostMeta.name, c.x, c.y + 30);
+          ctx.restore();
+        }
+      };
+
+      canvas.addEventListener('mousedown', e => {
+        const m = getMouse(e);
+        const c = state.collectibles.find(c => c.boostMeta && Math.hypot(c.x - m.x, c.y - m.y) < (c.radius || 20) + 12);
+        if (c && collectBoost(c)) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        }
+      }, true);
+
+      const oldSerializable45 = serializableState;
+      serializableState = function() {
+        const data = oldSerializable45();
+        data.version = '4.5';
+        data.boostTemplates = state.boostTemplates || [];
+        data.boostCurrency = state.boostCurrency || 0;
+        data.plantFood = state.plantFood || 0;
+        data.heavySpawnPool = state.heavySpawnPool || [];
+        return data;
+      };
+
+      safeGet('importWorld')?.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            setTimeout(() => {
+              state.boostTemplates = data.boostTemplates || state.boostTemplates || [];
+              state.boostCurrency = data.boostCurrency || 0;
+              state.plantFood = data.plantFood || 0;
+              state.heavySpawnPool = data.heavySpawnPool || [];
+              refreshBoostTemplates();
+              refreshHeavySpawnOptions();
+            }, 80);
+          } catch {}
+        };
+        reader.readAsText(file);
+      });
+
+      // Tie modal script changes to friendly cards and heavy list.
+      ['levelScriptModal','waveScript'].forEach(id => safeGet(id)?.addEventListener('input', renderWaveCards));
+      const bottom = safeGet('pbBottomLevel');
+      if (bottom) bottom.textContent = 'LEVEL EDITOR 4.5';
+      refreshBoostTemplates();
+      refreshHeavySpawnOptions();
+      renderWaveCards();
+
+      window.ProjectBuild4_5 = {
+        version: '4.5',
+        spawnBoostObject,
+        refreshBoostTemplates,
+        refreshHeavySpawnOptions,
+        spawnHeavyPoolNow,
+        state
+      };
+    }
+
+
     installProjectBuild3();
     installProjectBuildLevelTools();
     installProjectBuild4();
+    installProjectBuild4_1();
+    installProjectBuild4_5();
 
 
     renderAbilityPills();
