@@ -802,6 +802,106 @@
       .pb45LaneButtons { grid-template-columns: repeat(2, 1fr); }
     }
 
+  
+
+    /* Project: BUILD 4.5 rectification: better fusion, mobile level button, visible debug */
+    #pbDebugCounters {
+      position: absolute;
+      top: 104px;
+      left: 8px;
+      z-index: 60;
+      background: rgba(0,0,0,0.74);
+      color: #d9ff9f;
+      border: 1px solid rgba(217,255,159,0.45);
+      border-radius: 10px;
+      padding: 7px 9px;
+      font-size: 11px;
+      line-height: 1.35;
+      pointer-events: none;
+      white-space: nowrap;
+      text-shadow: 0 1px 2px #000;
+    }
+
+    #pbBottomLevel {
+      bottom: 82px !important;
+      height: 52px !important;
+      left: 118px !important;
+      right: 104px !important;
+      border: 2px solid rgba(255,255,255,0.55);
+      box-shadow: 0 8px 28px rgba(0,0,0,0.38);
+    }
+
+    #pbBottomArrow {
+      bottom: 128px !important;
+    }
+
+    body.pbBottomHidden #pbBottomLevel {
+      transform: translateY(165%) !important;
+    }
+
+    body.pbBottomHidden #pbBottomArrow {
+      bottom: 12px !important;
+    }
+
+    .pbFusionRuleRow {
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 10px;
+      padding: 8px;
+      margin-top: 7px;
+      background: rgba(0,0,0,0.18);
+      font-size: 12px;
+      color: #e8efff;
+    }
+
+    #pbFusionRuleList {
+      max-height: 135px;
+      overflow: auto;
+      margin-top: 8px;
+    }
+
+    #pbLevelModal .pbLevelWindow {
+      max-width: 1080px;
+      border-radius: 18px;
+    }
+
+    #pbLevelModal .pbLevelGrid {
+      gap: 12px;
+    }
+
+    #pbLevelModal select,
+    #pbLevelModal input,
+    #pbLevelModal textarea {
+      background: rgba(0,0,0,0.48);
+      border-color: rgba(217,255,159,0.35);
+    }
+
+    @media (max-width: 950px) {
+      #pbBottomLevel {
+        left: 14px !important;
+        right: 14px !important;
+        bottom: 62px !important;
+        height: 48px !important;
+        font-size: 13px !important;
+      }
+      #pbBottomArrow {
+        bottom: 106px !important;
+        left: 50% !important;
+      }
+      #pbDebugCounters {
+        top: 8px;
+        left: 8px;
+        font-size: 10px;
+      }
+      #pbTopPackets {
+        top: 8px;
+        left: 6px;
+        right: 6px;
+        height: 52px;
+        padding: 5px 32px;
+      }
+      #pbTopArrow { top: 56px; }
+    }
+
   </style>
 </head>
 <body>
@@ -1176,6 +1276,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         <div id="dialogText"></div>
         <div id="dialogHint">Click NPC again or press Space for next slide. Press Escape to close.</div>
       </div>
+      <div id="pbDebugCounters">Entities: 0<br>Shots: 0<br>Items: 0</div>
       <div id="hud">Loading main.png and main.mp3 if they exist beside this HTML file.</div>
     </main>
   </div>
@@ -3951,11 +4052,351 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     }
 
 
+
+    function installProjectBuild4_5_Rectified() {
+      document.title = 'Project: BUILD 4.5';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.5');
+      const safeGet = id => document.getElementById(id);
+      const plantTemplates = () => state.templates.filter(t => (t.side === 'plant' || t.type === 'plant') && t.name);
+      const enemyTemplates = () => state.templates.filter(t => ['zombie','boss'].includes(t.side) || ['zombie','boss','gargantuar'].includes(t.role) || /garg|boss|zombie/i.test(t.name || ''));
+
+      state.fusionRules ??= [];
+      state.dirty ??= false;
+
+      const extraFunctions = [
+        'plantFoodAutoCharge','plantOverdriveVolley','plantRadialBurst','plantProjectileClone','plantStatusCleanse',
+        'plantLaneGuard','plantAntiArmor','plantEnemyMark','plantCritBurst','plantCooldownRefund',
+        'zombieEnrageGroan','zombieSpawnOnDeath','zombiePackHowl','zombieArmorShred','zombiePhaseWalk',
+        'zombieStealBoost','zombieHeavyCall','zombieBiteSplash','zombieLastLaugh','zombieLaneRush',
+        'bossHeavyPoolBurst','bossShieldBreakPulse','bossStageHazardCall','bossFinalWaveCall',
+        'fusionInheritBaseImage','fusionInheritMergerImage','fusionStatAverage','fusionStatAdd','fusionAbilityUnion',
+        'boostAutoCollect','boostMagnetize','boostPlantFoodRefill','boostCurrencyBurst'
+      ];
+      extraFunctions.forEach(a => { if (!abilityList.includes(a)) abilityList.push(a); });
+      if (typeof renderAbilityPills === 'function') {
+        const active = typeof selectedAbilities === 'function' ? selectedAbilities() : [];
+        renderAbilityPills();
+        setActiveAbilities(active);
+      }
+
+      function markDirty() { state.dirty = true; }
+
+      document.addEventListener('input', e => {
+        if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) markDirty();
+      }, true);
+      document.addEventListener('change', e => {
+        if (e.target && ['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName)) markDirty();
+      }, true);
+
+      window.addEventListener('beforeunload', e => {
+        if (!state.dirty) return;
+        e.preventDefault();
+        e.returnValue = 'You have unsaved Project: BUILD changes. Refresh anyway?';
+        return e.returnValue;
+      });
+
+      function fillSelect(sel, templates, includeBlank = true) {
+        if (!sel) return;
+        const old = sel.value;
+        sel.innerHTML = '';
+        if (includeBlank) {
+          const blank = document.createElement('option');
+          blank.value = '';
+          blank.textContent = 'None / choose template';
+          sel.appendChild(blank);
+        }
+        templates.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.name;
+          opt.textContent = t.name;
+          sel.appendChild(opt);
+        });
+        if ([...sel.options].some(o => o.value === old)) sel.value = old;
+      }
+
+      function refreshFusionDropdowns() {
+        const plants = plantTemplates();
+        fillSelect(safeGet('fusionBasePlantSelect'), plants, false);
+        fillSelect(safeGet('fusionMergerPlantSelect'), plants, false);
+        fillSelect(safeGet('fusionComboPlantSelect'), plants, false);
+        renderFusionRules();
+      }
+
+      function renderFusionRules() {
+        const list = safeGet('pbFusionRuleList');
+        if (!list) return;
+        list.innerHTML = '';
+        if (!state.fusionRules.length) {
+          const empty = document.createElement('div');
+          empty.className = 'pbFusionRuleRow';
+          empty.textContent = 'No fusion recipes yet.';
+          list.appendChild(empty);
+          return;
+        }
+        state.fusionRules.forEach((r, i) => {
+          const row = document.createElement('div');
+          row.className = 'pbFusionRuleRow';
+          row.innerHTML = `<b>${r.base}</b> + <b>${r.merger}</b> → <b>${r.result}</b><br><button type="button" class="danger" data-fusion-delete="${i}">Delete Rule</button>`;
+          list.appendChild(row);
+        });
+        list.querySelectorAll('[data-fusion-delete]').forEach(btn => {
+          btn.onclick = () => {
+            const i = Number(btn.dataset.fusionDelete);
+            state.fusionRules.splice(i, 1);
+            markDirty();
+            renderFusionRules();
+            showToast('Fusion recipe deleted');
+          };
+        });
+      }
+
+      function addFusionRuleFromDropdowns() {
+        const base = safeGet('fusionBasePlantSelect')?.value || '';
+        const merger = safeGet('fusionMergerPlantSelect')?.value || '';
+        const result = safeGet('fusionComboPlantSelect')?.value || '';
+        if (!base || !merger || !result) return showToast('Pick base, merger, and combination plants');
+        const rule = { base, merger, result, keepBasePos: true, requireOverlap: true };
+        const idx = state.fusionRules.findIndex(r => r.base === base && r.merger === merger);
+        if (idx >= 0) {
+          if (!confirm(`Replace the existing fusion recipe for ${base} + ${merger}?`)) return;
+          state.fusionRules[idx] = rule;
+        } else {
+          state.fusionRules.push(rule);
+        }
+        markDirty();
+        renderFusionRules();
+        showToast(`Fusion saved: ${base} + ${merger} = ${result}`);
+      }
+
+      const templateCard = safeGet('saveTemplate')?.closest('.card');
+      if (templateCard && !safeGet('fusionRecipeBuilder')) {
+        const card = document.createElement('div');
+        card.id = 'fusionRecipeBuilder';
+        card.className = 'pb45Panel';
+        card.innerHTML = `
+          <h2>4.5 Fusion Recipe Builder</h2>
+          <p class="sectionNote">Better fusion system: choose a base plant, a merger plant, and the final combination plant from your saved plant templates.</p>
+          <label>Base Plant</label>
+          <select id="fusionBasePlantSelect"></select>
+          <label>Merger Plant</label>
+          <select id="fusionMergerPlantSelect"></select>
+          <label>Combination / Result Plant</label>
+          <select id="fusionComboPlantSelect"></select>
+          <div class="row">
+            <button id="saveFusionRecipe" type="button">Save Fusion Recipe</button>
+            <button id="refreshFusionRecipes" type="button" class="blue">Refresh Plant Lists</button>
+          </div>
+          <div id="pbFusionRuleList"></div>
+        `;
+        templateCard.insertBefore(card, safeGet('saveTemplate'));
+      }
+
+      // Remove boss scripting from the maker UI. Scripts are still allowed for objects/spawners/triggers.
+      const scriptBox = safeGet('scriptText');
+      if (scriptBox) {
+        const lab = [...document.querySelectorAll('label')].find(l => l.htmlFor === 'scriptText' || l.nextElementSibling === scriptBox);
+        if (lab) lab.textContent = 'Script for spawners, hazards, triggers, portals, and special objects only';
+        scriptBox.placeholder = '// Boss scripting is disabled in 4.5. Use abilities, heavy pools, and wave tools for bosses.';
+        const clearBossScript = () => {
+          const side = safeGet('entitySide')?.value;
+          const role = safeGet('entityRole')?.value;
+          if (side === 'boss' || role === 'boss') {
+            scriptBox.value = '';
+            scriptBox.disabled = true;
+            scriptBox.title = 'Boss scripting has been removed. Use boss abilities and heavy spawn pools instead.';
+          } else {
+            scriptBox.disabled = false;
+            scriptBox.title = '';
+          }
+        };
+        safeGet('entitySide')?.addEventListener('change', clearBossScript);
+        safeGet('entityRole')?.addEventListener('change', clearBossScript);
+        clearBossScript();
+      }
+
+      safeGet('saveFusionRecipe')?.addEventListener('click', addFusionRuleFromDropdowns);
+      safeGet('refreshFusionRecipes')?.addEventListener('click', () => { refreshFusionDropdowns(); showToast('Fusion plant lists refreshed'); });
+
+      // Replace template save with confirmation when updating an existing template.
+      const baseTemplateSave = safeGet('saveTemplate')?.onclick;
+      if (safeGet('saveTemplate') && !safeGet('saveTemplate')._pbConfirmWrapped) {
+        safeGet('saveTemplate').onclick = () => {
+          const t = getTemplateForm();
+          if (t.side === 'boss' || t.role === 'boss') t.script = '';
+          const existing = state.templates.findIndex(x => x.name === t.name);
+          if (existing >= 0 && !confirm(`Update existing template "${t.name}"?`)) return;
+          if (existing >= 0) state.templates[existing] = t;
+          else state.templates.push(t);
+          refreshTemplates();
+          state.dirty = false;
+          showToast(existing >= 0 ? 'Template updated' : 'Template saved');
+        };
+        safeGet('saveTemplate')._pbConfirmWrapped = true;
+      }
+
+      const oldGetTemplateFormRect = getTemplateForm;
+      getTemplateForm = function() {
+        const t = oldGetTemplateFormRect();
+        if (t.side === 'boss' || t.role === 'boss') t.script = '';
+        return t;
+      };
+
+      const oldLoadTemplateToFormRect = loadTemplateToForm;
+      loadTemplateToForm = function(t) {
+        oldLoadTemplateToFormRect(t);
+        refreshFusionDropdowns();
+        if ((t.side === 'boss' || t.role === 'boss') && safeGet('scriptText')) {
+          safeGet('scriptText').value = '';
+          safeGet('scriptText').disabled = true;
+        }
+      };
+
+      const oldRefreshTemplatesRect = refreshTemplates;
+      refreshTemplates = function() {
+        oldRefreshTemplatesRect();
+        refreshFusionDropdowns();
+      };
+
+      function tryFusionPlacement(template, m) {
+        if (!template || (template.side || state.placeType) !== 'plant') return false;
+        const mergerName = template.name;
+        const base = state.entities.find(e => e.side === 'plant' && !e.dead && Math.abs(e.x - m.x) < (e.w * (e.scale || 1)) / 2 && Math.abs(e.y - m.y) < (e.h * (e.scale || 1)) / 2);
+        if (!base) return false;
+        const rule = state.fusionRules.find(r => r.base === base.name && r.merger === mergerName) ||
+                     state.fusionRules.find(r => r.base === mergerName && r.merger === base.name);
+        if (!rule) return false;
+        const resultTemplate = state.templates.find(t => t.name === rule.result);
+        if (!resultTemplate) return showToast(`Fusion result template missing: ${rule.result}`), false;
+        const fused = entityFromTemplate(resultTemplate, base.x, base.y);
+        fused.name = resultTemplate.name;
+        fused._fusionParts = [base.name, mergerName];
+        state.entities = state.entities.filter(e => e.id !== base.id);
+        state.entities.push(fused);
+        state.selected = fused;
+        playSfx(fused.spawnSoundSrc || fused.specialSoundSrc, 0.85);
+        markDirty();
+        showToast(`Fusion made: ${base.name} + ${mergerName} = ${fused.name}`);
+        return true;
+      }
+
+      const oldPlaceEntityAtRect = placeEntityAt;
+      placeEntityAt = function(m) {
+        const index = Number(safeGet('templateSelect')?.value) || 0;
+        const template = structuredClone(state.templates[index] || defaultTemplate);
+        if (tryFusionPlacement(template, m)) return;
+        oldPlaceEntityAtRect(m);
+        markDirty();
+      };
+
+      // More 4.5 functions: small, safe ability effects.
+      const oldUpdateRect = update;
+      update = function(dt) {
+        oldUpdateRect(dt);
+        if (state.paused) return;
+        const enemies = state.entities.filter(e => !e.dead && (e.side === 'zombie' || e.side === 'boss'));
+        for (const e of state.entities) {
+          if (e.dead) continue;
+          const ab = e.abilities || [];
+          if (e.side === 'plant') {
+            if (ab.includes('plantFoodAutoCharge') && entityTimer(e, 'autoFood', 18)) state.plantFood = (state.plantFood || 0) + 1;
+            if (ab.includes('plantRadialBurst') && entityTimer(e, 'radialBurst', 4)) {
+              for (let i = 0; i < 10; i++) makeProjectile(e, i * Math.PI / 5, e.projectileSpeed || 360, 0.75);
+              setActionVisual(e, 0.45);
+            }
+            if (ab.includes('plantStatusCleanse') && entityTimer(e, 'cleanse', 6)) {
+              state.entities.forEach(o => { if (o.side === 'plant' && Math.hypot(o.x-e.x,o.y-e.y)<180) { o.speed = Math.max(0, o.speed || 0); o.invisibleAlpha = 1; } });
+            }
+            if (ab.includes('plantAntiArmor') && entityTimer(e, 'antiArmor', 2.5)) {
+              enemies.filter(o => Math.hypot(o.x-e.x,o.y-e.y)<(e.range || 760)).slice(0,1).forEach(o => damageEntity(o, (e.damage||8)*1.8, e));
+            }
+          }
+          if (e.side === 'zombie') {
+            if (ab.includes('zombieEnrageGroan') && e.hp < e.maxHp * 0.45) { e.speed = Math.max(e.speed || 0, 4.2); e.damage += 0.018; }
+            if (ab.includes('zombiePackHowl') && entityTimer(e, 'packHowl', 7)) {
+              playSfx(e.groanSoundSrc || e.specialSoundSrc, 0.7);
+              state.entities.forEach(o => { if (o.side === 'zombie' && Math.hypot(o.x-e.x,o.y-e.y)<220) o.damage += 0.3; });
+            }
+            if (ab.includes('zombieHeavyCall') && entityTimer(e, 'heavyCall', 14) && state.heavySpawnPool?.length) {
+              const name = state.heavySpawnPool[Math.floor(Math.random()*state.heavySpawnPool.length)];
+              const t = state.templates.find(t => t.name === name);
+              if (t) state.entities.push(entityFromTemplate(t, e.x + e.facing * 80, e.y + rand(-40,40)));
+            }
+          }
+          if (e.side === 'boss') {
+            if (ab.includes('bossHeavyPoolBurst') && entityTimer(e, 'heavyPoolBurst', 12) && typeof window.ProjectBuild4_5?.spawnHeavyPoolNow === 'function') {
+              window.ProjectBuild4_5.spawnHeavyPoolNow(e.x + e.facing * 70, e.y);
+            }
+            if (ab.includes('bossFinalWaveCall') && e.hp < e.maxHp * 0.25 && !e._finalWaveCalled && typeof window.ProjectBuild4_5?.spawnHeavyPoolNow === 'function') {
+              e._finalWaveCalled = true;
+              window.ProjectBuild4_5.spawnHeavyPoolNow(e.x + e.facing * 70, e.y);
+            }
+          }
+        }
+        const dbg = safeGet('pbDebugCounters');
+        if (dbg) {
+          const plants = state.entities.filter(e => e.side === 'plant' && !e.dead).length;
+          const zombies = state.entities.filter(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead).length;
+          dbg.innerHTML = `Entities: ${state.entities.length}<br>Plants: ${plants} | Enemies: ${zombies}<br>Shots: ${state.projectiles.length} | Items: ${state.collectibles.length}<br>Boost: ${state.boostCurrency || 0} | Food: ${state.plantFood || 0}`;
+        }
+      };
+
+      const oldSerializableRect = serializableState;
+      serializableState = function() {
+        const data = oldSerializableRect();
+        data.version = '4.5';
+        data.fusionRules = state.fusionRules || [];
+        return data;
+      };
+
+      safeGet('importWorld')?.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            setTimeout(() => {
+              state.fusionRules = data.fusionRules || state.fusionRules || [];
+              refreshFusionDropdowns();
+            }, 100);
+          } catch {}
+        };
+        reader.readAsText(file);
+      });
+
+      // Mobile/accessibility: keep the level editor button visible and make it open the modal.
+      const bottom = safeGet('pbBottomLevel');
+      if (bottom) {
+        bottom.textContent = 'LEVEL EDITOR';
+        bottom.style.bottom = matchMedia('(max-width: 950px)').matches ? '62px' : '82px';
+        bottom.onclick = () => {
+          const modal = safeGet('pbLevelModal');
+          if (modal) {
+            modal.classList.add('open');
+            modal.setAttribute('aria-hidden', 'false');
+            if (typeof refreshLevelModalLibrary === 'function') refreshLevelModalLibrary();
+          }
+        };
+      }
+
+      refreshFusionDropdowns();
+
+      window.ProjectBuild4_5_Rectified = {
+        version: '4.5-rectified',
+        refreshFusionDropdowns,
+        addFusionRuleFromDropdowns,
+        fusionRules: () => state.fusionRules,
+        state
+      };
+    }
+
+
     installProjectBuild3();
     installProjectBuildLevelTools();
     installProjectBuild4();
     installProjectBuild4_1();
     installProjectBuild4_5();
+    installProjectBuild4_5_Rectified();
 
 
     renderAbilityPills();
