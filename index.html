@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 4.5</title>
+  <title>Project: BUILD 5.2</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -902,14 +902,645 @@
       #pbTopArrow { top: 56px; }
     }
 
+
+    /* Project: BUILD 4.5 custom campaign map */
+    #pbCampaignModal {
+      position: absolute;
+      inset: 0;
+      z-index: 70;
+      display: none;
+      background: rgba(0,0,0,0.4);
+      pointer-events: auto;
+    }
+    #pbCampaignModal.open { display: block; }
+    .pbCampaignWindow {
+      position: absolute;
+      inset: 6px;
+      border: 4px solid rgba(25, 38, 58, 0.95);
+      border-radius: 10px;
+      overflow: hidden;
+      background-color: #78a5f2;
+      background-image:
+        linear-gradient(rgba(255,255,255,.22) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.22) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.11) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.11) 1px, transparent 1px);
+      background-size: 16px 16px, 16px 16px, 4px 4px, 4px 4px;
+      box-shadow: inset 0 0 45px rgba(0,0,0,.25), 0 12px 50px rgba(0,0,0,.55);
+      padding: 86px 30px 46px;
+    }
+    .pbCampaignBanner {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      min-width: min(620px, calc(100% - 80px));
+      max-width: calc(100% - 70px);
+      min-height: 62px;
+      padding: 12px 42px 10px;
+      text-align: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: clamp(21px, 4vw, 35px);
+      letter-spacing: .02em;
+      text-transform: lowercase;
+      text-shadow: 0 4px 0 #111, 2px 0 0 #111, -2px 0 0 #111, 0 -2px 0 #111;
+      background: linear-gradient(#aab3c1, #656b75);
+      border: 3px solid #3a3f47;
+      border-radius: 6px;
+      box-shadow: inset 0 4px 0 rgba(255,255,255,.45), inset 0 -6px 0 rgba(0,0,0,.2), 0 6px 0 rgba(0,0,0,.22);
+    }
+    .pbCampaignBanner::before,
+    .pbCampaignBanner::after {
+      content: '';
+      position: absolute;
+      top: -6px;
+      width: 68px;
+      height: 74px;
+      background: radial-gradient(circle at 35% 35%, #bfc5cf, #6b717d 62%, #353941 63%);
+      clip-path: polygon(10% 6%, 68% 0, 100% 28%, 82% 72%, 92% 100%, 36% 86%, 0 72%, 15% 42%);
+      z-index: -1;
+    }
+    .pbCampaignBanner::before { left: -48px; transform: rotate(-8deg); }
+    .pbCampaignBanner::after { right: -48px; transform: scaleX(-1) rotate(-8deg); }
+    #pbCampaignLevelGrid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      align-content: flex-start;
+      overflow: auto;
+      height: calc(100% - 6px);
+      padding: 0;
+    }
+    .pbCampaignLevelCard {
+      width: 118px;
+      height: 118px;
+      margin: 0 16px 22px 0;
+      border-radius: 10px;
+      border: 3px solid #4d5560;
+      background: linear-gradient(#e7ebef, #aeb4bd);
+      box-shadow: inset 0 3px 0 rgba(255,255,255,.65), 0 3px 0 rgba(0,0,0,.35);
+      color: #19194a;
+      cursor: pointer;
+      position: relative;
+      padding: 8px 8px 32px;
+      text-align: center;
+      font-weight: 800;
+    }
+    .pbCampaignLevelCard:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .pbCampaignLevelIcon {
+      height: 64px;
+      border: 2px solid #56606e;
+      background: #dce2e8;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    .pbCampaignLevelIcon img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .pbCampaignQuestion {
+      font-size: 44px;
+      color: #777;
+      text-shadow: 0 2px #fff;
+      line-height: 1;
+    }
+    .pbCampaignLevelName {
+      position: absolute;
+      left: 7px;
+      right: 7px;
+      bottom: 5px;
+      min-height: 24px;
+      background: #f2f4f8;
+      border-top: 2px solid #656c78;
+      border-radius: 0 0 4px 4px;
+      color: #171747;
+      font-size: 12px;
+      line-height: 1.02;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px;
+      overflow: hidden;
+    }
+    .pbCampaignFooter {
+      position: absolute;
+      left: 22px;
+      right: 22px;
+      bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      pointer-events: auto;
+    }
+    .pbCampaignFooter button {
+      width: auto;
+      min-width: 104px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      margin: 0;
+    }
+    #pbCampaignMaker select[multiple] {
+      min-height: 112px;
+      overflow: auto;
+    }
+    @media (max-width: 950px) {
+      .pbCampaignWindow {
+        inset: 4px;
+        padding: 74px 12px 54px;
+      }
+      .pbCampaignBanner {
+        min-width: calc(100% - 50px);
+        font-size: 20px;
+        min-height: 52px;
+        padding-left: 20px;
+        padding-right: 20px;
+      }
+      .pbCampaignLevelCard {
+        width: 96px;
+        height: 108px;
+        margin-right: 5px;
+        margin-bottom: 12px;
+      }
+      .pbCampaignLevelIcon { height: 56px; }
+      .pbCampaignFooter { left: 8px; right: 8px; }
+      .pbCampaignFooter button { min-width: 0; font-size: 11px; padding: 7px 9px; }
+    }
+
+    /* Project: BUILD 5.1 play mode */
+    body.pbPlayMode #sidebar {
+      pointer-events: none;
+      opacity: 0.18;
+      filter: grayscale(0.4) brightness(0.65);
+    }
+    body.pbPlayMode #sidebarToggle {
+      pointer-events: none;
+      opacity: 0.25;
+    }
+    body.pbPlayMode #pbRightPackets,
+    body.pbPlayMode #pbRightArrow {
+      transform: translateX(125%) !important;
+      pointer-events: none !important;
+      opacity: 0 !important;
+    }
+    body.pbPlayMode.pbLevelBeaten #pbRightPackets,
+    body.pbPlayMode.pbLevelBeaten #pbRightArrow {
+      opacity: 1 !important;
+      pointer-events: auto !important;
+    }
+    body.pbPlayMode.pbLevelBeaten #pbRightPackets {
+      transform: translateX(0) !important;
+    }
+    body.pbPlayMode.pbLevelBeaten #pbRightArrow {
+      transform: rotate(180deg) !important;
+    }
+    #pbPlayModeBadge {
+      position: absolute;
+      top: 104px;
+      right: 86px;
+      z-index: 61;
+      display: none;
+      background: rgba(0,0,0,0.78);
+      color: #d9ff9f;
+      border: 1px solid rgba(217,255,159,0.55);
+      border-radius: 999px;
+      padding: 8px 13px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      pointer-events: none;
+      text-shadow: 0 1px 2px #000;
+    }
+    body.pbPlayMode #pbPlayModeBadge { display: block; }
+    body.pbLevelBeaten #pbPlayModeBadge { color: #fff; border-color: rgba(255,255,255,.72); }
+    @media (max-width: 950px) {
+      #pbPlayModeBadge {
+        top: 66px;
+        right: 8px;
+        font-size: 10px;
+        padding: 6px 9px;
+      }
+    }
+
+
+    /* Project: BUILD 5.1 friendly level builder GUI */
+    body.pbFriendlyBuilderInstalled #sidebar .pbLegacyLevelEditor,
+    body.pbFriendlyBuilderInstalled #sidebar .pbLegacyLevelEditor + .card {
+      display: none !important;
+    }
+
+    #pbLevelModal.pbFriendlyBuilderModal {
+      inset: 46px 78px 54px 24px;
+      z-index: 82;
+    }
+
+    #pbLevelModal.pbFriendlyBuilderModal .pbLevelWindow {
+      width: min(1180px, 100%);
+      max-height: 100%;
+      overflow: auto;
+      border-radius: 22px;
+      border: 4px solid rgba(232, 255, 188, 0.86);
+      background:
+        radial-gradient(circle at 18% 10%, rgba(163, 230, 53, 0.24), transparent 34%),
+        radial-gradient(circle at 90% 20%, rgba(96, 165, 250, 0.22), transparent 30%),
+        linear-gradient(180deg, rgba(10, 48, 118, 0.98), rgba(3, 21, 55, 0.98));
+      box-shadow: 0 22px 80px rgba(0,0,0,0.72), inset 0 2px 0 rgba(255,255,255,.24);
+      padding: 14px;
+    }
+
+    .pbBuilderHeader {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 12px 12px;
+      border-radius: 18px;
+      background: rgba(0,0,0,.24);
+      border: 1px solid rgba(255,255,255,.18);
+      margin-bottom: 12px;
+    }
+
+    .pbBuilderTitle {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .pbBuilderBadgeIcon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      background: linear-gradient(180deg, #d9ff9f, #4ade80);
+      box-shadow: inset 0 3px 0 rgba(255,255,255,.65), 0 5px 0 rgba(0,0,0,.32);
+    }
+
+    .pbBuilderTitle h2 {
+      margin: 0;
+      color: #fff;
+      font-size: clamp(18px, 2.4vw, 30px);
+      letter-spacing: .035em;
+      text-shadow: 0 3px 0 #000;
+    }
+
+    .pbBuilderTitle p {
+      margin: 4px 0 0;
+      color: #dbeafe;
+      font-size: 12px;
+    }
+
+    .pbBuilderClose {
+      width: auto;
+      min-width: 90px;
+      margin: 0;
+      border-radius: 999px;
+      padding: 9px 14px;
+      background-color: #101010;
+      color: #fff;
+    }
+
+    .pbBuilderSteps {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .pbBuilderStepCard {
+      min-height: 76px;
+      border-radius: 16px;
+      padding: 10px;
+      background: linear-gradient(180deg, rgba(255,255,255,.16), rgba(0,0,0,.2));
+      border: 1px solid rgba(255,255,255,.18);
+      color: #fff;
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .pbBuilderStepIcon {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      font-size: 25px;
+      background: rgba(0,0,0,.35);
+      box-shadow: inset 0 2px 0 rgba(255,255,255,.18);
+    }
+
+    .pbBuilderStepCard b {
+      display: block;
+      color: #d9ff9f;
+      font-size: 12px;
+      margin-bottom: 2px;
+    }
+
+    .pbBuilderStepCard span {
+      color: #e8efff;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    .pbBuilderGrid {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 12px;
+    }
+
+    .pbBuilderPanel {
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 18px;
+      padding: 12px;
+      color: #e8efff;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+    }
+
+    .pbBuilderPanel h3 {
+      margin: 0 0 8px;
+      color: #d9ff9f;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      text-shadow: 0 2px 0 #000;
+    }
+
+    .pbBuilderPanel label,
+    .pbBuilderPanel p {
+      color: #e8efff;
+    }
+
+    .pbBuilderPanel input,
+    .pbBuilderPanel select,
+    .pbBuilderPanel textarea {
+      background: rgba(0,0,0,.54);
+      border-color: rgba(217,255,159,.35);
+      color: #d9ff9f;
+    }
+
+    .pbBuilderTiny {
+      font-size: 11px;
+      color: #cbd5e1;
+      line-height: 1.25;
+      margin-top: 6px;
+    }
+
+    .pbBuilderIconPreview {
+      width: 100%;
+      height: 92px;
+      border-radius: 14px;
+      border: 2px dashed rgba(217,255,159,.42);
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(45deg, rgba(255,255,255,.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.08) 75%),
+        linear-gradient(45deg, rgba(255,255,255,.08) 25%, transparent 25%, transparent 75%, rgba(255,255,255,.08) 75%);
+      background-position: 0 0, 10px 10px;
+      background-size: 20px 20px;
+      overflow: hidden;
+      margin-top: 6px;
+      color: #fff;
+      font-weight: 900;
+      text-shadow: 0 2px 0 #000;
+    }
+
+    .pbBuilderIconPreview img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .pbBuilderLaneMap {
+      display: grid;
+      grid-template-rows: repeat(5, 32px);
+      gap: 5px;
+      padding: 8px;
+      border-radius: 16px;
+      background:
+        linear-gradient(90deg, rgba(86, 255, 0, .9), rgba(68, 205, 41, .9)),
+        repeating-linear-gradient(0deg, transparent 0 31px, rgba(255,255,255,.25) 31px 32px);
+      border: 2px solid rgba(255,255,255,.38);
+      margin-top: 8px;
+    }
+
+    .pbBuilderLane {
+      border: 1px solid rgba(0,0,0,.22);
+      border-radius: 999px;
+      background: rgba(255,255,255,.2);
+      color: #0b2d03;
+      font-weight: 900;
+      text-shadow: none;
+      margin: 0;
+      padding: 0;
+      height: 32px;
+    }
+
+    .pbBuilderLane.active {
+      background: rgba(217,255,159,.9);
+      outline: 3px solid rgba(0,0,0,.3);
+    }
+
+    .pbBuilderActions {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .pbBuilderTimeline {
+      display: grid;
+      gap: 7px;
+      max-height: 260px;
+      overflow: auto;
+      padding-right: 3px;
+      margin-top: 8px;
+    }
+
+    .pbBuilderWaveCard {
+      display: grid;
+      grid-template-columns: 44px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(0,0,0,.24));
+      color: #fff;
+    }
+
+    .pbBuilderWaveIcon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 24px;
+      background: rgba(0,0,0,.35);
+      overflow: hidden;
+    }
+
+    .pbBuilderWaveIcon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .pbBuilderWaveText b {
+      color: #d9ff9f;
+      display: block;
+      font-size: 13px;
+    }
+
+    .pbBuilderWaveText span {
+      color: #dbeafe;
+      font-size: 11px;
+      line-height: 1.2;
+      display: block;
+    }
+
+    .pbBuilderDeleteWave {
+      width: 34px;
+      height: 34px;
+      min-width: 0;
+      padding: 0;
+      margin: 0;
+      border-radius: 12px;
+    }
+
+    .pbBuilderChipGrid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      max-height: 146px;
+      overflow: auto;
+      margin-top: 7px;
+    }
+
+    .pbBuilderChip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(0,0,0,.3);
+      color: #e8efff;
+      padding: 5px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .pbBuilderChip.active {
+      background: rgba(217,255,159,.24);
+      color: #d9ff9f;
+      border-color: rgba(217,255,159,.66);
+    }
+
+    .pbBuilderChip img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+      border-radius: 5px;
+      background: rgba(255,255,255,.14);
+    }
+
+    .pbBuilderHiddenCompat {
+      display: none !important;
+    }
+
+    .pbBuilderEmpty {
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px dashed rgba(255,255,255,.22);
+      color: #dbeafe;
+      font-size: 12px;
+      text-align: center;
+      background: rgba(0,0,0,.18);
+    }
+
+    @media (max-width: 950px) {
+      #pbLevelModal.pbFriendlyBuilderModal {
+        inset: 8px;
+      }
+      #pbLevelModal.pbFriendlyBuilderModal .pbLevelWindow {
+        padding: 8px;
+      }
+      .pbBuilderHeader {
+        align-items: flex-start;
+      }
+      .pbBuilderSteps,
+      .pbBuilderGrid,
+      .pbBuilderActions {
+        grid-template-columns: 1fr;
+      }
+      .pbBuilderStepCard {
+        min-height: 58px;
+      }
+      .pbBuilderTitle h2 {
+        font-size: 18px;
+      }
+    }
+
+  
+    /* Project: BUILD 5.2 level lawn/music + playmode return fixes */
+    body.pbPlayMode.pbLevelBeaten #sidebar {
+      pointer-events: auto !important;
+      opacity: 1 !important;
+      filter: none !important;
+    }
+    body.pbPlayMode.pbLevelBeaten #sidebarToggle {
+      pointer-events: auto !important;
+      opacity: 1 !important;
+    }
+    body.pbPlayMode.pbLevelBeaten #app.sidebar-collapsed #sidebar {
+      opacity: 1;
+    }
+    .pbBuilderAssetRow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .pbBuilderAssetPreview {
+      min-height: 52px;
+      border: 1px dashed rgba(217,255,159,.42);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      background: rgba(0,0,0,.25);
+      color: #dbeafe;
+      font-size: 11px;
+      overflow: hidden;
+      padding: 5px;
+    }
+    .pbBuilderAssetPreview img {
+      width: 100%;
+      height: 66px;
+      object-fit: cover;
+      border-radius: 8px;
+    }
+    .pbBuilderAssetPreview b {
+      color: #d9ff9f;
+    }
+    @media (max-width: 950px) {
+      .pbBuilderAssetRow { grid-template-columns: 1fr; }
+    }
+
   </style>
 </head>
 <body>
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">4.5</span></h1>
-      <p>Project: BUILD 4.5 sandbox. Mockup packet UI, separate level editor GUI, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.2</span></h1>
+      <p>Project: BUILD 5.2 sandbox. Friendly level builder GUI, play mode, campaign maps, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -1082,8 +1713,7 @@
         </div>
         <label>Custom Label Text, optional</label>
         <input id="labelText" placeholder="Leave blank to use template name" />
-        <label>Spawn Script, optional</label>
-        <textarea id="spawnScriptText" placeholder="// Runs once when this entity is created. Available: self, game, spawn, say, rand"></textarea>
+        <input id="spawnScriptText" type="hidden" value="" />
         <p class="miniNote">3.0 fields save into templates and worlds. Old worlds still load with safe defaults.</p>
 
         <div id="abilitySection">
@@ -1122,15 +1752,7 @@ Click me again to advance.</textarea>
           <div id="specialSoundStatus" class="sfxStatus">No special SFX loaded for this template.</div>
           <button id="clearTemplateSfx" type="button" class="danger">Clear SFX For Current Template Form</button>
         </div>
-
-        <label>Script, mainly for bosses, spawners, hazards, triggers, and special objects</label>
-        <textarea id="scriptText">// Runs every frame for each scripted entity.
-// Available: self, game, spawn(type,x,y,template), say(text), rand(min,max)
-if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
-  spawn('zombie', self.x - 80, self.y + rand(-60, 60), {
-    name: 'Summoned Zombie', hp: 50, maxHp: 50, speed: -40, abilities: ['dash']
-  });
-}</textarea>
+        <input id="scriptText" type="hidden" value="" />
         <button id="saveTemplate">Save / Update Template</button>
       </div>
 
@@ -1166,10 +1788,48 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
           <button id="startLevel" class="warn">Start Level</button>
           <button id="stopLevel" class="danger">Stop Level</button>
         </div>
+        <button id="sidebarSaveLevelToCampaign" class="warn" type="button">Save To Campaign</button>
         <div class="row">
           <button id="clearWaveScript" class="danger">Clear Script</button>
           <button id="spawnWaveNow" class="blue">Spawn Selected Now</button>
         </div>
+      </div>
+
+
+      <h2>Campaign Mode</h2>
+      <div class="card" id="pbCampaignMaker">
+        <p class="sectionNote">Build separated campaigns. Each level can save its own name, icon, gimmick, plant selection, zombie selection, lawn, objects, and wave setup.</p>
+        <label>Campaign</label>
+        <div class="row">
+          <select id="campaignSelect"></select>
+          <button id="newCampaign" class="blue" type="button">New Campaign</button>
+        </div>
+        <label>Campaign Name</label>
+        <input id="campaignName" value="Great Britain II: A Matter of Time" />
+        <label>Level Name</label>
+        <input id="campaignLevelName" value="Level 1" />
+        <label>Level Gimmick</label>
+        <input id="campaignLevelGimmick" placeholder="Example: zombies speed up every 30 seconds" />
+        <label>Level Icon PNG/GIF</label>
+        <input id="campaignLevelIcon" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+        <label>Plant Selection For This Level</label>
+        <select id="campaignPlantSelect" multiple size="5"></select>
+        <label>Unique Zombies For This Level</label>
+        <select id="campaignZombieSelect" multiple size="5"></select>
+        <div class="row">
+          <button id="saveCampaignMeta" type="button">Save Campaign Name</button>
+          <button id="addCampaignLevel" class="warn" type="button">Add / Update Level</button>
+        </div>
+        <div class="row">
+          <button id="openCampaignMap" class="blue" type="button">Open Campaign Map</button>
+          <button id="deleteCampaignLevel" class="danger" type="button">Delete Level</button>
+        </div>
+        <div class="row">
+          <button id="exportCampaign" type="button">Export Campaign</button>
+          <button id="exportAllCampaigns" type="button">Export All Campaigns</button>
+        </div>
+        <label>Import Campaign JSON</label>
+        <input id="importCampaign" type="file" accept="application/json" />
       </div>
 
       <h2>World</h2>
@@ -1258,6 +1918,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
                 <button id="levelStart" class="warn" type="button">Start Level</button>
                 <button id="levelStop" class="danger" type="button">Stop Level</button>
               </div>
+              <button id="levelSaveToCampaign" class="warn" type="button">Save To Campaign</button>
             </div>
             <div class="pbLevelPanel">
               <label>Level Script JSON</label>
@@ -1267,6 +1928,20 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
           </div>
         </div>
       </div>
+
+      <div id="pbCampaignModal" aria-hidden="true">
+        <div class="pbCampaignWindow">
+          <div class="pbCampaignBanner">
+            <span id="pbCampaignTitle">custom campaign</span>
+          </div>
+          <div id="pbCampaignLevelGrid"></div>
+          <div class="pbCampaignFooter">
+            <button id="pbCampaignBack" type="button">Back to Editor</button>
+            <button id="pbCampaignExportOne" type="button">Export This Campaign</button>
+          </div>
+        </div>
+      </div>
+
       <div id="gridOverlay"></div>
       <div id="readyOverlay"></div>
       <div id="tileHint">Tile Paint Mode</div>
@@ -1277,6 +1952,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
         <div id="dialogHint">Click NPC again or press Space for next slide. Press Escape to close.</div>
       </div>
       <div id="pbDebugCounters">Entities: 0<br>Shots: 0<br>Items: 0</div>
+      <div id="pbPlayModeBadge">PLAY MODE</div>
       <div id="hud">Loading main.png and main.mp3 if they exist beside this HTML file.</div>
     </main>
   </div>
@@ -2103,22 +2779,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       if (e.abilities.includes('scripted') || e.side === 'boss' || ['spawner','hazard','triggerZone','portal','weather'].includes(e.role)) runScript(e);
     }
 
-    function runScript(self) {
-      if (!self.script || !self.script.trim()) return;
-      self.scriptTimer = (key, seconds) => {
-        self.dataTimers[key] ??= 0;
-        self.dataTimers[key] -= 1 / 60;
-        if (self.dataTimers[key] <= 0) { self.dataTimers[key] = seconds; return true; }
-        return false;
-      };
-      try {
-        Function('self', 'game', 'spawn', 'say', 'rand', `"use strict"; ${self.script}`)(
-          self, state, spawn, text => { hud.textContent = `${self.name}: ${text}`; }, rand
-        );
-      } catch (err) {
-        if (!self.scriptErrorShown) { showToast('Script error: ' + err.message); self.scriptErrorShown = true; }
-      }
-    }
+    function runScript(self) { return; }
 
     function updateProjectiles(dt) {
       for (const p of state.projectiles) {
@@ -2923,7 +3584,10 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
             if (!item.done && level.elapsed >= item.at) { item.done = true; spawnWaveEvent(item.ev, item.number); }
           });
           level.queue = level.queue.filter(item => !item.done);
-          if (level.events.every(ev => ev._queued) && level.queue.length === 0) level.running = false;
+          if (level.events.every(ev => ev._queued) && level.queue.length === 0 && !state.entities.some(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead)) {
+            level.running = false;
+            if (typeof finishPlayMode === 'function') finishPlayMode(true);
+          }
         }
       };
 
@@ -3534,14 +4198,14 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
       syncSfxStatus();
       refreshLevelModalLibrary();
-      window.ProjectBuild4_1 = { version:'4.5', openLevelModal, closeLevelModal, refreshLevelModalLibrary, state };
+      window.ProjectBuild4_1 = { version:'5.2', openLevelModal, closeLevelModal, refreshLevelModalLibrary, state };
     }
 
 
 
     function installProjectBuild4_5() {
-      document.title = 'Project: BUILD 4.5';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.5');
+      document.title = 'Project: BUILD 5.2';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.2');
 
       const extra45Abilities = [
         'boostCurrencyProduce','plantFoodProduce','plantFoodBurst','plantFoodMegaShot','plantFoodHealAll','plantFoodSummon',
@@ -3560,7 +4224,1128 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       extra45Abilities.forEach(a => { if (!abilityList.includes(a)) abilityList.push(a); });
       if (typeof renderAbilityPills === 'function') {
         const active = typeof selectedAbilities === 'function' ? selectedAbilities() : [];
-        renderAbilityPills();
+    
+    function installProjectBuild5_2_LawnMusicSidebarFix() {
+      const by = id => document.getElementById(id);
+      state.buildVersion = '5.2';
+      state.pendingLevelLawnSrc = state.pendingLevelLawnSrc || null;
+      state.pendingLevelMusicSrc = state.pendingLevelMusicSrc || null;
+      state.currentCampaignLevel = state.currentCampaignLevel || null;
+
+      document.title = 'Project: BUILD 5.2';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.2');
+      const intro = document.querySelector('#sidebar p');
+      if (intro && /Project:\s*BUILD\s*5\./i.test(intro.textContent)) {
+        intro.textContent = 'Project: BUILD 5.2 sandbox. Friendly level builder GUI, play mode, campaign maps, per-level lawn/music, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.';
+      }
+
+      function safePlayMusic() {
+        try {
+          if (!music) return;
+          if (!music.src && state.lawn?.musicSrc) music.src = state.lawn.musicSrc;
+          music.currentTime = 0;
+          const p = music.play();
+          if (p && typeof p.catch === 'function') p.catch(() => showToast('Tap once to allow music'));
+        } catch {}
+      }
+
+      function applyPendingLevelAssetsToWorld() {
+        if (state.pendingLevelLawnSrc) {
+          state.lawn.imageSrc = state.pendingLevelLawnSrc;
+          state.lawn.image = makeImage(state.pendingLevelLawnSrc);
+          setGifLawn(state.pendingLevelLawnSrc);
+          if (typeof applyGifLawnFit === 'function') applyGifLawnFit();
+        }
+        if (state.pendingLevelMusicSrc) {
+          state.lawn.musicSrc = state.pendingLevelMusicSrc;
+          music.src = state.pendingLevelMusicSrc;
+        }
+      }
+
+      function refreshLawnMusicPreviews() {
+        const lawnBox = by('builderLawnPreview');
+        const musicBox = by('builderMusicPreview');
+        if (lawnBox) {
+          const src = state.pendingLevelLawnSrc || state.lawn?.imageSrc || '';
+          lawnBox.innerHTML = state.pendingLevelLawnSrc
+            ? (isGifSrc(src) || /^data:image\//i.test(src) ? `<img src="${src}" alt=""><span>Custom lawn selected</span>` : '<b>Lawn:</b>&nbsp;custom lawn selected')
+            : '<b>Lawn:</b>&nbsp;uses current lawn';
+        }
+        if (musicBox) {
+          musicBox.innerHTML = state.pendingLevelMusicSrc ? '<b>Music:</b>&nbsp;custom level music selected' : '<b>Music:</b>&nbsp;uses current music';
+        }
+      }
+
+      by('builderLevelLawn')?.addEventListener('change', async e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.pendingLevelLawnSrc = await fileToDataURL(file);
+        refreshLawnMusicPreviews();
+        showToast('Level lawn loaded');
+      });
+      by('builderLevelMusic')?.addEventListener('change', async e => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        state.pendingLevelMusicSrc = await fileToDataURL(file);
+        refreshLawnMusicPreviews();
+        showToast('Level music loaded');
+      });
+
+      // Start Level starts the current level music too.
+      if (typeof startLevel === 'function' && !startLevel.pb52MusicWrapped) {
+        const oldStart52 = startLevel;
+        startLevel = function(...args) {
+          applyPendingLevelAssetsToWorld();
+          const result = oldStart52.apply(this, args);
+          safePlayMusic();
+          return result;
+        };
+        startLevel.pb52MusicWrapped = true;
+      }
+
+      // Stop level pauses music but keeps current track.
+      if (typeof stopLevel === 'function' && !stopLevel.pb52MusicWrapped) {
+        const oldStop52 = stopLevel;
+        stopLevel = function(...args) {
+          const result = oldStop52.apply(this, args);
+          try { music.pause(); } catch {}
+          return result;
+        };
+        stopLevel.pb52MusicWrapped = true;
+      }
+
+      // Make the maker/sidebar come back at the same time zombie packets unlock.
+      if (typeof window.finishPlayMode === 'function' && !window.finishPlayMode.pb52SidebarWrapped) {
+        const oldFinish52 = window.finishPlayMode;
+        window.finishPlayMode = function(won = true) {
+          const result = oldFinish52.call(this, won);
+          if (won) {
+            if (app) app.classList.remove('sidebar-collapsed');
+            if (sidebarToggle) {
+              sidebarToggle.title = 'Hide toolbar';
+              sidebarToggle.setAttribute('aria-label', 'Hide toolbar');
+            }
+            setTimeout(() => { if (typeof resizeCanvas === 'function') resizeCanvas(); }, 260);
+          }
+          return result;
+        };
+        window.finishPlayMode.pb52SidebarWrapped = true;
+      }
+
+      // Ensure update loop calls the globally wrapped finishPlayMode, not a closed-over older one.
+      if (typeof update === 'function' && !update.pb52WinWrapper) {
+        const oldUpdate52 = update;
+        update = function(dt) {
+          oldUpdate52(dt);
+          if (state.playMode?.active && state.level && !state.level.running && !state.playMode.levelBeat) {
+            const enemiesLeft = state.entities.some(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead);
+            const queueLeft = state.level.queue && state.level.queue.length > 0;
+            const eventsUnqueued = state.level.events && state.level.events.some(ev => !ev._queued);
+            if (!enemiesLeft && !queueLeft && !eventsUnqueued && (state.level.elapsed || 0) >= 0) {
+              window.finishPlayMode?.(true);
+            }
+          }
+        };
+        update.pb52WinWrapper = true;
+      }
+
+      function levelAllowedPlantNames() {
+        if (state.currentCampaignLevel && Array.isArray(state.currentCampaignLevel.allowedPlants)) {
+          return state.currentCampaignLevel.allowedPlants.filter(Boolean);
+        }
+        return null;
+      }
+
+      function selectFallbackAllowedPlant(allowed) {
+        if (!allowed || !allowed.length) return;
+        const sel = by('templateSelect');
+        if (!sel) return;
+        const current = state.templates[Number(sel.value) || 0];
+        if (current?.side === 'plant' && allowed.includes(current.name)) return;
+        const idx = state.templates.findIndex(t => t.side === 'plant' && allowed.includes(t.name));
+        if (idx >= 0) {
+          sel.value = String(idx);
+          state.placeType = 'plant';
+          const placeType = by('placeType');
+          if (placeType) placeType.value = 'plant';
+        }
+      }
+
+      // Filter plant seedbank to this level's allowed plants during play mode.
+      if (typeof window.renderProjectBuildPackets === 'function' && !window.renderProjectBuildPackets.pb52AllowedWrapped) {
+        const oldRenderPackets52 = window.renderProjectBuildPackets;
+        window.renderProjectBuildPackets = function(...args) {
+          const plantBar = by('pbTopPackets');
+          const allowed = (state.playMode?.active || document.body.classList.contains('pbPlayMode')) ? levelAllowedPlantNames() : null;
+          oldRenderPackets52.apply(this, args);
+          if (plantBar && allowed && allowed.length) {
+            [...plantBar.querySelectorAll('.pbPacket')].forEach(packet => {
+              const t = state.templates[Number(packet.dataset.index)];
+              if (!t || t.side !== 'plant' || !allowed.includes(t.name)) packet.remove();
+            });
+            selectFallbackAllowedPlant(allowed);
+          }
+        };
+        window.renderProjectBuildPackets.pb52AllowedWrapped = true;
+      }
+
+      // Also patch refreshTemplates so the filtered seedbank updates whenever play mode/campaign changes.
+      if (typeof refreshTemplates === 'function' && !refreshTemplates.pb52AllowedWrapped) {
+        const oldRefresh52 = refreshTemplates;
+        refreshTemplates = function(...args) {
+          const result = oldRefresh52.apply(this, args);
+          if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+          return result;
+        };
+        refreshTemplates.pb52AllowedWrapped = true;
+      }
+
+      // Block disallowed plants if stale state somehow tries to place them.
+      if (typeof placeEntityAt === 'function' && !placeEntityAt.pb52AllowedWrapped) {
+        const oldPlace52 = placeEntityAt;
+        placeEntityAt = function(m) {
+          const allowed = (state.playMode?.active || document.body.classList.contains('pbPlayMode')) ? levelAllowedPlantNames() : null;
+          const idx = Number(by('templateSelect')?.value) || 0;
+          const t = state.templates[idx];
+          if (allowed && t?.side === 'plant' && !allowed.includes(t.name)) {
+            showToast(`${t.name} is not allowed in this level`);
+            return;
+          }
+          return oldPlace52(m);
+        };
+        placeEntityAt.pb52AllowedWrapped = true;
+      }
+
+      // When saving a campaign level from either GUI, bake selected lawn/music into the level snapshot.
+      function wrapSaveButton(id) {
+        const btn = by(id);
+        if (!btn || btn.dataset.pb52AssetBake) return;
+        btn.dataset.pb52AssetBake = '1';
+        btn.addEventListener('click', () => applyPendingLevelAssetsToWorld(), true);
+      }
+      ['builderSaveCampaign','levelSaveToCampaign','sidebarSaveLevelToCampaign','addCampaignLevel'].forEach(wrapSaveButton);
+
+      // Campaign map level click: load, apply per-level data, close map, auto-start.
+      const campaignGrid = by('pbCampaignLevelGrid');
+      if (campaignGrid && !campaignGrid.dataset.pb52AutoStart) {
+        campaignGrid.dataset.pb52AutoStart = '1';
+        campaignGrid.addEventListener('click', e => {
+          const card = e.target.closest('.pbCampaignLevelCard');
+          if (!card || !campaignGrid.contains(card)) return;
+          const cards = [...campaignGrid.querySelectorAll('.pbCampaignLevelCard')];
+          const index = cards.indexOf(card);
+          const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+          const level = campaign?.levels?.[index];
+          if (!level) return; // Add Current card or empty area.
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          if (!confirm(`Start "${level.name || 'this level'}"? Current unsaved world objects will be replaced.`)) return;
+          state.currentCampaignLevel = level;
+          if (level.world?.lawn) {
+            state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+            state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+          }
+          if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function') {
+            window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel(level.world);
+          }
+          const modal = by('pbCampaignModal');
+          if (modal) {
+            modal.classList.remove('open');
+            modal.setAttribute('aria-hidden', 'true');
+          }
+          if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+          setTimeout(() => {
+            if (typeof startLevel === 'function') startLevel();
+            if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+          }, 30);
+          showToast(`Starting ${level.name || 'campaign level'}`);
+        }, true);
+      }
+
+      // Any manual level start should refresh the packet filter and start music.
+      ['startLevel','levelStart'].forEach(id => {
+        const btn = by(id);
+        if (!btn || btn.dataset.pb52StartMusic) return;
+        btn.dataset.pb52StartMusic = '1';
+        btn.addEventListener('click', () => {
+          setTimeout(() => {
+            safePlayMusic();
+            if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+          }, 50);
+        }, true);
+      });
+
+      // Keep previews fresh when opening the builder.
+      const bottom = by('pbBottomLevel');
+      if (bottom && !bottom.dataset.pb52PreviewRefresh) {
+        bottom.dataset.pb52PreviewRefresh = '1';
+        bottom.addEventListener('click', () => setTimeout(refreshLawnMusicPreviews, 0));
+      }
+
+      // Export with 5.2 tag.
+      if (typeof serializableState === 'function' && !serializableState.pb52Wrapped) {
+        const oldSerializable52 = serializableState;
+        serializableState = function() {
+          const data = oldSerializable52();
+          data.version = '5.2';
+          data.currentCampaignLevel = state.currentCampaignLevel ? { name: state.currentCampaignLevel.name, id: state.currentCampaignLevel.id } : null;
+          return data;
+        };
+        serializableState.pb52Wrapped = true;
+      }
+
+      if (typeof window.ProjectBuildFriendlyLevelBuilder === 'object') {
+        window.ProjectBuildFriendlyLevelBuilder.version = '5.2-friendly-builder';
+      }
+      window.ProjectBuild5_2 = {
+        version: '5.2',
+        state,
+        applyPendingLevelAssetsToWorld,
+        refreshLawnMusicPreviews,
+        safePlayMusic
+      };
+
+      refreshLawnMusicPreviews();
+      if (typeof refreshTemplates === 'function') refreshTemplates();
+      showToast('Project: BUILD 5.2 loaded');
+    }
+
+    installProjectBuild5_2_LawnMusicSidebarFix();
+
+
+    function installProjectBuild5_2_SequentialWavesAndLevelAssetFix() {
+      const by = id => document.getElementById(id);
+
+      function toast(msg) {
+        try { showToast(msg); } catch {}
+      }
+
+      function playCurrentMusicFromStart() {
+        try {
+          if (!music) return;
+          if (state.lawn?.musicSrc && music.src !== state.lawn.musicSrc) music.src = state.lawn.musicSrc;
+          music.currentTime = 0;
+          const p = music.play();
+          if (p && typeof p.catch === 'function') p.catch(() => toast('Tap once to allow music'));
+        } catch {}
+      }
+
+      function applyLawnAndMusicSources(lawnSrc, musicSrc, fitMode) {
+        if (lawnSrc) {
+          state.lawn.imageSrc = lawnSrc;
+          state.lawn.image = makeImage(lawnSrc);
+          setGifLawn(lawnSrc);
+        }
+        if (fitMode) state.lawn.fitMode = fitMode;
+        if (typeof applyGifLawnFit === 'function') applyGifLawnFit();
+        const fit = by('lawnFitMode');
+        if (fit) fit.value = state.lawn.fitMode || 'fitAll';
+
+        if (musicSrc) {
+          state.lawn.musicSrc = musicSrc;
+          if (music) music.src = musicSrc;
+        }
+      }
+
+      function applyCurrentLevelAssets(level = state.currentCampaignLevel) {
+        const worldLawn = level?.world?.lawn || {};
+        const lawnSrc = level?.lawnSrc || state.pendingLevelLawnSrc || worldLawn.imageSrc || null;
+        const musicSrc = level?.musicSrc || state.pendingLevelMusicSrc || worldLawn.musicSrc || null;
+        const fitMode = level?.fitMode || worldLawn.fitMode || state.lawn?.fitMode || 'fitAll';
+        applyLawnAndMusicSources(lawnSrc, musicSrc, fitMode);
+      }
+
+      // Saving a level now bakes the selected level lawn/music directly into the campaign snapshot.
+      if (typeof window.ProjectBuildCampaigns?.addOrUpdateCampaignLevel === 'function' && !window.ProjectBuildCampaigns.addOrUpdateCampaignLevel.pb52AssetBakeFixed) {
+        const oldAddOrUpdate = window.ProjectBuildCampaigns.addOrUpdateCampaignLevel;
+        window.ProjectBuildCampaigns.addOrUpdateCampaignLevel = function(...args) {
+          applyCurrentLevelAssets();
+          return oldAddOrUpdate.apply(this, args);
+        };
+        window.ProjectBuildCampaigns.addOrUpdateCampaignLevel.pb52AssetBakeFixed = true;
+      }
+
+      if (typeof makeWorldSnapshotForLevel === 'function' && !makeWorldSnapshotForLevel.pb52AssetBakeFixed) {
+        const oldMakeWorldSnapshot = makeWorldSnapshotForLevel;
+        makeWorldSnapshotForLevel = function(...args) {
+          applyCurrentLevelAssets();
+          const snap = oldMakeWorldSnapshot.apply(this, args) || {};
+          snap.lawn = {
+            ...(snap.lawn || {}),
+            ...(state.lawn || {}),
+            imageSrc: state.lawn?.imageSrc || snap.lawn?.imageSrc || 'main.png',
+            musicSrc: state.lawn?.musicSrc || snap.lawn?.musicSrc || 'main.mp3',
+            fitMode: state.lawn?.fitMode || snap.lawn?.fitMode || 'fitAll'
+          };
+          return snap;
+        };
+        makeWorldSnapshotForLevel.pb52AssetBakeFixed = true;
+      }
+
+      // Restoring a campaign level applies its lawn/music immediately, including GIF lawns and data-URL audio.
+      if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function' && !window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb52AssetRestoreFixed) {
+        const oldRestore = window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel;
+        window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel = function(data, ...args) {
+          const result = oldRestore.call(this, data, ...args);
+          if (data?.lawn) {
+            state.pendingLevelLawnSrc = data.lawn.imageSrc || null;
+            state.pendingLevelMusicSrc = data.lawn.musicSrc || null;
+            applyLawnAndMusicSources(data.lawn.imageSrc, data.lawn.musicSrc, data.lawn.fitMode);
+          }
+          return result;
+        };
+        window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb52AssetRestoreFixed = true;
+      }
+
+      function buildSequentialQueue(events) {
+        const queue = [];
+        (Array.isArray(events) ? events : []).forEach((ev, eventIndex) => {
+          const baseTime = Math.max(0, Number(ev.time) || 0);
+          const count = Math.max(1, Number(ev.count) || 1);
+          const interval = Math.max(0.15, Number(ev.interval) || 1);
+          for (let i = 0; i < count; i++) {
+            queue.push({
+              at: baseTime + i * interval,
+              ev: { ...ev, count: 1 },
+              number: i,
+              eventIndex,
+              done: false
+            });
+          }
+        });
+
+        queue.sort((a, b) => a.at - b.at || a.eventIndex - b.eventIndex || a.number - b.number);
+
+        // Prevent different cards with the same time from dumping a huge pile of zombies at once.
+        const minGlobalGap = 0.18;
+        let lastAt = -999;
+        queue.forEach(item => {
+          if (item.at < lastAt + minGlobalGap) item.at = lastAt + minGlobalGap;
+          lastAt = item.at;
+        });
+        return queue;
+      }
+
+      // Replace level start with a sequential scheduler. This fixes campaign levels and manual starts.
+      if (typeof startLevel === 'function' && !startLevel.pb52SequentialFixed) {
+        startLevel = function() {
+          if (typeof window.enterPlayMode === 'function') window.enterPlayMode('level');
+          applyCurrentLevelAssets();
+
+          const events = (typeof readWaveScript === 'function' ? readWaveScript() : [])
+            .filter(Boolean)
+            .map(ev => ({ ...ev, time: Number(ev.time) || 0, count: Math.max(1, Number(ev.count) || 1), interval: Math.max(0.15, Number(ev.interval) || 1) }))
+            .sort((a, b) => (a.time || 0) - (b.time || 0));
+
+          state.level = {
+            running: true,
+            elapsed: -3,
+            prepare: 3,
+            events: [],
+            queue: buildSequentialQueue(events),
+            started: false,
+            pb52Sequential: true,
+            pb52OriginalEvents: events,
+            pb52LastSpawnElapsed: -999
+          };
+
+          if (typeof showReadyText === 'function') showReadyText('READY');
+          playCurrentMusicFromStart();
+          if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+          toast('Level starting');
+        };
+        startLevel.pb52SequentialFixed = true;
+      }
+
+      if (typeof update === 'function' && !update.pb52SequentialFixed) {
+        const oldUpdate = update;
+        update = function(dt) {
+          const level = state.level;
+          if (!level?.pb52Sequential) return oldUpdate(dt);
+
+          const wasRunning = level.running;
+          // Let the normal simulation update plants/zombies/projectiles, but stop the old wave updater from mass-spawning due items.
+          level.running = false;
+          oldUpdate(dt);
+          level.running = wasRunning;
+
+          if (!level.running || state.paused) return;
+          level.elapsed += dt;
+
+          if (level.elapsed < -2) {
+            if (typeof showReadyText === 'function') showReadyText('READY');
+            return;
+          }
+          if (level.elapsed < -1) {
+            if (typeof showReadyText === 'function') showReadyText('SET');
+            return;
+          }
+          if (level.elapsed < 0) {
+            if (typeof showReadyText === 'function') showReadyText('PREPARE!');
+            return;
+          }
+
+          if (typeof showReadyText === 'function') showReadyText('');
+
+          const queue = (level.queue || []).filter(item => !item.done).sort((a, b) => a.at - b.at);
+          const spawnGap = 0.16;
+          const next = queue[0];
+
+          if (next && level.elapsed >= next.at && level.elapsed >= (level.pb52LastSpawnElapsed || -999) + spawnGap) {
+            next.done = true;
+            level.pb52LastSpawnElapsed = level.elapsed;
+            if (typeof spawnWaveEvent === 'function') spawnWaveEvent(next.ev, next.number || 0);
+          }
+
+          level.queue = (level.queue || []).filter(item => !item.done);
+
+          const enemiesLeft = state.entities.some(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead);
+          if (level.queue.length === 0 && !enemiesLeft) {
+            const hadWaves = Array.isArray(level.pb52OriginalEvents) && level.pb52OriginalEvents.length > 0;
+            if (hadWaves) {
+              level.running = false;
+              if (typeof window.finishPlayMode === 'function') window.finishPlayMode(true);
+              else if (typeof finishPlayMode === 'function') finishPlayMode(true);
+            } else if (level.elapsed > 0.25 && !level.pb52NoWaveToastShown) {
+              level.pb52NoWaveToastShown = true;
+              toast('No wave cards found - add waves or save them to the level');
+            }
+          }
+        };
+        update.pb52SequentialFixed = true;
+      }
+
+      // Campaign map clicks already trigger the Start Level button. This makes sure the loaded level assets are applied first.
+      document.addEventListener('click', e => {
+        const card = e.target?.closest?.('#pbCampaignLevelGrid .pbCampaignLevelCard');
+        if (!card) return;
+        const grid = by('pbCampaignLevelGrid');
+        if (!grid || !grid.contains(card)) return;
+        const cards = [...grid.querySelectorAll('.pbCampaignLevelCard')];
+        const index = cards.indexOf(card);
+        const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+        const level = campaign?.levels?.[index];
+        if (!level) return;
+        state.currentCampaignLevel = level;
+        if (level.world?.lawn) {
+          state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+          state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+          setTimeout(() => applyCurrentLevelAssets(level), 0);
+        }
+      }, true);
+
+      window.ProjectBuild5_2SequentialWavesAndAssets = {
+        version: '5.2-sequential-waves-assets-fix',
+        applyCurrentLevelAssets,
+        buildSequentialQueue,
+        state
+      };
+
+      toast('5.2 level timing and lawn/music fix loaded');
+    }
+
+    installProjectBuild5_2_SequentialWavesAndLevelAssetFix();
+
+
+    function installProjectBuild5_2_EmergencyStartFix() {
+      const by = id => document.getElementById(id);
+      const toast = text => { try { showToast(text); } catch { console.log(text); } };
+
+      function pb52ShowReady(text) {
+        try { if (typeof showReadyText === 'function') showReadyText(text); } catch {}
+        const overlay = by('readyOverlay');
+        if (overlay) {
+          overlay.textContent = text || '';
+          overlay.style.display = text ? 'flex' : 'none';
+        }
+      }
+
+      function pb52NormalizeWaveEvents(events) {
+        return (Array.isArray(events) ? events : [])
+          .filter(Boolean)
+          .map((ev, eventIndex) => ({
+            ...ev,
+            _eventIndex: eventIndex,
+            time: Math.max(0, Number(ev.time) || 0),
+            count: Math.max(1, Number(ev.count) || 1),
+            interval: Math.max(0.05, Number(ev.interval) || 0.05)
+          }))
+          .sort((a, b) => a.time - b.time || a._eventIndex - b._eventIndex);
+      }
+
+      function pb52ReadLevelScriptNow() {
+        const modalRaw = by('levelScriptModal')?.value?.trim();
+        const sidebarRaw = by('waveScript')?.value?.trim();
+        const raw = modalRaw || sidebarRaw || '[]';
+        if (modalRaw && by('waveScript')) by('waveScript').value = modalRaw;
+        try {
+          const parsed = JSON.parse(raw || '[]');
+          return Array.isArray(parsed) ? parsed : [];
+        } catch (err) {
+          toast('Wave timing JSON error: ' + err.message);
+          return [];
+        }
+      }
+
+      function pb52BuildQueue(events) {
+        if (window.ProjectBuild5_2FinalTimingAndAssets?.buildExactTimedQueue) {
+          try { return window.ProjectBuild5_2FinalTimingAndAssets.buildExactTimedQueue(events); } catch {}
+        }
+        const queue = [];
+        pb52NormalizeWaveEvents(events).forEach(ev => {
+          for (let i = 0; i < ev.count; i++) {
+            queue.push({
+              at: ev.time + i * ev.interval,
+              ev: { ...ev, count: 1 },
+              number: i,
+              eventIndex: ev._eventIndex,
+              done: false
+            });
+          }
+        });
+        queue.sort((a, b) => a.at - b.at || a.eventIndex - b.eventIndex || a.number - b.number);
+        return queue;
+      }
+
+      function pb52ApplyLevelAssetsAfterStart(level) {
+        const api = window.ProjectBuild5_2FinalTimingAndAssets;
+        Promise.resolve()
+          .then(() => api?.collectAndApplyCurrentLevelAssets?.(level || state.currentCampaignLevel))
+          .then(() => {
+            const musicEl = by('music');
+            if (musicEl && state.lawn?.musicSrc) {
+              try {
+                if (musicEl.src !== state.lawn.musicSrc) musicEl.src = state.lawn.musicSrc;
+                musicEl.currentTime = 0;
+                const playPromise = musicEl.play();
+                if (playPromise?.catch) playPromise.catch(() => {});
+              } catch {}
+            }
+          })
+          .catch(err => {
+            console.warn('PB5.2 level asset apply failed after start:', err);
+            toast('Level started, but lawn/music had an error');
+          });
+      }
+
+      function pb52StartLevelForReal(e, level = state.currentCampaignLevel) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+
+        try { if (typeof window.enterPlayMode === 'function') window.enterPlayMode('level'); }
+        catch { try { if (typeof enterPlayMode === 'function') enterPlayMode('level'); } catch {} }
+
+        const events = pb52ReadLevelScriptNow();
+        const queue = pb52BuildQueue(events);
+        state.level = {
+          running: true,
+          elapsed: -3,
+          prepare: 3,
+          events: [],
+          queue,
+          started: false,
+          pb52FinalTiming: true,
+          pb52EmergencyStartFix: true,
+          pb52OriginalEvents: pb52NormalizeWaveEvents(events)
+        };
+
+        pb52ShowReady('READY');
+        toast(queue.length ? 'Level starting' : 'Level starting - no wave cards');
+        try { if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets(); } catch {}
+        pb52ApplyLevelAssetsAfterStart(level);
+        return false;
+      }
+
+      function pb52LoadCampaignLevelThenStart(level, e) {
+        if (!level) return false;
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+
+        state.currentCampaignLevel = level;
+        if (level.world?.lawn) {
+          state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+          state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+        }
+
+        if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function') {
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel(level.world);
+        } else if (typeof restoreWorldSnapshotForLevel === 'function') {
+          restoreWorldSnapshotForLevel(level.world);
+        }
+
+        const script = Array.isArray(level.world?.levelScript) ? level.world.levelScript : [];
+        const text = JSON.stringify(script, null, 2);
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+        try { if (typeof applyCampaignLevelToBuilderFields === 'function') applyCampaignLevelToBuilderFields(level); } catch {}
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+
+        const modal = by('pbCampaignModal');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
+        setTimeout(() => pb52StartLevelForReal(null, level), 0);
+        return false;
+      }
+
+      // Capture-phase handlers beat the older onclick handlers and prevent the load-only bug.
+      ['startLevel', 'levelStart'].forEach(id => {
+        const btn = by(id);
+        if (!btn || btn.dataset.pb52EmergencyStartFixed) return;
+        btn.dataset.pb52EmergencyStartFixed = '1';
+        btn.onclick = e => pb52StartLevelForReal(e);
+        btn.addEventListener('click', e => pb52StartLevelForReal(e), true);
+      });
+
+      document.addEventListener('click', e => {
+        const card = e.target?.closest?.('#pbCampaignLevelGrid .pbCampaignLevelCard');
+        if (!card) return;
+        const grid = by('pbCampaignLevelGrid');
+        if (!grid || !grid.contains(card)) return;
+        const cards = [...grid.querySelectorAll('.pbCampaignLevelCard')];
+        const index = cards.indexOf(card);
+        const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+        const level = campaign?.levels?.[index];
+        if (!level) return;
+        pb52LoadCampaignLevelThenStart(level, e);
+      }, true);
+
+      if (typeof renderCampaignMap === 'function' && !renderCampaignMap.pb52EmergencyStartFixed) {
+        const oldRender = renderCampaignMap;
+        renderCampaignMap = function(...args) {
+          const result = oldRender.apply(this, args);
+          const grid = by('pbCampaignLevelGrid');
+          const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+          if (grid && campaign?.levels) {
+            [...grid.querySelectorAll('.pbCampaignLevelCard')].forEach((card, index) => {
+              const level = campaign.levels[index];
+              if (!level) return;
+              card.onclick = e => pb52LoadCampaignLevelThenStart(level, e);
+            });
+          }
+          return result;
+        };
+        renderCampaignMap.pb52EmergencyStartFixed = true;
+        try { renderCampaignMap(); } catch {}
+      }
+
+      window.ProjectBuild5_2EmergencyStartFix = {
+        version: '5.2-emergency-ready-set-prepare-start-fix',
+        startLevel: pb52StartLevelForReal,
+        startCampaignLevel: pb52LoadCampaignLevelThenStart
+      };
+
+      toast('5.2 READY/SET/PREPARE start fix loaded');
+    }
+
+    installProjectBuild5_2_EmergencyStartFix();
+
+
+    function installProjectBuild5_2_ZombieDrawerFinalFix() {
+      const by = id => document.getElementById(id);
+
+      // Final CSS wins over the older 5.1 rule that re-opened the zombie drawer
+      // while pbPlayMode + pbLevelBeaten were both on the body.
+      if (!by('pb52ZombieDrawerFinalStyle')) {
+        const style = document.createElement('style');
+        style.id = 'pb52ZombieDrawerFinalStyle';
+        style.textContent = `
+          body.pbPlayMode #pbRightPackets,
+          body.pbPlayMode #pbRightArrow,
+          body.pbPlayMode.pbLevelBeaten #pbRightPackets,
+          body.pbPlayMode.pbLevelBeaten #pbRightArrow {
+            transform: translateX(125%) !important;
+            pointer-events: none !important;
+            opacity: 0 !important;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // When the selected packet is a zombie/boss and the game is NOT in play mode,
+      // force canvas placement through the current placeEntityAt function. This
+      // bypasses stale handlers left over from play-mode wrappers without double-spawning.
+      const c = by('gameCanvas');
+      if (c && !c.dataset.pb52ZombieDrawerSpawnFix) {
+        c.dataset.pb52ZombieDrawerSpawnFix = '1';
+        c.addEventListener('mousedown', e => {
+          const activePlayMode = !!state.playMode?.active || document.body.classList.contains('pbPlayMode');
+          if (activePlayMode) return;
+          if (state.tool === 'select' || state.tool === 'tilePaint') return;
+          const select = by('templateSelect');
+          const idx = Number(select?.value) || 0;
+          const t = state.templates?.[idx];
+          const side = t?.side || t?.type || state.placeType;
+          if (side !== 'zombie' && side !== 'boss') return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          const m = typeof getMouse === 'function' ? getMouse(e) : (() => {
+            const r = c.getBoundingClientRect();
+            return { x: (e.clientX - r.left) * (c.width / r.width), y: (e.clientY - r.top) * (c.height / r.height) };
+          })();
+          state.placeType = side === 'boss' ? 'boss' : 'zombie';
+          const typeSel = by('placeType');
+          if (typeSel) typeSel.value = state.placeType;
+          if (typeof placeEntityAt === 'function') {
+            placeEntityAt(m);
+            showToast(`${t?.name || 'Zombie'} spawned`);
+          }
+        }, true);
+      }
+
+      // Keep packet clicks useful: zombie drawer packets select zombie placement only
+      // while play mode is off. In play mode, the drawer is hidden and ignored.
+      const right = by('pbRightPackets');
+      if (right && !right.dataset.pb52ZombiePacketSelectFix) {
+        right.dataset.pb52ZombiePacketSelectFix = '1';
+        right.addEventListener('click', e => {
+          if (state.playMode?.active || document.body.classList.contains('pbPlayMode')) return;
+          const packet = e.target.closest?.('.pbPacket');
+          if (!packet || !right.contains(packet)) return;
+          const idx = Number(packet.dataset.index) || 0;
+          const t = state.templates?.[idx];
+          const side = t?.side || t?.type;
+          if (side !== 'zombie' && side !== 'boss') return;
+          const sel = by('templateSelect');
+          if (sel) sel.value = String(idx);
+          state.placeType = side === 'boss' ? 'boss' : 'zombie';
+          const typeSel = by('placeType');
+          if (typeSel) typeSel.value = state.placeType;
+          state.tool = 'place';
+          c && (c.style.cursor = 'crosshair');
+        }, true);
+      }
+
+      window.ProjectBuild5_2ZombieDrawerFinalFix = { version: '5.2-zombie-drawer-final-fix' };
+    }
+
+    installProjectBuild5_2_ZombieDrawerFinalFix();
+
+
+
+    function installProjectBuild5_2_Base64CampaignExportFix() {
+      const by = id => document.getElementById(id);
+      const toast = text => { try { showToast(text); } catch { console.log(text); } };
+
+      function isDefaultLawnSrc(src) {
+        const value = String(src || '').trim();
+        return !value || /^main\.png(?:[?#].*)?$/i.test(value) || /\/main\.png(?:[?#].*)?$/i.test(value);
+      }
+
+      function isDefaultMusicSrc(src) {
+        const value = String(src || '').trim();
+        return !value || /^main\.mp3(?:[?#].*)?$/i.test(value) || /\/main\.mp3(?:[?#].*)?$/i.test(value);
+      }
+
+      function isEmbeddedAsset(src) {
+        return /^data:/i.test(String(src || '').trim());
+      }
+
+      function firstEmbeddedOrReal(kind, ...values) {
+        const isDefault = kind === 'music' ? isDefaultMusicSrc : isDefaultLawnSrc;
+        for (const value of values) {
+          const src = String(value || '').trim();
+          if (src && isEmbeddedAsset(src)) return src;
+        }
+        for (const value of values) {
+          const src = String(value || '').trim();
+          if (src && !isDefault(src)) return src;
+        }
+        return null;
+      }
+
+      function readFileInputAsDataURL(id) {
+        const input = by(id);
+        const file = input?.files?.[0];
+        if (!file) return Promise.resolve(null);
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => reject(reader.error || new Error('Could not read ' + id));
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function refreshPendingBase64AssetsFromInputs() {
+        try {
+          const levelLawn = await readFileInputAsDataURL('builderLevelLawn');
+          if (levelLawn) state.pendingLevelLawnSrc = levelLawn;
+        } catch (err) {
+          console.warn('PB5.2 base64 export could not read builder lawn:', err);
+        }
+
+        try {
+          const levelMusic = await readFileInputAsDataURL('builderLevelMusic');
+          if (levelMusic) state.pendingLevelMusicSrc = levelMusic;
+        } catch (err) {
+          console.warn('PB5.2 base64 export could not read builder music:', err);
+        }
+
+        // Fallback for people using the older Main Lawn pickers while making a level.
+        try {
+          const mainLawn = await readFileInputAsDataURL('lawnImage');
+          if (mainLawn && !state.pendingLevelLawnSrc) state.pendingLevelLawnSrc = mainLawn;
+        } catch {}
+
+        try {
+          const mainMusic = await readFileInputAsDataURL('lawnMusic');
+          if (mainMusic && !state.pendingLevelMusicSrc) state.pendingLevelMusicSrc = mainMusic;
+        } catch {}
+      }
+
+      function currentEditedLevelName() {
+        return by('builderLevelName')?.value?.trim()
+          || by('campaignLevelName')?.value?.trim()
+          || state.currentCampaignLevel?.name
+          || '';
+      }
+
+      function getActiveCampaign() {
+        if (!Array.isArray(state.campaigns)) state.campaigns = [];
+        if (!state.campaigns.length) {
+          state.campaigns.push({
+            id: (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())),
+            name: by('builderCampaignName')?.value?.trim() || by('campaignName')?.value?.trim() || 'Custom Campaign',
+            levels: []
+          });
+          state.activeCampaignIndex = 0;
+        }
+        return state.campaigns[state.activeCampaignIndex || 0] || state.campaigns[0];
+      }
+
+      function ensureLevelAssetShape(level) {
+        if (!level || typeof level !== 'object') return null;
+        level.world ||= {};
+        level.world.lawn ||= {};
+        return level.world.lawn;
+      }
+
+      async function bakeBase64AssetsIntoCurrentLevel() {
+        await refreshPendingBase64AssetsFromInputs();
+
+        const campaign = getActiveCampaign();
+        const levelName = currentEditedLevelName();
+        const levels = campaign?.levels || [];
+        let level = state.currentCampaignLevel || null;
+
+        if (levelName) {
+          const named = levels.find(l => l?.name === levelName);
+          if (named) level = named;
+        }
+        if (!level && levels.length) level = levels[levels.length - 1];
+        if (!level) return null;
+
+        const lawn = ensureLevelAssetShape(level);
+        const currentWorldLawn = lawn || {};
+
+        const imageSrc = firstEmbeddedOrReal(
+          'lawn',
+          state.pendingLevelLawnSrc,
+          level.lawnSrc,
+          currentWorldLawn.imageSrc,
+          currentWorldLawn.src,
+          currentWorldLawn.url,
+          state.lawn?.imageSrc
+        );
+
+        const musicSrc = firstEmbeddedOrReal(
+          'music',
+          state.pendingLevelMusicSrc,
+          level.musicSrc,
+          currentWorldLawn.musicSrc,
+          currentWorldLawn.bgmSrc,
+          currentWorldLawn.audioSrc,
+          state.lawn?.musicSrc
+        );
+
+        const fitMode = by('lawnFitMode')?.value || level.fitMode || currentWorldLawn.fitMode || state.lawn?.fitMode || 'fitAll';
+
+        if (imageSrc) {
+          lawn.imageSrc = imageSrc;
+          level.lawnSrc = imageSrc;
+          state.pendingLevelLawnSrc = imageSrc;
+        } else {
+          delete lawn.imageSrc;
+          delete level.lawnSrc;
+        }
+
+        if (musicSrc) {
+          lawn.musicSrc = musicSrc;
+          level.musicSrc = musicSrc;
+          state.pendingLevelMusicSrc = musicSrc;
+        } else {
+          delete lawn.musicSrc;
+          delete level.musicSrc;
+        }
+
+        lawn.fitMode = fitMode;
+        level.fitMode = fitMode;
+        return level;
+      }
+
+      function cloneForExport(value) {
+        return JSON.parse(JSON.stringify(value || null));
+      }
+
+      function scrubDefaultMainAssetsFromLevel(level) {
+        if (!level || typeof level !== 'object') return level;
+        level.world ||= {};
+        level.world.lawn ||= {};
+        const lawn = level.world.lawn;
+
+        const fixedLawn = firstEmbeddedOrReal('lawn', level.lawnSrc, lawn.imageSrc, lawn.src, lawn.url);
+        const fixedMusic = firstEmbeddedOrReal('music', level.musicSrc, lawn.musicSrc, lawn.bgmSrc, lawn.audioSrc);
+
+        if (fixedLawn) {
+          level.lawnSrc = fixedLawn;
+          lawn.imageSrc = fixedLawn;
+        } else {
+          delete level.lawnSrc;
+          delete lawn.imageSrc;
+          delete lawn.src;
+          delete lawn.url;
+        }
+
+        if (fixedMusic) {
+          level.musicSrc = fixedMusic;
+          lawn.musicSrc = fixedMusic;
+        } else {
+          delete level.musicSrc;
+          delete lawn.musicSrc;
+          delete lawn.bgmSrc;
+          delete lawn.audioSrc;
+        }
+
+        lawn.fitMode = level.fitMode || lawn.fitMode || 'fitAll';
+        level.fitMode = lawn.fitMode;
+        return level;
+      }
+
+      function scrubDefaultMainAssetsFromCampaign(campaign) {
+        if (!campaign || typeof campaign !== 'object') return campaign;
+        campaign.levels ||= [];
+        campaign.levels.forEach(scrubDefaultMainAssetsFromLevel);
+        return campaign;
+      }
+
+      function downloadJSONFixed(filename, data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          URL.revokeObjectURL(a.href);
+          a.remove();
+        }, 500);
+      }
+
+      async function exportCurrentCampaignBase64(e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+
+        await bakeBase64AssetsIntoCurrentLevel();
+
+        const campaign = scrubDefaultMainAssetsFromCampaign(cloneForExport(getActiveCampaign()));
+        const name = (campaign?.name || 'project-build-campaign').replace(/[^\w-]+/g, '_');
+        downloadJSONFixed(`${name}.projectbuild-campaign.json`, {
+          version: '5.2-base64-campaign-assets',
+          type: 'project-build-campaign',
+          campaign
+        });
+        toast('Campaign exported with embedded base64 lawn/music');
+        return false;
+      }
+
+      async function exportAllCampaignsBase64(e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+
+        await bakeBase64AssetsIntoCurrentLevel();
+
+        const campaigns = cloneForExport(state.campaigns || []).map(scrubDefaultMainAssetsFromCampaign);
+        downloadJSONFixed('project-build-campaigns.json', {
+          version: '5.2-base64-campaign-assets',
+          type: 'project-build-campaign-pack',
+          campaigns
+        });
+        toast('All campaigns exported with embedded base64 lawn/music');
+        return false;
+      }
+
+      // Stop the old export handlers first. They were exporting main.png/main.mp3 fallbacks.
+      [
+        ['exportCampaign', exportCurrentCampaignBase64],
+        ['pbCampaignExportOne', exportCurrentCampaignBase64],
+        ['builderExportCampaign', exportCurrentCampaignBase64],
+        ['exportAllCampaigns', exportAllCampaignsBase64]
+      ].forEach(([id, handler]) => {
+        const btn = by(id);
+        if (!btn || btn.dataset.pb52Base64ExportFixed) return;
+        btn.dataset.pb52Base64ExportFixed = '1';
+        btn.addEventListener('click', handler, true);
+      });
+
+      // Keep the snapshot maker from baking defaults into newly saved levels.
+      if (typeof makeWorldSnapshotForLevel === 'function' && !makeWorldSnapshotForLevel.pb52Base64ExportFixed) {
+        const oldMakeWorldSnapshot = makeWorldSnapshotForLevel;
+        makeWorldSnapshotForLevel = function(...args) {
+          const snap = oldMakeWorldSnapshot.apply(this, args) || {};
+          snap.lawn ||= {};
+
+          const imageSrc = firstEmbeddedOrReal(
+            'lawn',
+            state.pendingLevelLawnSrc,
+            state.currentCampaignLevel?.lawnSrc,
+            state.currentCampaignLevel?.world?.lawn?.imageSrc,
+            snap.lawn.imageSrc,
+            state.lawn?.imageSrc
+          );
+
+          const musicSrc = firstEmbeddedOrReal(
+            'music',
+            state.pendingLevelMusicSrc,
+            state.currentCampaignLevel?.musicSrc,
+            state.currentCampaignLevel?.world?.lawn?.musicSrc,
+            snap.lawn.musicSrc,
+            state.lawn?.musicSrc
+          );
+
+          if (imageSrc) snap.lawn.imageSrc = imageSrc;
+          else delete snap.lawn.imageSrc;
+
+          if (musicSrc) snap.lawn.musicSrc = musicSrc;
+          else delete snap.lawn.musicSrc;
+
+          snap.lawn.fitMode = by('lawnFitMode')?.value || snap.lawn.fitMode || state.lawn?.fitMode || 'fitAll';
+          return snap;
+        };
+        makeWorldSnapshotForLevel.pb52Base64ExportFixed = true;
+      }
+
+      window.ProjectBuild5_2Base64CampaignExportFix = {
+        version: '5.2-base64-campaign-export-fix',
+        bakeBase64AssetsIntoCurrentLevel,
+        scrubDefaultMainAssetsFromCampaign,
+        exportCurrentCampaignBase64,
+        exportAllCampaignsBase64
+      };
+    }
+
+    installProjectBuild5_2_Base64CampaignExportFix();
+
+
+    renderAbilityPills();
         setActiveAbilities(active);
       }
 
@@ -4005,7 +5790,7 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
       const oldSerializable45 = serializableState;
       serializableState = function() {
         const data = oldSerializable45();
-        data.version = '4.5';
+        data.version = '5.2';
         data.boostTemplates = state.boostTemplates || [];
         data.boostCurrency = state.boostCurrency || 0;
         data.plantFood = state.plantFood || 0;
@@ -4054,8 +5839,8 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
 
 
     function installProjectBuild4_5_Rectified() {
-      document.title = 'Project: BUILD 4.5';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.5');
+      document.title = 'Project: BUILD 5.2';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.2');
       const safeGet = id => document.getElementById(id);
       const plantTemplates = () => state.templates.filter(t => (t.side === 'plant' || t.type === 'plant') && t.name);
       const enemyTemplates = () => state.templates.filter(t => ['zombie','boss'].includes(t.side) || ['zombie','boss','gargantuar'].includes(t.role) || /garg|boss|zombie/i.test(t.name || ''));
@@ -4391,13 +6176,1841 @@ if (self.side === 'boss' && self.age > 3 && self.scriptTimer('summon', 4)) {
     }
 
 
+
+    function installProjectBuildCampaignMode() {
+      // Remove the visible scripting interface from 4.5 and prevent saved scripts from doing anything.
+      const scriptText = document.getElementById('scriptText');
+      const spawnScriptText = document.getElementById('spawnScriptText');
+      if (scriptText) scriptText.value = '';
+      if (spawnScriptText) spawnScriptText.value = '';
+
+      if (!state.campaigns) state.campaigns = [];
+      if (typeof state.activeCampaignIndex !== 'number') state.activeCampaignIndex = 0;
+      state.pendingCampaignIconSrc = state.pendingCampaignIconSrc || null;
+
+      const extraCampaignAbilities = [
+        'campaignLockedLevel','campaignUnlockNext','campaignGimmickTimer','campaignGimmickStorm','campaignGimmickLowGravity',
+        'campaignGimmickFog','campaignGimmickNoSun','campaignGimmickFastNight','campaignGimmickTide','campaignGimmickMeteor',
+        'campaignRestrictPlants','campaignRestrictZombies','campaignBonusObjective','campaignStarReward','campaignSecretLevel',
+        'plantCampaignBoosted','plantCampaignStarter','zombieCampaignElite','zombieCampaignAmbush','bossCampaignFinale',
+        'objectCampaignGoal','objectCampaignGate','objectCampaignRelic','objectCampaignSpawnerLock','objectCampaignCheckpoint'
+      ];
+      extraCampaignAbilities.forEach(a => { if (!abilityList.includes(a)) abilityList.push(a); });
+
+      const safe = id => document.getElementById(id);
+      const selectedNames = sel => sel ? [...sel.selectedOptions].map(o => o.value).filter(Boolean) : [];
+      const templateNamesBySide = sides => state.templates.filter(t => sides.includes(t.side)).map(t => t.name);
+
+      function stripRuntimeEntity(e) {
+        return typeof serializableEntity === 'function' ? serializableEntity(e) : { ...e };
+      }
+
+      function makeWorldSnapshotForLevel() {
+        const snap = typeof serializableState === 'function' ? serializableState() : {};
+        return {
+          ...snap,
+          campaigns: undefined,
+          entities: state.entities.map(stripRuntimeEntity),
+          projectiles: [],
+          collectibles: [],
+          particles: []
+        };
+      }
+
+      function restoreWorldSnapshotForLevel(data) {
+        if (!data) return;
+        state.lawn = { ...state.lawn, ...(data.lawn || {}) };
+        state.grid = { ...state.grid, ...(data.grid || {}) };
+        state.display = { ...state.display, ...(data.display || {}) };
+        if (data.templates) state.templates = data.templates;
+        state.entities = (data.entities || []).map(e => ({
+          ...e,
+          image: makeImage(e.imageSrc),
+          gifEl: makeGifElement(e.imageSrc),
+          idleImage: makeImage(e.idleSrc || e.imageSrc),
+          actionImage: makeImage(e.actionSrc),
+          deathImage: makeImage(e.deathSrc),
+          idleGifEl: makeGifElement(e.idleSrc || e.imageSrc),
+          actionGifEl: makeGifElement(e.actionSrc),
+          deathGifEl: makeGifElement(e.deathSrc),
+          dataTimers: {},
+          visualState: 'idle',
+          actionUntil: 0,
+          deathUntil: 0,
+          dead: false,
+          script: '',
+          spawnScript: ''
+        }));
+        state.projectiles = [];
+        state.collectibles = [];
+        state.particles = [];
+        state.nextId = Math.max(1, ...state.entities.map(e => Number(e.id) || 1)) + 1;
+        if (typeof syncGridInputs === 'function') syncGridInputs();
+        if (typeof syncDisplayButtons === 'function') syncDisplayButtons();
+        const fit = safe('lawnFitMode');
+        if (fit) fit.value = state.lawn.fitMode || 'fitAll';
+        state.lawn.image = makeImage(state.lawn.imageSrc);
+        setGifLawn(state.lawn.imageSrc);
+        applyGifLawnFit();
+        if (state.lawn.musicSrc) music.src = state.lawn.musicSrc;
+        refreshTemplates();
+        if (typeof refreshPacketBars === 'function') refreshPacketBars();
+      }
+
+      function ensureCampaign() {
+        if (!state.campaigns.length) {
+          state.campaigns.push({
+            id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()),
+            name: safe('campaignName')?.value || 'Custom Campaign',
+            levels: []
+          });
+          state.activeCampaignIndex = 0;
+        }
+        return state.campaigns[state.activeCampaignIndex] || state.campaigns[0];
+      }
+
+      function refreshCampaignSelects() {
+        const campSel = safe('campaignSelect');
+        if (campSel) {
+          campSel.innerHTML = '';
+          state.campaigns.forEach((c, i) => {
+            const opt = document.createElement('option');
+            opt.value = String(i);
+            opt.textContent = c.name || `Campaign ${i + 1}`;
+            campSel.appendChild(opt);
+          });
+          campSel.value = String(Math.min(state.activeCampaignIndex || 0, Math.max(0, state.campaigns.length - 1)));
+        }
+
+        const plantSel = safe('campaignPlantSelect');
+        const zombieSel = safe('campaignZombieSelect');
+        if (plantSel) {
+          const prev = new Set(selectedNames(plantSel));
+          plantSel.innerHTML = '';
+          state.templates.filter(t => t.side === 'plant').forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.name;
+            opt.textContent = t.name;
+            opt.selected = prev.size ? prev.has(t.name) : true;
+            plantSel.appendChild(opt);
+          });
+        }
+        if (zombieSel) {
+          const prev = new Set(selectedNames(zombieSel));
+          zombieSel.innerHTML = '';
+          state.templates.filter(t => t.side === 'zombie' || t.side === 'boss').forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.name;
+            opt.textContent = `${t.name} (${t.side})`;
+            opt.selected = prev.size ? prev.has(t.name) : true;
+            zombieSel.appendChild(opt);
+          });
+        }
+        const c = ensureCampaign();
+        if (safe('campaignName')) safe('campaignName').value = c.name || '';
+      }
+
+      function renderCampaignMap() {
+        const c = ensureCampaign();
+        const title = safe('pbCampaignTitle');
+        const grid = safe('pbCampaignLevelGrid');
+        if (title) title.textContent = c.name || 'custom campaign';
+        if (!grid) return;
+        grid.innerHTML = '';
+        const levels = c.levels || [];
+        levels.forEach((level, i) => {
+          const card = document.createElement('div');
+          card.className = 'pbCampaignLevelCard';
+          card.title = `${level.name || 'Level'}\n${level.gimmick || ''}`;
+          const icon = document.createElement('div');
+          icon.className = 'pbCampaignLevelIcon';
+          if (level.iconSrc) {
+            const img = document.createElement('img');
+            img.src = level.iconSrc;
+            img.alt = '';
+            icon.appendChild(img);
+          } else {
+            const q = document.createElement('div');
+            q.className = 'pbCampaignQuestion';
+            q.textContent = '?';
+            icon.appendChild(q);
+          }
+          const name = document.createElement('div');
+          name.className = 'pbCampaignLevelName';
+          name.textContent = level.name || `Level ${i + 1}`;
+          card.appendChild(icon);
+          card.appendChild(name);
+          card.onclick = e => {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            if (typeof window.ProjectBuild5_2MapStart?.startCampaignLevel === 'function') {
+              window.ProjectBuild5_2MapStart.startCampaignLevel(level);
+            } else {
+              restoreWorldSnapshotForLevel(level.world);
+              closeCampaignMap();
+              const startBtn = document.getElementById('startLevel');
+              if (startBtn) startBtn.click();
+              else if (typeof startLevel === 'function') startLevel();
+            }
+          };
+          grid.appendChild(card);
+        });
+
+        const addCard = document.createElement('div');
+        addCard.className = 'pbCampaignLevelCard';
+        addCard.innerHTML = '<div class="pbCampaignLevelIcon"><div class="pbCampaignQuestion">+</div></div><div class="pbCampaignLevelName">Add Current</div>';
+        addCard.onclick = addOrUpdateCampaignLevel;
+        grid.appendChild(addCard);
+      }
+
+      function openCampaignMap() {
+        refreshCampaignSelects();
+        renderCampaignMap();
+        const modal = safe('pbCampaignModal');
+        if (modal) {
+          modal.classList.add('open');
+          modal.setAttribute('aria-hidden', 'false');
+        }
+      }
+
+      function closeCampaignMap() {
+        const modal = safe('pbCampaignModal');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+      }
+
+      function addOrUpdateCampaignLevel() {
+        const c = ensureCampaign();
+        c.name = safe('campaignName')?.value || c.name || 'Custom Campaign';
+        const levelName = safe('campaignLevelName')?.value || `Level ${(c.levels?.length || 0) + 1}`;
+        const existingIndex = (c.levels || []).findIndex(l => l.name === levelName);
+        if (existingIndex >= 0 && !confirm(`Update existing level "${levelName}"?`)) return;
+        const level = {
+          id: existingIndex >= 0 ? c.levels[existingIndex].id : (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())),
+          name: levelName,
+          iconSrc: state.pendingCampaignIconSrc || (existingIndex >= 0 ? c.levels[existingIndex].iconSrc : null),
+          gimmick: safe('campaignLevelGimmick')?.value || '',
+          allowedPlants: selectedNames(safe('campaignPlantSelect')),
+          allowedZombies: selectedNames(safe('campaignZombieSelect')),
+          world: makeWorldSnapshotForLevel(),
+          createdAt: new Date().toISOString()
+        };
+        c.levels ||= [];
+        if (existingIndex >= 0) c.levels[existingIndex] = level;
+        else c.levels.push(level);
+        state.pendingCampaignIconSrc = null;
+        refreshCampaignSelects();
+        renderCampaignMap();
+        showToast(`Saved campaign level: ${levelName}`);
+      }
+
+      function deleteCampaignLevel() {
+        const c = ensureCampaign();
+        const levelName = safe('campaignLevelName')?.value;
+        if (!levelName) return showToast('Type a level name to delete');
+        const idx = (c.levels || []).findIndex(l => l.name === levelName);
+        if (idx < 0) return showToast('No campaign level with that name');
+        if (!confirm(`Delete level "${levelName}" from this campaign?`)) return;
+        c.levels.splice(idx, 1);
+        renderCampaignMap();
+        showToast('Campaign level deleted');
+      }
+
+      function downloadJSON(name, data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = name;
+        a.click();
+      }
+
+      function exportCurrentCampaign() {
+        const c = ensureCampaign();
+        downloadJSON(`${(c.name || 'project-build-campaign').replace(/[^\w-]+/g, '_')}.projectbuild-campaign.json`, {
+          version: '5.1-play-campaign',
+          type: 'project-build-campaign',
+          campaign: c
+        });
+      }
+
+      safe('campaignLevelIcon')?.addEventListener('change', async e => {
+        state.pendingCampaignIconSrc = await fileToDataURL(e.target.files[0]);
+        showToast('Level icon loaded');
+      });
+      safe('campaignSelect')?.addEventListener('change', e => {
+        state.activeCampaignIndex = Number(e.target.value) || 0;
+        refreshCampaignSelects();
+        renderCampaignMap();
+      });
+      safe('newCampaign')?.addEventListener('click', () => {
+        const name = prompt('New campaign name?', safe('campaignName')?.value || 'New Campaign');
+        if (!name) return;
+        state.campaigns.push({ id: crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()), name, levels: [] });
+        state.activeCampaignIndex = state.campaigns.length - 1;
+        refreshCampaignSelects();
+        renderCampaignMap();
+      });
+      safe('saveCampaignMeta')?.addEventListener('click', () => {
+        const c = ensureCampaign();
+        c.name = safe('campaignName')?.value || c.name;
+        refreshCampaignSelects();
+        renderCampaignMap();
+        showToast('Campaign name saved');
+      });
+      safe('addCampaignLevel')?.addEventListener('click', addOrUpdateCampaignLevel);
+      safe('deleteCampaignLevel')?.addEventListener('click', deleteCampaignLevel);
+      safe('openCampaignMap')?.addEventListener('click', openCampaignMap);
+      safe('pbCampaignBack')?.addEventListener('click', closeCampaignMap);
+      safe('pbCampaignExportOne')?.addEventListener('click', exportCurrentCampaign);
+      safe('exportCampaign')?.addEventListener('click', exportCurrentCampaign);
+      safe('exportAllCampaigns')?.addEventListener('click', () => downloadJSON('project-build-campaigns.json', {
+        version: '5.1-play-campaign',
+        type: 'project-build-campaign-pack',
+        campaigns: state.campaigns || []
+      }));
+      safe('importCampaign')?.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(reader.result);
+            if (data.campaign) state.campaigns.push(data.campaign);
+            else if (Array.isArray(data.campaigns)) state.campaigns.push(...data.campaigns);
+            else throw new Error('No campaign data found');
+            state.activeCampaignIndex = Math.max(0, state.campaigns.length - 1);
+            refreshCampaignSelects();
+            renderCampaignMap();
+            showToast('Campaign imported');
+          } catch (err) {
+            showToast('Campaign import failed: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      // Repurpose the bottom level button as a visible campaign/level access point too.
+      const bottom = safe('pbBottomLevel');
+      if (bottom) {
+        bottom.textContent = 'LEVEL EDITOR / CAMPAIGN';
+        bottom.ondblclick = openCampaignMap;
+      }
+
+      // Confirm tab refresh/close when there is meaningful work in memory.
+      window.addEventListener('beforeunload', e => {
+        if ((state.entities && state.entities.length) || (state.campaigns && state.campaigns.length)) {
+          e.preventDefault();
+          e.returnValue = '';
+        }
+      });
+
+      // Confirm updating existing templates.
+      const saveBtn = safe('saveTemplate');
+      if (saveBtn && !saveBtn.dataset.pbConfirmInstalled) {
+        saveBtn.dataset.pbConfirmInstalled = '1';
+        saveBtn.addEventListener('click', e => {
+          const name = safe('entityName')?.value || '';
+          const exists = state.templates.some(t => t.name === name);
+          if (exists && !confirm(`Update the existing template "${name}"?`)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }, true);
+      }
+
+      // Strip script fields when templates/worlds are saved.
+      const oldGetTemplateForCampaign = getTemplateForm;
+      getTemplateForm = function() {
+        const t = oldGetTemplateForCampaign();
+        t.script = '';
+        t.spawnScript = '';
+        return t;
+      };
+      const oldSerializableCampaign = serializableState;
+      serializableState = function() {
+        const data = oldSerializableCampaign();
+        data.version = '4.5-campaign';
+        data.campaigns = state.campaigns || [];
+        if (data.templates) data.templates = data.templates.map(t => ({ ...t, script: '', spawnScript: '' }));
+        if (data.entities) data.entities = data.entities.map(e => ({ ...e, script: '', spawnScript: '' }));
+        return data;
+      };
+
+      const oldRefreshTemplatesCampaign = refreshTemplates;
+      refreshTemplates = function() {
+        oldRefreshTemplatesCampaign();
+        refreshCampaignSelects();
+      };
+
+      // No script execution in this build.
+      if (typeof runScript === 'function') runScript = function() { return; };
+
+      refreshCampaignSelects();
+      renderCampaignMap();
+
+      window.ProjectBuildCampaigns = {
+        version: '5.1-play-campaign',
+        state,
+        openCampaignMap,
+        addOrUpdateCampaignLevel,
+        exportCurrentCampaign,
+        restoreWorldSnapshotForLevel
+      };
+    }
+
+
+
+    function installProjectBuild5_1() {
+      state.buildVersion = '5.1';
+      state.playMode = state.playMode || { active: false, levelBeat: false, startedAt: 0 };
+      const byId51 = id => document.getElementById(id);
+
+      const badge = byId51('pbPlayModeBadge');
+      function setPlayBadge(text) {
+        const b = byId51('pbPlayModeBadge');
+        if (b) b.textContent = text || 'PLAY MODE';
+      }
+
+      function enterPlayMode(reason = 'level') {
+        state.playMode = { active: true, levelBeat: false, reason, startedAt: state.worldTime || 0 };
+        document.body.classList.add('pbPlayMode');
+        document.body.classList.remove('pbLevelBeaten');
+        if (app) app.classList.add('sidebar-collapsed');
+        if (sidebarToggle) {
+          sidebarToggle.title = 'Makers disabled during play mode';
+          sidebarToggle.setAttribute('aria-label', 'Makers disabled during play mode');
+        }
+        state.tool = 'place';
+        canvas.style.cursor = 'crosshair';
+        setPlayBadge('PLAY MODE');
+        showToast('Play mode started');
+        setTimeout(() => { if (typeof resizeCanvas === 'function') resizeCanvas(); }, 260);
+      }
+
+      function exitPlayMode() {
+        state.playMode = { active: false, levelBeat: false, reason: '', startedAt: 0 };
+        document.body.classList.remove('pbPlayMode', 'pbLevelBeaten');
+        if (sidebarToggle) {
+          sidebarToggle.title = 'Hide toolbar';
+          sidebarToggle.setAttribute('aria-label', 'Hide toolbar');
+        }
+        showToast('Play mode ended');
+      }
+
+      function finishPlayMode(won = true) {
+        // A beaten/ended level is no longer active play mode. This prevents the
+        // zombie drawer from being half-unlocked while the play-mode canvas blocker
+        // is still active.
+        if (!state.playMode?.active && !document.body.classList.contains('pbPlayMode')) return;
+        state.playMode = { active: false, levelBeat: !!won, reason: '', startedAt: state.playMode?.startedAt || 0 };
+        document.body.classList.remove('pbPlayMode');
+        document.body.classList.add('pbLevelBeaten');
+        if (app) app.classList.remove('sidebar-collapsed');
+        if (sidebarToggle) {
+          sidebarToggle.title = 'Hide toolbar';
+          sidebarToggle.setAttribute('aria-label', 'Hide toolbar');
+        }
+        setPlayBadge(won ? 'LEVEL BEAT' : 'PLAY MODE');
+        showToast(won ? 'Level beaten - zombie packets unlocked' : 'Level ended');
+      }
+
+      window.finishPlayMode = finishPlayMode;
+      window.enterPlayMode = enterPlayMode;
+      window.exitPlayMode = exitPlayMode;
+
+      // Start Level always enters play mode.
+      if (typeof startLevel === 'function' && !startLevel.pb51Wrapped) {
+        const oldStartLevel51 = startLevel;
+        startLevel = function(...args) {
+          enterPlayMode('level');
+          return oldStartLevel51.apply(this, args);
+        };
+        startLevel.pb51Wrapped = true;
+      }
+
+      if (typeof stopLevel === 'function' && !stopLevel.pb51Wrapped) {
+        const oldStopLevel51 = stopLevel;
+        stopLevel = function(...args) {
+          const result = oldStopLevel51.apply(this, args);
+          exitPlayMode();
+          return result;
+        };
+        stopLevel.pb51Wrapped = true;
+      }
+
+      // If any older click handlers captured pre-wrapper references, force buttons through the wrapped functions.
+      const startBtn = byId51('startLevel');
+      if (startBtn) startBtn.addEventListener('click', () => setTimeout(() => { if (!state.playMode?.active && state.level?.running) enterPlayMode('level'); }, 0), true);
+      const levelStartBtn = byId51('levelStart');
+      if (levelStartBtn) levelStartBtn.addEventListener('click', () => setTimeout(() => { if (!state.playMode?.active && state.level?.running) enterPlayMode('level'); }, 0), true);
+
+      // Save To Campaign from the level editor.
+      function saveCurrentLevelToCampaign() {
+        const modalScript = byId51('levelScriptModal');
+        const sidebarScript = byId51('waveScript');
+        if (modalScript && sidebarScript) sidebarScript.value = modalScript.value;
+        if (typeof window.ProjectBuildCampaigns?.addOrUpdateCampaignLevel === 'function') {
+          window.ProjectBuildCampaigns.addOrUpdateCampaignLevel();
+        } else {
+          byId51('addCampaignLevel')?.click();
+        }
+      }
+
+      byId51('levelSaveToCampaign')?.addEventListener('click', saveCurrentLevelToCampaign);
+      byId51('sidebarSaveLevelToCampaign')?.addEventListener('click', saveCurrentLevelToCampaign);
+
+      // Hide makers while play mode is active. The stage and plant packets stay usable.
+      const oldCanvasMouseDown51 = canvas.onmousedown;
+      canvas.addEventListener('mousedown', e => {
+        if (!state.playMode?.active) return;
+        // In play mode, do not let selected zombie/boss/objects be placed from stale maker state.
+        const idx = Number(byId51('templateSelect')?.value) || 0;
+        const t = state.templates[idx];
+        if (t && (t.side === 'zombie' || t.side === 'boss' || t.side === 'neutral' || t.side === 'npc')) {
+          e.stopImmediatePropagation();
+          showToast('Play mode only allows planting/level play, not maker spawning');
+        }
+      }, true);
+
+      // More reliable win check layered over the existing wave system.
+      const oldUpdate51 = update;
+      update = function(dt) {
+        oldUpdate51(dt);
+        if (state.playMode?.active && state.level && !state.level.running && !state.playMode.levelBeat) {
+          const enemiesLeft = state.entities.some(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead);
+          const queueLeft = state.level.queue && state.level.queue.length > 0;
+          const eventsUnqueued = state.level.events && state.level.events.some(ev => !ev._queued);
+          if (!enemiesLeft && !queueLeft && !eventsUnqueued && (state.level.elapsed || 0) >= 0) {
+            finishPlayMode(true);
+          }
+        }
+      };
+
+      // Campaign level cards now start play mode when a campaign level is loaded.
+      if (window.ProjectBuildCampaigns && typeof window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel === 'function') {
+        const oldRestore51 = window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel;
+        window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel = function(data) {
+          const result = oldRestore51(data);
+          enterPlayMode('campaign');
+          return result;
+        };
+      }
+
+      // Export/save metadata uses 5.1 version tag.
+      if (typeof serializableState === 'function' && !serializableState.pb51Wrapped) {
+        const oldSerializable51 = serializableState;
+        serializableState = function() {
+          const data = oldSerializable51();
+          data.version = '5.1-play-campaign';
+          data.playMode = { active: false, levelBeat: false };
+          return data;
+        };
+        serializableState.pb51Wrapped = true;
+      }
+
+      // Public helpers for testing.
+      window.ProjectBuild5_1 = {
+        version: '5.1',
+        enterPlayMode,
+        exitPlayMode,
+        finishPlayMode,
+        saveCurrentLevelToCampaign,
+        state
+      };
+
+      showToast('Project: BUILD 5.2 base loaded');
+    }
+
+
     installProjectBuild3();
     installProjectBuildLevelTools();
     installProjectBuild4();
     installProjectBuild4_1();
     installProjectBuild4_5();
     installProjectBuild4_5_Rectified();
+    installProjectBuildCampaignMode();
+    installProjectBuild5_1();
 
+    function installProjectBuildFriendlyLevelBuilder() {
+      document.body.classList.add('pbFriendlyBuilderInstalled');
+
+      const by = id => document.getElementById(id);
+      const modal = by('pbLevelModal');
+      if (!modal) return;
+
+      // Hide the old sidebar wave editor but keep its fields alive for compatibility.
+      [...document.querySelectorAll('#sidebar h2')].forEach(h => {
+        const txt = (h.textContent || '').toLowerCase();
+        if (txt.includes('wave scripter') || txt.includes('level editor')) {
+          h.classList.add('pbLegacyLevelEditor');
+          if (h.nextElementSibling) h.nextElementSibling.classList.add('pbLegacyLevelEditor');
+        }
+      });
+
+      modal.classList.add('pbFriendlyBuilderModal');
+      modal.innerHTML = `
+        <div class="pbLevelWindow">
+          <div class="pbBuilderHeader">
+            <div class="pbBuilderTitle">
+              <div class="pbBuilderBadgeIcon">🧭</div>
+              <div>
+                <h2>Friendly Level Builder</h2>
+                <p>Build a playable level with cards, lanes, enemy waves, campaign saves, and no raw JSON editor.</p>
+              </div>
+            </div>
+            <button id="levelModalClose" class="pbBuilderClose" type="button">Close</button>
+          </div>
+
+          <div class="pbBuilderSteps">
+            <div class="pbBuilderStepCard"><div class="pbBuilderStepIcon">🏷️</div><div><b>1. Name it</b><span>Set campaign, level name, icon, and gimmick.</span></div></div>
+            <div class="pbBuilderStepCard"><div class="pbBuilderStepIcon">🧟</div><div><b>2. Add waves</b><span>Pick zombies, lane, time, count, and spacing.</span></div></div>
+            <div class="pbBuilderStepCard"><div class="pbBuilderStepIcon">🌱</div><div><b>3. Pick packets</b><span>Choose allowed plants and enemies for this level.</span></div></div>
+            <div class="pbBuilderStepCard"><div class="pbBuilderStepIcon">▶️</div><div><b>4. Test/save</b><span>Start play mode or save to the campaign map.</span></div></div>
+          </div>
+
+          <div class="pbBuilderGrid">
+            <div class="pbBuilderPanel">
+              <h3>🏷️ Level Card</h3>
+              <label>Campaign Name</label>
+              <input id="builderCampaignName" placeholder="Campaign name" />
+              <label>Level Name</label>
+              <input id="builderLevelName" placeholder="Level name" />
+              <label>Level Gimmick</label>
+              <input id="builderLevelGimmick" placeholder="Example: fog rolls in every 30 seconds" />
+              <label>Level Icon PNG/GIF</label>
+              <input id="builderLevelIcon" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+              <div id="builderIconPreview" class="pbBuilderIconPreview">LEVEL ICON</div>
+              <p class="pbBuilderTiny">This icon is used on the campaign map. GIFs are accepted; browsers decide whether the small preview animates.</p>
+
+              <label>Level Lawn PNG/GIF</label>
+              <input id="builderLevelLawn" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+              <label>Level Music</label>
+              <input id="builderLevelMusic" type="file" accept="audio/*,.mp3,.ogg,.wav" />
+              <div class="pbBuilderAssetRow">
+                <div id="builderLawnPreview" class="pbBuilderAssetPreview"><b>Lawn:</b>&nbsp;uses current lawn</div>
+                <div id="builderMusicPreview" class="pbBuilderAssetPreview"><b>Music:</b>&nbsp;uses current music</div>
+              </div>
+
+              <div class="pbBuilderActions">
+                <button id="builderSaveCampaignMeta" type="button" class="blue">Save Name</button>
+                <button id="builderSaveCampaign" type="button" class="warn">Save To Campaign</button>
+                <button id="builderOpenMap" type="button" class="blue">Open Map</button>
+                <button id="builderExportCampaign" type="button">Export</button>
+              </div>
+            </div>
+
+            <div class="pbBuilderPanel">
+              <h3>🧟 Wave Painter</h3>
+              <label>Enemy Packet</label>
+              <select id="levelZombieSelect"></select>
+
+              <div class="pbBuilderLaneMap" id="builderLaneMap">
+                <button class="pbBuilderLane" data-y="100" type="button">Lane 1</button>
+                <button class="pbBuilderLane" data-y="180" type="button">Lane 2</button>
+                <button class="pbBuilderLane active" data-y="260" type="button">Lane 3</button>
+                <button class="pbBuilderLane" data-y="340" type="button">Lane 4</button>
+                <button class="pbBuilderLane" data-y="420" type="button">Lane 5</button>
+              </div>
+
+              <div class="triple">
+                <div><label>Start Time</label><input id="levelTime" type="number" value="0" step="0.5" /></div>
+                <div><label>Count</label><input id="levelCount" type="number" value="3" min="1" /></div>
+                <div><label>Interval</label><input id="levelInterval" type="number" value="1" step="0.1" /></div>
+              </div>
+              <div class="triple">
+                <div><label>Spawn X</label><input id="levelX" type="number" value="-1" /></div>
+                <div><label>Lane / Y</label><input id="levelY" type="number" value="260" /></div>
+                <div><label>Y Jitter</label><input id="levelJitter" type="number" value="20" /></div>
+              </div>
+
+              <div class="pbBuilderActions">
+                <button id="levelAddSpawn" type="button">+ Add Wave Card</button>
+                <button id="levelSpawnNow" class="blue" type="button">Test Spawn</button>
+                <button id="levelStart" class="warn" type="button">Start Level</button>
+                <button id="levelStop" class="danger" type="button">Stop</button>
+              </div>
+            </div>
+
+            <div class="pbBuilderPanel">
+              <h3>🌱 Plant Selection</h3>
+              <p class="pbBuilderTiny">Click chips to decide which plant packets are legal for this level.</p>
+              <div id="builderPlantChips" class="pbBuilderChipGrid"></div>
+            </div>
+
+            <div class="pbBuilderPanel">
+              <h3>🎬 Wave Timeline</h3>
+              <div id="builderWaveTimeline" class="pbBuilderTimeline"></div>
+              <div class="pbBuilderActions">
+                <button id="levelRefreshLibrary" class="blue" type="button">Refresh Packets</button>
+                <button id="builderSortWaves" type="button">Sort Waves</button>
+                <button id="levelClearScript" class="danger" type="button">Clear Waves</button>
+                <button id="levelSaveToCampaign" class="warn" type="button">Save Level</button>
+              </div>
+            </div>
+
+            <div class="pbBuilderPanel">
+              <h3>🧟 Enemy Cast</h3>
+              <p class="pbBuilderTiny">Click chips to decide which zombies/bosses belong to this level.</p>
+              <div id="builderZombieChips" class="pbBuilderChipGrid"></div>
+            </div>
+
+            <div class="pbBuilderPanel">
+              <h3>📦 Compatibility Data</h3>
+              <p class="pbBuilderTiny">Hidden JSON is still saved internally so old worlds, campaigns, and play mode keep working.</p>
+              <textarea id="levelScriptModal" class="pbBuilderHiddenCompat" placeholder='[]'></textarea>
+            </div>
+          </div>
+
+          <div class="pbBuilderHiddenCompat">
+            <input id="builderCompatDummy" />
+          </div>
+        </div>
+      `;
+
+      const safe = id => document.getElementById(id);
+      const getTemplateIcon = t => t?.idleSrc || t?.imageSrc || t?.actionSrc || t?.deathSrc || '';
+
+      function syncBuilderFromSidebar() {
+        const campName = safe('campaignName')?.value || 'Custom Campaign';
+        const levelName = safe('campaignLevelName')?.value || 'Level 1';
+        const gimmick = safe('campaignLevelGimmick')?.value || '';
+        if (safe('builderCampaignName')) safe('builderCampaignName').value = campName;
+        if (safe('builderLevelName')) safe('builderLevelName').value = levelName;
+        if (safe('builderLevelGimmick')) safe('builderLevelGimmick').value = gimmick;
+        if (safe('levelScriptModal') && safe('waveScript')) safe('levelScriptModal').value = safe('waveScript').value || '[]';
+      }
+
+      function syncSidebarFromBuilder() {
+        if (safe('campaignName') && safe('builderCampaignName')) safe('campaignName').value = safe('builderCampaignName').value || 'Custom Campaign';
+        if (safe('campaignLevelName') && safe('builderLevelName')) safe('campaignLevelName').value = safe('builderLevelName').value || 'Level 1';
+        if (safe('campaignLevelGimmick') && safe('builderLevelGimmick')) safe('campaignLevelGimmick').value = safe('builderLevelGimmick').value || '';
+        if (safe('waveScript') && safe('levelScriptModal')) safe('waveScript').value = safe('levelScriptModal').value || '[]';
+      }
+
+      function readBuilderScript() {
+        const raw = safe('levelScriptModal')?.value || safe('waveScript')?.value || '[]';
+        try {
+          const parsed = JSON.parse(raw || '[]');
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      }
+
+      function writeBuilderScript(events) {
+        const clean = Array.isArray(events) ? events : [];
+        const txt = JSON.stringify(clean, null, 2);
+        if (safe('levelScriptModal')) safe('levelScriptModal').value = txt;
+        if (safe('waveScript')) safe('waveScript').value = txt;
+        renderBuilderTimeline();
+      }
+
+      function refreshBuilderEnemySelect() {
+        const sel = safe('levelZombieSelect');
+        if (!sel) return;
+        const old = sel.value;
+        sel.innerHTML = '';
+        state.templates.filter(t => t.side === 'zombie' || t.side === 'boss').forEach((t, i) => {
+          const opt = document.createElement('option');
+          opt.value = String(state.templates.indexOf(t));
+          opt.textContent = `${t.side === 'boss' ? '👑' : '🧟'} ${t.name}`;
+          sel.appendChild(opt);
+        });
+        if ([...sel.options].some(o => o.value === old)) sel.value = old;
+      }
+
+      function eventFromBuilderControls() {
+        refreshBuilderEnemySelect();
+        const select = safe('levelZombieSelect');
+        let t = null;
+        if (select && select.value !== '') {
+          const idx = Number(select.value);
+          if (Number.isFinite(idx)) t = state.templates[idx] || null;
+          if (!t) t = state.templates.find(x => x.name === select.value) || null;
+        }
+        if (!t || !(t.side === 'zombie' || t.side === 'boss')) {
+          t = state.templates.find(x => x.side === 'zombie' || x.side === 'boss') || null;
+        }
+        if (!t) {
+          showToast('Make or save a zombie/boss template first');
+          return null;
+        }
+        const time = Math.max(0, Number(safe('levelTime')?.value) || 0);
+        const count = Math.max(1, Number(safe('levelCount')?.value) || 1);
+        const interval = Math.max(0.05, Number(safe('levelInterval')?.value) || 1);
+        const rawX = safe('levelX')?.value;
+        const x = rawX === '' || rawX == null ? -1 : Number(rawX);
+        const y = Number(safe('levelY')?.value) || 260;
+        const jitter = Math.max(0, Number(safe('levelJitter')?.value) || 0);
+        return {
+          id: `wave-${Date.now()}-${Math.floor(Math.random() * 99999)}`,
+          time,
+          template: t.name,
+          count,
+          interval,
+          x: Number.isFinite(x) ? x : -1,
+          y,
+          jitter
+        };
+      }
+
+      function renderBuilderTimeline() {
+        const box = safe('builderWaveTimeline');
+        if (!box) return;
+        const events = readBuilderScript().sort((a,b) => (Number(a.time)||0) - (Number(b.time)||0));
+        box.innerHTML = '';
+        if (!events.length) {
+          const empty = document.createElement('div');
+          empty.className = 'pbBuilderEmpty';
+          empty.textContent = 'No waves yet. Pick an enemy, choose a lane, then press + Add Wave Card.';
+          box.appendChild(empty);
+          return;
+        }
+        events.forEach((ev, i) => {
+          const t = state.templates.find(x => x.name === ev.template);
+          const card = document.createElement('div');
+          card.className = 'pbBuilderWaveCard';
+          const icon = document.createElement('div');
+          icon.className = 'pbBuilderWaveIcon';
+          const src = getTemplateIcon(t);
+          if (src) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+            icon.appendChild(img);
+          } else {
+            icon.textContent = t?.side === 'boss' ? '👑' : '🧟';
+          }
+          const copy = document.createElement('div');
+          copy.className = 'pbBuilderWaveText';
+          copy.innerHTML = `<b>${ev.template || 'Enemy Wave'}</b><span>Time ${Number(ev.time || 0).toFixed(1)}s • ${ev.count || 1} enemy(s) • every ${ev.interval || 1}s • lane Y ${ev.y ?? 260}</span>`;
+          const del = document.createElement('button');
+          del.className = 'pbBuilderDeleteWave danger';
+          del.type = 'button';
+          del.textContent = '×';
+          del.title = 'Delete this wave';
+          del.onclick = () => {
+            const current = readBuilderScript();
+            const byId = ev.id ? current.findIndex(x => x && x.id === ev.id) : -1;
+            if (byId >= 0) current.splice(byId, 1);
+            else current.splice(i, 1);
+            writeBuilderScript(current);
+            showToast('Wave card removed');
+          };
+          card.appendChild(icon);
+          card.appendChild(copy);
+          card.appendChild(del);
+          box.appendChild(card);
+        });
+      }
+
+      function mirrorChipSelect(selectId, boxId, templates) {
+        const select = safe(selectId);
+        const box = safe(boxId);
+        if (!select || !box) return;
+        if (!select.options.length) {
+          templates.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.name;
+            opt.textContent = t.name;
+            opt.selected = true;
+            select.appendChild(opt);
+          });
+        }
+        const selected = new Set([...select.selectedOptions].map(o => o.value));
+        box.innerHTML = '';
+        templates.forEach(t => {
+          const chip = document.createElement('span');
+          chip.className = 'pbBuilderChip' + (selected.size === 0 || selected.has(t.name) ? ' active' : '');
+          const src = getTemplateIcon(t);
+          if (src) {
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = '';
+            chip.appendChild(img);
+          } else {
+            chip.appendChild(document.createTextNode(t.side === 'plant' ? '🌱' : t.side === 'boss' ? '👑' : '🧟'));
+          }
+          const name = document.createElement('span');
+          name.textContent = t.name;
+          chip.appendChild(name);
+          chip.onclick = () => {
+            const opt = [...select.options].find(o => o.value === t.name);
+            if (opt) opt.selected = !opt.selected;
+            mirrorChipSelect(selectId, boxId, templates);
+          };
+          box.appendChild(chip);
+        });
+      }
+
+      function refreshBuilderChips() {
+        const plants = state.templates.filter(t => t.side === 'plant');
+        const enemies = state.templates.filter(t => t.side === 'zombie' || t.side === 'boss');
+        mirrorChipSelect('campaignPlantSelect', 'builderPlantChips', plants);
+        mirrorChipSelect('campaignZombieSelect', 'builderZombieChips', enemies);
+      }
+
+      function openBuilder() {
+        syncBuilderFromSidebar();
+        refreshBuilderEnemySelect();
+        refreshBuilderChips();
+        renderBuilderTimeline();
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+      }
+
+      function closeBuilder() {
+        syncSidebarFromBuilder();
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      function saveLevelToCampaignFromBuilder() {
+        syncSidebarFromBuilder();
+        if (typeof window.ProjectBuild5_1?.saveCurrentLevelToCampaign === 'function') {
+          window.ProjectBuild5_1.saveCurrentLevelToCampaign();
+        } else if (typeof window.ProjectBuildCampaigns?.addOrUpdateCampaignLevel === 'function') {
+          window.ProjectBuildCampaigns.addOrUpdateCampaignLevel();
+        } else {
+          safe('addCampaignLevel')?.click();
+        }
+        renderBuilderTimeline();
+      }
+
+      // Wire modal controls.
+      safe('levelModalClose')?.addEventListener('click', closeBuilder);
+      safe('builderSaveCampaignMeta')?.addEventListener('click', () => { syncSidebarFromBuilder(); safe('saveCampaignMeta')?.click(); });
+      safe('builderSaveCampaign')?.addEventListener('click', saveLevelToCampaignFromBuilder);
+      safe('levelSaveToCampaign')?.addEventListener('click', saveLevelToCampaignFromBuilder);
+      safe('builderOpenMap')?.addEventListener('click', () => { syncSidebarFromBuilder(); safe('openCampaignMap')?.click(); });
+      safe('builderExportCampaign')?.addEventListener('click', () => { syncSidebarFromBuilder(); safe('exportCampaign')?.click(); });
+      safe('levelRefreshLibrary')?.addEventListener('click', () => {
+        if (typeof refreshTemplates === 'function') refreshTemplates();
+        refreshBuilderEnemySelect();
+        refreshBuilderChips();
+        showToast('Builder packet graphics refreshed');
+      });
+      function addBuilderWaveCardFromControls() {
+        const ev = eventFromBuilderControls();
+        if (!ev) return;
+        const events = readBuilderScript().filter(Boolean);
+        events.push(ev);
+        writeBuilderScript(events);
+        syncSidebarFromBuilder();
+        renderBuilderTimeline();
+        showToast('Wave card added');
+      }
+
+      const addWaveButton = safe('levelAddSpawn');
+      if (addWaveButton) {
+        addWaveButton.onclick = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          addBuilderWaveCardFromControls();
+        };
+      }
+      safe('builderSortWaves')?.addEventListener('click', () => {
+        writeBuilderScript(readBuilderScript().sort((a,b) => (Number(a.time)||0) - (Number(b.time)||0)));
+        showToast('Waves sorted');
+      });
+      safe('levelClearScript')?.addEventListener('click', () => {
+        if (!confirm('Clear every wave card from this level?')) return;
+        writeBuilderScript([]);
+        showToast('Waves cleared');
+      });
+      safe('levelStart')?.addEventListener('click', () => {
+        syncSidebarFromBuilder();
+        if (typeof startLevel === 'function') startLevel();
+        else safe('startLevel')?.click();
+      });
+      safe('levelStop')?.addEventListener('click', () => {
+        if (typeof stopLevel === 'function') stopLevel();
+        else safe('stopLevel')?.click();
+      });
+      safe('levelSpawnNow')?.addEventListener('click', () => {
+        const ev = eventFromBuilderControls();
+        if (!ev) return;
+        if (typeof spawnWaveEvent === 'function') spawnWaveEvent(ev);
+        else safe('spawnWaveNow')?.click();
+        showToast('Test spawn sent');
+      });
+      safe('builderLevelIcon')?.addEventListener('change', async e => {
+        const src = await fileToDataURL(e.target.files[0]);
+        state.pendingCampaignIconSrc = src;
+        const preview = safe('builderIconPreview');
+        if (preview) preview.innerHTML = src ? `<img src="${src}" alt="">` : 'LEVEL ICON';
+        showToast('Level icon loaded');
+      });
+
+      [...document.querySelectorAll('.pbBuilderLane')].forEach(btn => {
+        btn.addEventListener('click', () => {
+          [...document.querySelectorAll('.pbBuilderLane')].forEach(x => x.classList.remove('active'));
+          btn.classList.add('active');
+          if (safe('levelY')) safe('levelY').value = btn.dataset.y || '260';
+        });
+      });
+
+      ['levelTime','levelCount','levelInterval','levelX','levelY','levelJitter','builderCampaignName','builderLevelName','builderLevelGimmick']
+        .forEach(id => safe(id)?.addEventListener('input', () => {
+          if (id.startsWith('builder')) syncSidebarFromBuilder();
+        }));
+
+      const bottom = safe('pbBottomLevel');
+      if (bottom) {
+        bottom.textContent = 'LEVEL BUILDER';
+        bottom.onclick = openBuilder;
+      }
+      const bottomArrow = safe('pbBottomArrow');
+      if (bottomArrow) {
+        bottomArrow.title = 'Toggle level builder';
+      }
+
+      // Keep older sidebar buttons working by opening the new GUI.
+      const oldSidebarSave = safe('sidebarSaveLevelToCampaign');
+      if (oldSidebarSave) oldSidebarSave.addEventListener('click', saveLevelToCampaignFromBuilder);
+
+      // Refresh builder when templates refresh.
+      if (typeof refreshTemplates === 'function' && !refreshTemplates.pbFriendlyWrapped) {
+        const oldRefresh = refreshTemplates;
+        refreshTemplates = function(...args) {
+          const result = oldRefresh.apply(this, args);
+          refreshBuilderEnemySelect();
+          refreshBuilderChips();
+          renderBuilderTimeline();
+          return result;
+        };
+        refreshTemplates.pbFriendlyWrapped = true;
+      }
+
+      syncBuilderFromSidebar();
+      refreshBuilderEnemySelect();
+      refreshBuilderChips();
+      renderBuilderTimeline();
+
+      if (!document.body.pbBuilderAddWaveDelegated) {
+        document.body.pbBuilderAddWaveDelegated = true;
+        document.addEventListener('click', e => {
+          const btn = e.target?.closest?.('#levelAddSpawn');
+          if (!btn || !modal.classList.contains('pbFriendlyBuilderModal')) return;
+          if (btn.onclick) return;
+          e.preventDefault();
+          e.stopPropagation();
+          if (typeof window.ProjectBuildFriendlyLevelBuilder?.addBuilderWaveCardFromControls === 'function') {
+            window.ProjectBuildFriendlyLevelBuilder.addBuilderWaveCardFromControls();
+          }
+        }, true);
+      }
+
+      window.ProjectBuildFriendlyLevelBuilder = {
+        version: '5.1-friendly-builder',
+        openBuilder,
+        closeBuilder,
+        readBuilderScript,
+        writeBuilderScript,
+        addBuilderWaveCardFromControls,
+        saveLevelToCampaignFromBuilder,
+        state
+      };
+
+      showToast('Friendly Level Builder installed');
+    }
+
+    installProjectBuildFriendlyLevelBuilder();
+
+
+
+    function installProjectBuild5_2CampaignMapStartButtonFix() {
+      const by = id => document.getElementById(id);
+
+      function setTextValue(id, value) {
+        const el = by(id);
+        if (el) el.value = value ?? '';
+      }
+
+      function applyCampaignLevelToBuilderFields(level) {
+        if (!level) return;
+        setTextValue('campaignLevelName', level.name || 'Level');
+        setTextValue('builderLevelName', level.name || 'Level');
+        setTextValue('campaignLevelGimmick', level.gimmick || '');
+        setTextValue('builderLevelGimmick', level.gimmick || '');
+
+        const script = Array.isArray(level.world?.levelScript) ? level.world.levelScript : [];
+        const scriptText = JSON.stringify(script, null, 2);
+        setTextValue('waveScript', scriptText);
+        setTextValue('levelScriptModal', scriptText);
+
+        if (level.iconSrc) {
+          const preview = by('builderIconPreview');
+          if (preview) preview.innerHTML = `<img src="${level.iconSrc}" alt="">`;
+        }
+
+        if (Array.isArray(level.allowedPlants)) {
+          document.querySelectorAll('#builderPlantChips .pbBuilderChip').forEach(chip => {
+            chip.classList.toggle('active', level.allowedPlants.includes(chip.dataset.name));
+          });
+        }
+        if (Array.isArray(level.allowedZombies)) {
+          document.querySelectorAll('#builderZombieChips .pbBuilderChip').forEach(chip => {
+            chip.classList.toggle('active', level.allowedZombies.includes(chip.dataset.name));
+          });
+        }
+      }
+
+      function triggerRealStartLevelButton() {
+        // Campaign map clicks must run the real level starter first.
+        // The builder button can initialize/apply the lawn without actually starting the scheduler,
+        // so do not prefer it here. By this point later 5.2 patches replace startLevel with
+        // the final timing/assets starter.
+        if (typeof startLevel === 'function') {
+          startLevel();
+          return true;
+        }
+
+        const sidebarStart = by('startLevel');
+        const builderStart = by('levelStart');
+
+        if (sidebarStart) {
+          sidebarStart.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return true;
+        }
+        if (builderStart) {
+          builderStart.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          return true;
+        }
+        return false;
+      }
+
+      document.addEventListener('click', e => {
+        const card = e.target?.closest?.('#pbCampaignLevelGrid .pbCampaignLevelCard');
+        if (!card) return;
+
+        const grid = by('pbCampaignLevelGrid');
+        if (!grid || !grid.contains(card)) return;
+
+        const cards = [...grid.querySelectorAll('.pbCampaignLevelCard')];
+        const index = cards.indexOf(card);
+        const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+        const level = campaign?.levels?.[index];
+
+        // Let the "Add Current" campaign card keep its normal behavior.
+        if (!level) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        state.currentCampaignLevel = level;
+
+        if (level.world?.lawn) {
+          state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+          state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+        }
+
+        if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function') {
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel(level.world);
+        } else if (typeof restoreWorldSnapshotForLevel === 'function') {
+          restoreWorldSnapshotForLevel(level.world);
+        }
+
+        applyCampaignLevelToBuilderFields(level);
+
+        const modal = by('pbCampaignModal');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+
+        setTimeout(() => {
+          applyCampaignLevelToBuilderFields(level);
+          const started = triggerRealStartLevelButton();
+          if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+          showToast(started ? `Starting ${level.name || 'campaign level'}` : 'Could not find Start Level button');
+        }, 40);
+      }, true);
+
+      window.ProjectBuild5_2CampaignStartFix = {
+        version: '5.2-campaign-start-button-fix',
+        triggerRealStartLevelButton,
+        applyCampaignLevelToBuilderFields
+      };
+    }
+
+    installProjectBuild5_2CampaignMapStartButtonFix();
+
+    function installProjectBuild5_2_FinalTimingAndAssetFix() {
+      const by = id => document.getElementById(id);
+      const toast = text => { try { showToast(text); } catch { console.log(text); } };
+
+      function pb52SetReadyOverlay(text) {
+        try { if (typeof showReadyText === 'function') showReadyText(text); } catch {}
+        const overlay = by('readyOverlay');
+        if (overlay) {
+          overlay.textContent = text || '';
+          overlay.style.display = text ? 'flex' : 'none';
+        }
+      }
+
+      function srcIsGif(src) {
+        return !!src && (/^data:image\/gif/i.test(src) || /\.gif(\?|#)?$/i.test(src));
+      }
+
+      async function dataFromInput(id) {
+        const input = by(id);
+        const file = input?.files?.[0];
+        if (!file) return null;
+        try { return await fileToDataURL(file); }
+        catch { return null; }
+      }
+
+      function applyLevelVisuals(lawnSrc, musicSrc, fitMode = null) {
+        if (fitMode) state.lawn.fitMode = fitMode;
+        if (!state.lawn.fitMode) state.lawn.fitMode = by('lawnFitMode')?.value || 'fitAll';
+
+        if (lawnSrc) {
+          state.lawn.imageSrc = lawnSrc;
+          if (srcIsGif(lawnSrc)) {
+            state.lawn.image = null;
+            setGifLawn(lawnSrc);
+          } else {
+            state.lawn.image = makeImage(lawnSrc);
+            setGifLawn(null);
+          }
+          const lawnName = by('lawnName');
+          if (lawnName && !lawnName.value) lawnName.value = 'Level Lawn';
+        }
+
+        if (musicSrc) {
+          state.lawn.musicSrc = musicSrc;
+          if (music) music.src = musicSrc;
+        }
+
+        const fit = by('lawnFitMode');
+        if (fit) fit.value = state.lawn.fitMode || 'fitAll';
+        if (typeof applyGifLawnFit === 'function') applyGifLawnFit();
+      }
+
+      async function collectAndApplyCurrentLevelAssets(level = state.currentCampaignLevel) {
+        let lawnSrc = null;
+        let musicSrc = null;
+        let fitMode = by('lawnFitMode')?.value || state.lawn?.fitMode || 'fitAll';
+
+        // Level builder choices win. This is what makes "choose a level lawn/BGM then Start Level" work immediately.
+        const builderLawn = await dataFromInput('builderLevelLawn');
+        const builderMusic = await dataFromInput('builderLevelMusic');
+        if (builderLawn) state.pendingLevelLawnSrc = builderLawn;
+        if (builderMusic) state.pendingLevelMusicSrc = builderMusic;
+
+        // Main lawn picker also works without pressing Apply, as a fallback.
+        const mainLawn = await dataFromInput('lawnImage');
+        const mainMusic = await dataFromInput('lawnMusic');
+
+        const worldLawn = level?.world?.lawn || {};
+        lawnSrc = state.pendingLevelLawnSrc || level?.lawnSrc || worldLawn.imageSrc || mainLawn || state.lawn?.imageSrc || null;
+        musicSrc = state.pendingLevelMusicSrc || level?.musicSrc || worldLawn.musicSrc || mainMusic || state.lawn?.musicSrc || null;
+        fitMode = level?.fitMode || worldLawn.fitMode || fitMode;
+
+        applyLevelVisuals(lawnSrc, musicSrc, fitMode);
+        return { lawnSrc, musicSrc, fitMode };
+      }
+
+      function playLevelMusicFromStart() {
+        if (!music) return;
+        try {
+          if (state.lawn?.musicSrc && music.src !== state.lawn.musicSrc) music.src = state.lawn.musicSrc;
+          music.currentTime = 0;
+          const p = music.play();
+          if (p && typeof p.catch === 'function') p.catch(() => toast('Tap once to allow music'));
+        } catch {}
+      }
+
+      function parseWaveText(raw, label) {
+        const txt = String(raw || '').trim();
+        if (!txt) return { ok: true, events: [], raw: '' };
+        try {
+          const parsed = JSON.parse(txt);
+          return { ok: true, events: Array.isArray(parsed) ? parsed : [], raw: txt };
+        } catch (err) {
+          toast(`${label} wave JSON error: ${err.message}`);
+          return { ok: false, events: [], raw: txt };
+        }
+      }
+
+      function readFinalWaveScript() {
+        const modal = by('levelScriptModal');
+        const side = by('waveScript');
+        const modalParsed = parseWaveText(modal?.value, 'Builder');
+        const sideParsed = parseWaveText(side?.value, 'Sidebar');
+
+        // Do not let an empty builder textarea override a real sidebar/campaign script.
+        // Pick whichever field actually has wave cards, preferring the longer/current script.
+        let chosen = [];
+        if (modalParsed.events.length && sideParsed.events.length) {
+          chosen = modalParsed.events.length >= sideParsed.events.length ? modalParsed.events : sideParsed.events;
+        } else {
+          chosen = modalParsed.events.length ? modalParsed.events : sideParsed.events;
+        }
+
+        const synced = JSON.stringify(chosen, null, 2);
+        if (side) side.value = synced;
+        if (modal) modal.value = synced;
+        return chosen;
+      }
+
+      function normalizeWaveEvents(events) {
+        return (Array.isArray(events) ? events : [])
+          .filter(Boolean)
+          .map((ev, eventIndex) => ({
+            ...ev,
+            _eventIndex: eventIndex,
+            time: Math.max(0, Number(ev.time) || 0),
+            count: Math.max(1, Number(ev.count) || 1),
+            interval: Math.max(0.05, Number(ev.interval) || 0.05)
+          }))
+          .sort((a, b) => a.time - b.time || a._eventIndex - b._eventIndex);
+      }
+
+      function buildExactTimedQueue(events) {
+        const queue = [];
+        normalizeWaveEvents(events).forEach(ev => {
+          for (let i = 0; i < ev.count; i++) {
+            queue.push({
+              at: ev.time + i * ev.interval,
+              ev: { ...ev, count: 1 },
+              number: i,
+              eventIndex: ev._eventIndex,
+              done: false
+            });
+          }
+        });
+        queue.sort((a, b) => a.at - b.at || a.eventIndex - b.eventIndex || a.number - b.number);
+        return queue;
+      }
+
+      function pb52ManualSpawnWaveEvent(ev, number = 0) {
+        let template = null;
+        try {
+          if (typeof getTemplateForWave === 'function') template = getTemplateForWave(ev);
+        } catch {}
+        if (!template) {
+          const name = ev?.template;
+          const idx = Number(ev?.templateIndex);
+          const fromIndex = Number.isFinite(idx) ? state.templates?.[idx] : null;
+          template = structuredClone(
+            fromIndex ||
+            state.templates?.find(t => t.name === name && (t.side === 'zombie' || t.side === 'boss' || t.type === 'zombie' || t.type === 'boss')) ||
+            state.templates?.find(t => t.side === 'zombie' || t.side === 'boss' || t.type === 'zombie' || t.type === 'boss') ||
+            defaultTemplate
+          );
+        }
+        if (!template) {
+          toast('No zombie/boss template found for this wave');
+          return false;
+        }
+        if (template.side !== 'boss' && template.type !== 'boss') template.side = 'zombie';
+        const spawnX = Number(ev?.x);
+        const x = spawnX === -1 || !Number.isFinite(spawnX) ? (canvas?.clientWidth || canvas?.width || 900) + 80 : spawnX;
+        const baseY = Number(ev?.y);
+        const jitter = Math.max(0, Number(ev?.jitter) || 0);
+        const y = (Number.isFinite(baseY) ? baseY : 180) + (typeof rand === 'function' ? rand(-jitter, jitter) : 0) + (Number(number) || 0) * 6;
+        const ent = entityFromTemplate(template, x, y);
+        ent.side = template.side === 'boss' || template.type === 'boss' ? 'boss' : 'zombie';
+        ent.type = ent.side;
+        ent.dead = false;
+        state.entities.push(ent);
+        try { if (typeof isCombatEntity === 'function' && isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7); } catch {}
+        return true;
+      }
+
+      function pb52SpawnWaveItem(item) {
+        const before = state.entities.length;
+        try {
+          if (typeof spawnWaveEvent === 'function') spawnWaveEvent(item.ev, item.number || 0);
+        } catch (err) {
+          console.warn('spawnWaveEvent failed, using fallback spawn', err);
+        }
+        if (state.entities.length > before) return true;
+        return pb52ManualSpawnWaveEvent(item.ev, item.number || 0);
+      }
+
+      async function startLevelFinal() {
+        if (typeof window.enterPlayMode === 'function') window.enterPlayMode('level');
+        await collectAndApplyCurrentLevelAssets();
+
+        const events = readFinalWaveScript();
+        const queue = buildExactTimedQueue(events);
+        if (!queue.length) {
+          console.warn('Project BUILD: Start Level found no wave cards. waveScript=', by('waveScript')?.value, 'levelScriptModal=', by('levelScriptModal')?.value);
+        }
+        state.level = {
+          running: true,
+          elapsed: -3,
+          prepare: 3,
+          events: [],
+          queue,
+          started: false,
+          pb52FinalTiming: true,
+          pb52OriginalEvents: normalizeWaveEvents(events)
+        };
+
+        pb52SetReadyOverlay('READY');
+        playLevelMusicFromStart();
+        if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+        toast(queue.length ? 'Level starting' : 'Level starting - no wave cards');
+      }
+
+      const previousUpdate = update;
+      if (!update.pb52FinalTimingWrapped) {
+        update = function(dt) {
+          const level = state.level;
+          if (!level?.pb52FinalTiming) return previousUpdate(dt);
+
+          const wasRunning = level.running;
+          level.running = false; // prevents every older wave updater from mass-spawning anything
+          previousUpdate(dt);
+          level.running = wasRunning;
+
+          if (!level.running || state.paused) return;
+          level.elapsed += dt;
+
+          if (level.elapsed < -2) { pb52SetReadyOverlay('READY'); return; }
+          if (level.elapsed < -1) { pb52SetReadyOverlay('SET'); return; }
+          if (level.elapsed < 0) { pb52SetReadyOverlay('PREPARE!'); return; }
+          pb52SetReadyOverlay('');
+
+          // Timing matters now: a card at 0 and a card at 3 spawn at 0 and 3, not together.
+          const due = (level.queue || []).filter(item => !item.done && level.elapsed >= item.at);
+          due.forEach(item => {
+            item.done = true;
+            pb52SpawnWaveItem(item);
+          });
+          level.queue = (level.queue || []).filter(item => !item.done);
+
+          const enemiesLeft = state.entities.some(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead);
+          if (level.queue.length === 0 && !enemiesLeft) {
+            level.running = false;
+            if (typeof window.finishPlayMode === 'function') window.finishPlayMode(true);
+            else if (typeof finishPlayMode === 'function') finishPlayMode(true);
+          }
+        };
+        update.pb52FinalTimingWrapped = true;
+      }
+
+      // Replace every start button with the final starter so old handlers cannot start the broken scheduler.
+      startLevel = startLevelFinal;
+      const startButtons = ['startLevel', 'levelStart'];
+      startButtons.forEach(id => {
+        const btn = by(id);
+        if (!btn) return;
+        btn.onclick = e => {
+          e?.preventDefault?.();
+          e?.stopPropagation?.();
+          startLevelFinal();
+        };
+      });
+
+      // Keep previews and pending values current as soon as a file is picked.
+      by('builderLevelLawn')?.addEventListener('change', async e => {
+        const src = await dataFromInput('builderLevelLawn');
+        if (!src) return;
+        state.pendingLevelLawnSrc = src;
+        const box = by('builderLawnPreview');
+        if (box) box.innerHTML = `<img src="${src}" alt=""><span>Custom level lawn selected</span>`;
+        toast('Level lawn loaded');
+      });
+      by('builderLevelMusic')?.addEventListener('change', async e => {
+        const src = await dataFromInput('builderLevelMusic');
+        if (!src) return;
+        state.pendingLevelMusicSrc = src;
+        const box = by('builderMusicPreview');
+        if (box) box.innerHTML = '<b>Music:</b>&nbsp;custom level music selected';
+        toast('Level music loaded');
+      });
+
+      // Bake pending level assets into campaign snapshots.
+      if (typeof makeWorldSnapshotForLevel === 'function' && !makeWorldSnapshotForLevel.pb52FinalAssetBake) {
+        const oldMake = makeWorldSnapshotForLevel;
+        makeWorldSnapshotForLevel = function(...args) {
+          const snap = oldMake.apply(this, args) || {};
+          snap.lawn = {
+            ...(snap.lawn || {}),
+            ...(state.lawn || {}),
+            imageSrc: state.pendingLevelLawnSrc || state.lawn?.imageSrc || snap.lawn?.imageSrc || 'main.png',
+            musicSrc: state.pendingLevelMusicSrc || state.lawn?.musicSrc || snap.lawn?.musicSrc || 'main.mp3',
+            fitMode: by('lawnFitMode')?.value || state.lawn?.fitMode || snap.lawn?.fitMode || 'fitAll'
+          };
+          try {
+            const raw = by('levelScriptModal')?.value?.trim() || by('waveScript')?.value?.trim() || '[]';
+            const parsed = JSON.parse(raw || '[]');
+            snap.levelScript = Array.isArray(parsed) ? parsed : [];
+          } catch (err) {
+            snap.levelScript = [];
+          }
+          return snap;
+        };
+        makeWorldSnapshotForLevel.pb52FinalAssetBake = true;
+      }
+
+      // Campaign map click: load the level, apply its assets, then run the exact same final starter.
+      document.addEventListener('click', e => {
+        const card = e.target?.closest?.('#pbCampaignLevelGrid .pbCampaignLevelCard');
+        if (!card) return;
+        const grid = by('pbCampaignLevelGrid');
+        if (!grid || !grid.contains(card)) return;
+
+        const cards = [...grid.querySelectorAll('.pbCampaignLevelCard')];
+        const index = cards.indexOf(card);
+        const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+        const level = campaign?.levels?.[index];
+        if (!level) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+
+        state.currentCampaignLevel = level;
+        const script = Array.isArray(level.world?.levelScript) ? level.world.levelScript : [];
+        const text = JSON.stringify(script, null, 2);
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+
+        if (level.world?.lawn) {
+          state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+          state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+        }
+
+        if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function') {
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel(level.world);
+        } else if (typeof restoreWorldSnapshotForLevel === 'function') {
+          restoreWorldSnapshotForLevel(level.world);
+        }
+
+        const modal = by('pbCampaignModal');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
+        setTimeout(() => startLevelFinal(), 30);
+      }, true);
+
+
+      function pb52StartCampaignLevelFromMap(level) {
+        if (!level) return false;
+        state.currentCampaignLevel = level;
+
+        if (level.world?.lawn) {
+          state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+          state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+        }
+
+        if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function') {
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel(level.world);
+        } else if (typeof restoreWorldSnapshotForLevel === 'function') {
+          restoreWorldSnapshotForLevel(level.world);
+        }
+
+        const script = Array.isArray(level.world?.levelScript) ? level.world.levelScript : [];
+        const text = JSON.stringify(script, null, 2);
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+        if (typeof applyCampaignLevelToBuilderFields === 'function') applyCampaignLevelToBuilderFields(level);
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+
+        const modal = by('pbCampaignModal');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+
+        if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets();
+
+        setTimeout(() => {
+          // Do not dispatch through old UI handlers here; directly use the final scheduler.
+          if (typeof startLevelFinal === 'function') {
+            startLevelFinal();
+          } else if (typeof startLevel === 'function') {
+            startLevel();
+          } else {
+            const startBtn = by('startLevel');
+            if (startBtn) startBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
+          }
+        }, 30);
+        return true;
+      }
+
+      window.ProjectBuild5_2MapStart = {
+        version: '5.2-map-icon-start-fix',
+        startCampaignLevel: pb52StartCampaignLevelFromMap
+      };
+
+      // Directly arm the campaign map grid too. This bypasses older load-only card handlers.
+      const pb52CampaignGrid = by('pbCampaignLevelGrid');
+      if (pb52CampaignGrid && !pb52CampaignGrid.dataset.pb52IconStartFixed) {
+        pb52CampaignGrid.dataset.pb52IconStartFixed = '1';
+        pb52CampaignGrid.addEventListener('click', e => {
+          const card = e.target?.closest?.('.pbCampaignLevelCard');
+          if (!card || !pb52CampaignGrid.contains(card)) return;
+          const cards = [...pb52CampaignGrid.querySelectorAll('.pbCampaignLevelCard')];
+          const index = cards.indexOf(card);
+          const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+          const level = campaign?.levels?.[index];
+          if (!level) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+          pb52StartCampaignLevelFromMap(level);
+        }, true);
+      }
+
+      // If the map is re-rendered, keep every real level card wired to start immediately.
+      if (typeof renderCampaignMap === 'function' && !renderCampaignMap.pb52IconStartFixed) {
+        const oldRenderCampaignMap = renderCampaignMap;
+        renderCampaignMap = function(...args) {
+          const result = oldRenderCampaignMap.apply(this, args);
+          const grid = by('pbCampaignLevelGrid');
+          const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+          if (grid && campaign?.levels) {
+            [...grid.querySelectorAll('.pbCampaignLevelCard')].forEach((card, index) => {
+              const level = campaign.levels[index];
+              if (!level) return;
+              card.onclick = e => {
+                e?.preventDefault?.();
+                e?.stopPropagation?.();
+                pb52StartCampaignLevelFromMap(level);
+              };
+            });
+          }
+          return result;
+        };
+        renderCampaignMap.pb52IconStartFixed = true;
+        try { renderCampaignMap(); } catch (err) {}
+      }
+
+      window.ProjectBuild5_2FinalTimingAndAssets = {
+        version: '5.2-final-timing-assets-fix',
+        startLevelFinal,
+        buildExactTimedQueue,
+        collectAndApplyCurrentLevelAssets,
+        applyLevelVisuals
+      };
+
+      toast('5.2 timing + per-level lawn/music final fix loaded');
+    }
+
+    installProjectBuild5_2_FinalTimingAndAssetFix();
+
+
+
+    function installProjectBuild5_2_ImportedCampaignLawnRestoreFix() {
+      const by = id => document.getElementById(id);
+      const toast = text => { try { showToast(text); } catch { console.log(text); } };
+
+      function firstReal(...values) {
+        for (const value of values) {
+          if (typeof value === 'string' && value.trim()) return value.trim();
+        }
+        return null;
+      }
+
+      function normalizeImportedLevelAssets(level) {
+        if (!level || typeof level !== 'object') return level;
+
+        level.world ||= {};
+        const world = level.world;
+        const worldLawn = (world.lawn && typeof world.lawn === 'object') ? world.lawn : {};
+        const topLawn = (level.lawn && typeof level.lawn === 'object') ? level.lawn : {};
+        const assetLawn = (level.assets?.lawn && typeof level.assets.lawn === 'object') ? level.assets.lawn : {};
+        const visualLawn = (level.visuals?.lawn && typeof level.visuals.lawn === 'object') ? level.visuals.lawn : {};
+
+        const imageSrc = firstReal(
+          worldLawn.imageSrc, worldLawn.src, worldLawn.url, worldLawn.dataURL,
+          level.lawnSrc, level.levelLawnSrc, level.backgroundSrc, level.bgSrc, level.imageSrc,
+          topLawn.imageSrc, topLawn.src, topLawn.url, topLawn.dataURL,
+          assetLawn.imageSrc, assetLawn.src, assetLawn.url, assetLawn.dataURL,
+          visualLawn.imageSrc, visualLawn.src, visualLawn.url, visualLawn.dataURL
+        );
+
+        const musicSrc = firstReal(
+          worldLawn.musicSrc, worldLawn.bgmSrc, worldLawn.audioSrc, worldLawn.music, worldLawn.bgm,
+          level.musicSrc, level.levelMusicSrc, level.bgmSrc, level.audioSrc,
+          topLawn.musicSrc, topLawn.bgmSrc, topLawn.audioSrc, topLawn.music, topLawn.bgm,
+          assetLawn.musicSrc, assetLawn.bgmSrc, assetLawn.audioSrc,
+          visualLawn.musicSrc, visualLawn.bgmSrc, visualLawn.audioSrc
+        );
+
+        const fitMode = firstReal(
+          worldLawn.fitMode, worldLawn.fit, worldLawn.displayMode,
+          level.fitMode, level.lawnFitMode,
+          topLawn.fitMode, topLawn.fit, topLawn.displayMode,
+          assetLawn.fitMode, visualLawn.fitMode
+        ) || 'fitAll';
+
+        if (imageSrc || musicSrc || fitMode) {
+          world.lawn = {
+            ...worldLawn,
+            imageSrc: imageSrc || worldLawn.imageSrc || state.lawn?.imageSrc || 'main.png',
+            musicSrc: musicSrc || worldLawn.musicSrc || state.lawn?.musicSrc || 'main.mp3',
+            fitMode
+          };
+
+          // Keep duplicate top-level fields too because the 5.2 starter checks these before world.lawn.
+          level.lawnSrc = world.lawn.imageSrc;
+          level.musicSrc = world.lawn.musicSrc;
+          level.fitMode = world.lawn.fitMode;
+        }
+
+        if (!Array.isArray(world.levelScript) && Array.isArray(level.levelScript)) {
+          world.levelScript = level.levelScript;
+        }
+
+        return level;
+      }
+
+      function normalizeImportedCampaign(campaign) {
+        if (!campaign || typeof campaign !== 'object') return campaign;
+        campaign.levels ||= [];
+        campaign.levels.forEach(normalizeImportedLevelAssets);
+        return campaign;
+      }
+
+      function normalizeAllCampaigns() {
+        if (Array.isArray(state.campaigns)) state.campaigns.forEach(normalizeImportedCampaign);
+        if (state.currentCampaignLevel) normalizeImportedLevelAssets(state.currentCampaignLevel);
+      }
+
+      function srcIsGif(src) {
+        return !!src && (/^data:image\/gif/i.test(src) || /\.gif(\?|#)?$/i.test(src));
+      }
+
+      function applyLevelLawnImmediately(level = state.currentCampaignLevel) {
+        normalizeImportedLevelAssets(level);
+        const lawn = level?.world?.lawn || {};
+        const lawnSrc = firstReal(level?.lawnSrc, lawn.imageSrc, lawn.src, lawn.url);
+        const musicSrc = firstReal(level?.musicSrc, lawn.musicSrc, lawn.bgmSrc, lawn.audioSrc);
+        const fitMode = firstReal(level?.fitMode, lawn.fitMode) || state.lawn?.fitMode || 'fitAll';
+
+        if (!state.lawn) state.lawn = {};
+        state.lawn.fitMode = fitMode;
+
+        if (lawnSrc) {
+          state.pendingLevelLawnSrc = lawnSrc;
+          state.lawn.imageSrc = lawnSrc;
+          try {
+            if (srcIsGif(lawnSrc)) {
+              state.lawn.image = null;
+              if (typeof setGifLawn === 'function') setGifLawn(lawnSrc);
+            } else {
+              state.lawn.image = typeof makeImage === 'function' ? makeImage(lawnSrc) : state.lawn.image;
+              if (typeof setGifLawn === 'function') setGifLawn(null);
+            }
+          } catch (err) {
+            console.warn('PB5.2 imported level lawn apply failed:', err);
+          }
+        }
+
+        if (musicSrc) {
+          state.pendingLevelMusicSrc = musicSrc;
+          state.lawn.musicSrc = musicSrc;
+          try { if (typeof music !== 'undefined' && music) music.src = musicSrc; } catch {}
+        }
+
+        const fit = by('lawnFitMode');
+        if (fit) fit.value = fitMode;
+        try { if (typeof applyGifLawnFit === 'function') applyGifLawnFit(); } catch {}
+      }
+
+      // Normalize before the campaign map renders, so older capture-click handlers receive fixed level objects.
+      if (typeof renderCampaignMap === 'function' && !renderCampaignMap.pb52ImportedLawnRestoreFixed) {
+        const oldRenderImportedLawn = renderCampaignMap;
+        renderCampaignMap = function(...args) {
+          normalizeAllCampaigns();
+          return oldRenderImportedLawn.apply(this, args);
+        };
+        renderCampaignMap.pb52ImportedLawnRestoreFixed = true;
+      }
+
+      if (typeof refreshCampaignSelects === 'function' && !refreshCampaignSelects.pb52ImportedLawnRestoreFixed) {
+        const oldRefreshImportedLawn = refreshCampaignSelects;
+        refreshCampaignSelects = function(...args) {
+          normalizeAllCampaigns();
+          return oldRefreshImportedLawn.apply(this, args);
+        };
+        refreshCampaignSelects.pb52ImportedLawnRestoreFixed = true;
+      }
+
+      // Make restore robust for imported JSON and older campaign exports.
+      if (typeof restoreWorldSnapshotForLevel === 'function' && !restoreWorldSnapshotForLevel.pb52ImportedLawnRestoreFixed) {
+        const oldRestoreImportedLawn = restoreWorldSnapshotForLevel;
+        restoreWorldSnapshotForLevel = function(data, ...args) {
+          const result = oldRestoreImportedLawn.apply(this, [data, ...args]);
+          if (state.currentCampaignLevel) applyLevelLawnImmediately(state.currentCampaignLevel);
+          else if (data?.lawn) applyLevelLawnImmediately({ world: { lawn: data.lawn } });
+          return result;
+        };
+        restoreWorldSnapshotForLevel.pb52ImportedLawnRestoreFixed = true;
+      }
+
+      if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function' && !window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb52ImportedLawnRestoreFixed) {
+        const oldApiRestoreImportedLawn = window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel;
+        window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel = function(data, ...args) {
+          const result = oldApiRestoreImportedLawn.call(this, data, ...args);
+          if (state.currentCampaignLevel) applyLevelLawnImmediately(state.currentCampaignLevel);
+          else if (data?.lawn) applyLevelLawnImmediately({ world: { lawn: data.lawn } });
+          return result;
+        };
+        window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb52ImportedLawnRestoreFixed = true;
+      }
+
+      // Normalize right before exporting too, so future imports have world.lawn + top-level asset fields.
+      ['exportCampaign', 'pbCampaignExportOne', 'exportAllCampaigns'].forEach(id => {
+        const btn = by(id);
+        if (btn && !btn.dataset.pb52ImportedLawnExportFix) {
+          btn.dataset.pb52ImportedLawnExportFix = '1';
+          btn.addEventListener('click', normalizeAllCampaigns, true);
+        }
+      });
+
+      // Import happens through FileReader in an older handler. After it finishes, normalize the pushed campaigns.
+      const importInput = by('importCampaign');
+      if (importInput && !importInput.dataset.pb52ImportedLawnImportFix) {
+        importInput.dataset.pb52ImportedLawnImportFix = '1';
+        importInput.addEventListener('change', () => {
+          setTimeout(() => {
+            normalizeAllCampaigns();
+            try { if (typeof refreshCampaignSelects === 'function') refreshCampaignSelects(); } catch {}
+            try { if (typeof renderCampaignMap === 'function') renderCampaignMap(); } catch {}
+            toast('Campaign imported with level lawns restored');
+          }, 120);
+        });
+      }
+
+      // If the map-starter API is used, force-apply assets before the countdown starts.
+      if (window.ProjectBuild5_2MapStart?.startCampaignLevel && !window.ProjectBuild5_2MapStart.pb52ImportedLawnRestoreFixed) {
+        const oldMapStartImportedLawn = window.ProjectBuild5_2MapStart.startCampaignLevel;
+        window.ProjectBuild5_2MapStart.startCampaignLevel = function(level, ...args) {
+          normalizeImportedLevelAssets(level);
+          state.currentCampaignLevel = level;
+          applyLevelLawnImmediately(level);
+          return oldMapStartImportedLawn.call(this, level, ...args);
+        };
+        window.ProjectBuild5_2MapStart.pb52ImportedLawnRestoreFixed = true;
+      }
+
+      normalizeAllCampaigns();
+      window.ProjectBuild5_2ImportedCampaignLawnFix = {
+        version: '5.2-imported-campaign-lawn-restore-fix',
+        normalizeImportedLevelAssets,
+        normalizeImportedCampaign,
+        applyLevelLawnImmediately
+      };
+    }
+
+    installProjectBuild5_2_ImportedCampaignLawnRestoreFix();
 
     renderAbilityPills();
     setActiveAbilities(defaultTemplate.abilities);
