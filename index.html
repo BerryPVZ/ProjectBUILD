@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 5.2</title>
+  <title>Project: BUILD 5.5.4 - 3D Visibility Fix</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1875,8 +1875,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.2</span></h1>
-      <p>Project: BUILD 5.2 sandbox. Friendly level builder GUI, play mode, campaign maps, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.5.4</span></h1>
+      <p>Project: BUILD 5.5.4 sandbox. Friendly level builder GUI, play mode, campaign maps, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -9842,29 +9842,55 @@ Click me again to advance.</textarea>
         geometry.attributes.uv.needsUpdate = true;
       }
 
+      function pb55ProjectedXYScore(object) {
+        const { THREE } = pb55Three.modules || {};
+        if (!THREE || !object) return 0;
+        object.updateMatrixWorld?.(true);
+        const box = new THREE.Box3().setFromObject(object);
+        const size = box.getSize(new THREE.Vector3());
+        if (![size.x, size.y, size.z].every(Number.isFinite)) return 0;
+        return Math.max(0, size.x) * Math.max(0, size.y);
+      }
+
       function pb55OrientModelForScreen(object) {
         const { THREE } = pb55Three.modules || {};
         if (!THREE || !object) return object;
+        object.traverse?.(child => { if (child) child.visible = true; });
         object.updateMatrixWorld?.(true);
+        const original = object.rotation?.clone?.() || new THREE.Euler(0, 0, 0);
+        const originalScore = pb55ProjectedXYScore(object);
         const box = new THREE.Box3().setFromObject(object);
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         if (!Number.isFinite(maxDim) || maxDim <= 0.000001) return object;
 
-        // A lot of user-made FBX placeholders are flat planes exported on the X/Z floor.
-        // Looking at those from the 2D game camera makes them edge-on, which is why the
-        // game showed only the health bar + label. Rotate those flat-floor models so the
-        // textured face points at the camera before normalizing.
-        const yRatio = size.y / maxDim;
-        const zRatio = size.z / maxDim;
-        const xRatio = size.x / maxDim;
-        if (yRatio < 0.16 && zRatio > 0.34) {
-          object.rotation.x -= Math.PI / 2;
+        // FBX files from simple editors often export as a flat floor, wall, or sideways plane.
+        // Instead of guessing one axis, try safe camera-facing rotations and keep the one that
+        // gives the largest X/Y screen silhouette. That prevents the common "loaded but blank"
+        // case where the model is edge-on to the 2D camera.
+        const candidates = [
+          [0, 0, 0],
+          [-Math.PI / 2, 0, 0],
+          [Math.PI / 2, 0, 0],
+          [0, Math.PI / 2, 0],
+          [0, -Math.PI / 2, 0],
+          [-Math.PI / 2, 0, Math.PI],
+          [Math.PI / 2, 0, Math.PI]
+        ];
+        let best = { score: originalScore, rot: original.clone() };
+        for (const [rx, ry, rz] of candidates) {
+          object.rotation.set(original.x + rx, original.y + ry, original.z + rz);
           object.updateMatrixWorld?.(true);
-        } else if (xRatio < 0.12 && zRatio > 0.34 && yRatio > 0.34) {
-          object.rotation.y += Math.PI / 2;
-          object.updateMatrixWorld?.(true);
+          const score = pb55ProjectedXYScore(object);
+          if (score > best.score) best = { score, rot: object.rotation.clone() };
         }
+        const usableOriginal = originalScore > maxDim * maxDim * 0.035;
+        if (!usableOriginal || best.score > originalScore * 1.35) {
+          object.rotation.copy(best.rot);
+        } else {
+          object.rotation.copy(original);
+        }
+        object.updateMatrixWorld?.(true);
         return object;
       }
 
@@ -9910,6 +9936,7 @@ Click me again to advance.</textarea>
       function pb55ApplyTextureToObject(object, texture, fallbackColor = 0xffffff) {
         const { THREE } = pb55Three.modules || {};
         object.traverse(child => {
+          if (child) child.visible = true;
           if (!child?.isMesh) return;
           child.castShadow = false;
           child.receiveShadow = false;
@@ -9917,21 +9944,23 @@ Click me again to advance.</textarea>
           if (child.geometry) {
             if (texture) pb55EnsureFallbackUVs(child.geometry);
             if (!child.geometry.attributes?.normal) child.geometry.computeVertexNormals?.();
+            child.geometry.computeBoundingBox?.();
             child.geometry.computeBoundingSphere?.();
           }
-          const sourceMats = Array.isArray(child.material) ? child.material : [child.material];
+          const sourceMats = Array.isArray(child.material) && child.material.length ? child.material : [child.material || null];
           const safeMats = sourceMats.map(oldMat => {
-            const chosenMap = texture || oldMat?.map || null;
+            const chosenMap = texture || oldMat?.map || oldMat?.emissiveMap || oldMat?.specularMap || null;
             const mat = new THREE.MeshBasicMaterial({
               color: chosenMap ? 0xffffff : pb55SafeHexColor(oldMat, fallbackColor),
               map: chosenMap,
               side: THREE.DoubleSide,
-              transparent: false,
+              transparent: !!chosenMap,
               opacity: 1,
               alphaTest: chosenMap ? 0.01 : 0
             });
             mat.depthTest = false;
             mat.depthWrite = false;
+            mat.toneMapped = false;
             mat.needsUpdate = true;
             return mat;
           });
