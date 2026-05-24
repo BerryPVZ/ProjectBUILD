@@ -16476,5 +16476,219 @@ Click me again to advance.</textarea>
     })();
   </script>
 
+
+
+  <style id="pb607NpcBigMiddleDialogueStyle">
+    /* Project: BUILD 6.0.7 - bigger NPC side art + shorter centered dialogue boxes */
+    #dialogNpcArt.dialogNpcArt {
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 50% !important;
+      max-width: none !important;
+      align-items: flex-end !important;
+      justify-content: center !important;
+      overflow: hidden !important;
+      z-index: 8 !important;
+    }
+
+    #dialogNpcArt.npcOnLeft { left: 0 !important; right: auto !important; }
+    #dialogNpcArt.npcOnRight { right: 0 !important; left: auto !important; }
+
+    #dialogNpcArt img {
+      width: 130% !important;
+      height: 130% !important;
+      max-width: none !important;
+      max-height: none !important;
+      object-fit: contain !important;
+      object-position: bottom center !important;
+      filter: drop-shadow(0 22px 32px rgba(0,0,0,.78)) !important;
+    }
+
+    #dialogNpcArt .dialogNpcFallback {
+      width: min(44vw, 520px) !important;
+      height: min(44vw, 520px) !important;
+      margin-bottom: 5vh !important;
+      font-size: clamp(110px, 22vw, 270px) !important;
+    }
+
+    #dialogBox.npcSideDialog {
+      top: 50% !important;
+      bottom: auto !important;
+      transform: translateY(-50%) !important;
+      width: min(460px, 42%) !important;
+      min-height: 0 !important;
+      max-height: 28vh !important;
+      padding: 10px 14px !important;
+      border-radius: 22px !important;
+      z-index: 9 !important;
+      overflow: visible !important;
+    }
+
+    #dialogBox.npcSideDialog.npcOnLeft {
+      left: calc(50% + 14px) !important;
+      right: auto !important;
+    }
+
+    #dialogBox.npcSideDialog.npcOnRight {
+      right: calc(50% + 14px) !important;
+      left: auto !important;
+    }
+
+    #dialogBox.npcSideDialog::before {
+      top: 50% !important;
+      width: 28px !important;
+      height: 28px !important;
+      margin-top: -14px !important;
+    }
+
+    #dialogBox.npcSideDialog.npcOnLeft::before {
+      left: -16px !important;
+      transform: rotate(45deg) !important;
+    }
+
+    #dialogBox.npcSideDialog.npcOnRight::before {
+      right: -16px !important;
+      transform: rotate(225deg) !important;
+    }
+
+    #dialogBox.npcSideDialog #dialogName {
+      margin-bottom: 3px !important;
+      font-size: clamp(14px, 1.45vw, 20px) !important;
+      line-height: 1.05 !important;
+    }
+
+    #dialogBox.npcSideDialog #dialogText {
+      min-height: 0 !important;
+      max-height: 16vh !important;
+      overflow-y: auto !important;
+      font-size: clamp(13px, 1.25vw, 17px) !important;
+      line-height: 1.22 !important;
+    }
+
+    #dialogBox.npcSideDialog #dialogHint {
+      margin-top: 4px !important;
+      font-size: 10px !important;
+      line-height: 1.1 !important;
+      opacity: .72 !important;
+    }
+
+    .pb556Actor {
+      top: 0 !important;
+      bottom: 0 !important;
+      width: 50% !important;
+      max-width: none !important;
+      height: auto !important;
+      overflow: hidden !important;
+    }
+
+    .pb556Actor.left { left: 0 !important; right: auto !important; }
+    .pb556Actor.right { right: 0 !important; left: auto !important; }
+
+    .pb556Actor img {
+      width: 130% !important;
+      height: 130% !important;
+      max-width: none !important;
+      max-height: none !important;
+      object-fit: contain !important;
+      object-position: bottom center !important;
+    }
+
+    .pb556DialogueBubble {
+      top: 50% !important;
+      bottom: auto !important;
+      transform: translateY(-50%) !important;
+      width: min(460px, 42%) !important;
+      min-height: 0 !important;
+      max-height: 28vh !important;
+      padding: 10px 14px !important;
+      border-radius: 22px !important;
+      overflow-y: auto !important;
+    }
+
+    .pb556Actor.left ~ .pb556DialogueBubble {
+      left: calc(50% + 14px) !important;
+      right: auto !important;
+    }
+
+    .pb556Actor.right ~ .pb556DialogueBubble {
+      right: calc(50% + 14px) !important;
+      left: auto !important;
+    }
+
+    .pb556Actor.center {
+      left: 50% !important;
+      width: min(70vw, 720px) !important;
+      transform: translateX(-50%) !important;
+    }
+
+    .pb556Actor.center ~ .pb556DialogueBubble {
+      left: 50% !important;
+      right: auto !important;
+      top: 50% !important;
+      bottom: auto !important;
+      transform: translate(-50%, -50%) !important;
+      width: min(500px, calc(100vw - 36px)) !important;
+    }
+
+    @media (max-width: 820px), (pointer: coarse) {
+      #dialogNpcArt.dialogNpcArt {
+        top: 66px !important;
+        bottom: 72px !important;
+        width: 50% !important;
+      }
+      #dialogNpcArt img {
+        width: 145% !important;
+        height: 145% !important;
+      }
+      #dialogBox.npcSideDialog {
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translateY(-50%) !important;
+        width: calc(50% - 14px) !important;
+        max-height: 30vh !important;
+        min-height: 0 !important;
+        padding: 8px 10px !important;
+        border-radius: 16px !important;
+      }
+      #dialogBox.npcSideDialog.npcOnLeft {
+        left: calc(50% + 6px) !important;
+        right: auto !important;
+      }
+      #dialogBox.npcSideDialog.npcOnRight {
+        right: calc(50% + 6px) !important;
+        left: auto !important;
+      }
+      #dialogBox.npcSideDialog #dialogName { font-size: 13px !important; }
+      #dialogBox.npcSideDialog #dialogText {
+        font-size: 12px !important;
+        min-height: 0 !important;
+        max-height: 18vh !important;
+      }
+      #dialogBox.npcSideDialog #dialogHint { font-size: 9px !important; }
+      .pb556Actor {
+        top: 66px !important;
+        bottom: 72px !important;
+        width: 50% !important;
+      }
+      .pb556Actor img {
+        width: 145% !important;
+        height: 145% !important;
+      }
+      .pb556DialogueBubble {
+        top: 50% !important;
+        bottom: auto !important;
+        transform: translateY(-50%) !important;
+        width: calc(50% - 14px) !important;
+        min-height: 0 !important;
+        max-height: 30vh !important;
+        padding: 8px 10px !important;
+        border-radius: 16px !important;
+      }
+      .pb556Actor.left ~ .pb556DialogueBubble { left: calc(50% + 6px) !important; right: auto !important; }
+      .pb556Actor.right ~ .pb556DialogueBubble { right: calc(50% + 6px) !important; left: auto !important; }
+      .pb556Actor.center ~ .pb556DialogueBubble { width: calc(100vw - 24px) !important; }
+    }
+  </style>
+
 </body>
 </html>
