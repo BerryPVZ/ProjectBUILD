@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 5.5.4 - 3D Visibility Fix</title>
+  <title>Project: BUILD 5.5.5 - 2D Editor QoL Build</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1875,8 +1875,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.5.4</span></h1>
-      <p>Project: BUILD 5.5.4 sandbox. Friendly level builder GUI, play mode, campaign maps, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.5.5</span></h1>
+      <p>Project: BUILD 5.5.5 sandbox. 3D support has been removed; this build focuses on 2D entities, stronger entity functions, cleaner template work, and level-editor QoL tools.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -9571,8 +9571,8 @@ Click me again to advance.</textarea>
 
     // Project: BUILD 5.5 ambitious creator suite
     // Adds: visual behavior editor, mod package system, boss creator, timeline editor,
-    // a built-in paint-style graphics maker, 3D model + texture asset storage, decluttered tool drawers,
-    // and a legacy area for old JSON/fusion tools.
+    // a built-in paint-style graphics maker, decluttered tool drawers,
+    // and a legacy area for old JSON/fusion tools. 3D support was removed in 5.5.5.
     (function installProjectBuild5_5AmbitiousCreatorSuite() {
       const by = id => document.getElementById(id);
       const sidebar = by('sidebar');
@@ -9591,10 +9591,10 @@ Click me again to advance.</textarea>
       currentAssetCache.modelTextureName ??= '';
       currentAssetCache.pb55BossSpriteSrc ??= null;
 
-      document.title = 'Project: BUILD 5.5.3';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.5.3');
+      document.title = 'Project: BUILD 5.5.5';
+      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.5.5');
       const intro = sidebar.querySelector('p');
-      if (intro) intro.textContent = 'Project: BUILD 5.5.3 sandbox. Adds behavior editing, mod packages, boss blueprints, timeline events, a built-in placeholder paint tool, actual textured 3D model rendering, and a cleaner drawer-based tool UI.';
+      if (intro) intro.textContent = 'Project: BUILD 5.5.5 sandbox. 3D support has been removed; this build focuses on 2D sprites, behavior editing, mod packages, boss blueprints, timeline events, a built-in placeholder paint tool, entity function packs, and level-editor QoL.';
 
       const style = document.createElement('style');
       style.id = 'pb55AmbitiousStyles';
@@ -9678,13 +9678,8 @@ Click me again to advance.</textarea>
       }
 
       function installPB553DRenderLayer() {
-        const stage = by('stageWrap');
-        if (!stage || pb55Three.layer) return;
-        const layer = document.createElement('div');
-        layer.id = 'pb55ThreeLayer';
-        stage.appendChild(layer);
-        pb55Three.layer = layer;
-        loadPB553DRenderer();
+        // 3D support removed in 5.5.5. Keep this no-op so older saved scripts do not crash.
+        return;
       }
 
       async function loadPB553DRenderer() {
@@ -10096,12 +10091,7 @@ Click me again to advance.</textarea>
       }
 
       function renderPB553DLayer() {
-        installPB553DRenderLayer();
-        if (!pb55Three.ready || !pb55Three.renderer || !pb55Three.scene || !pb55Three.camera) return;
-        syncPB553DLayerBounds();
-        syncPB553DObjects();
-        pb55Three.renderer.clear();
-        pb55Three.renderer.render(pb55Three.scene, pb55Three.camera);
+        return;
       }
 
       function assignCurrentModelToSelectedEntity() {
@@ -10215,7 +10205,7 @@ Click me again to advance.</textarea>
 
             <div id="pb55Tab_graphics" class="pb55ToolCard pb55TabPanel">
               <h3>Built-In Placeholder Paint + 3D Assets</h3>
-              <p class="sectionNote">A small Paint-style maker for quick placeholder sprites: pen, eraser, bucket, color picker, resizable pen, and preset stamps. 3D model files now render as textured models on entities, and the same assets save into templates/worlds/.buildmod packages.</p>
+              <p class="sectionNote">A small Paint-style maker for quick placeholder sprites: pen, eraser, bucket, color picker, resizable pen, and preset stamps. 2D sprite, projectile, and campaign-icon assets can be painted or imported, then saved into templates, worlds, campaigns, and .buildmod packages.</p>
               <canvas id="pb55GraphicsCanvas" width="220" height="220"></canvas>
               <label>Graphic Name</label><input id="pb55GraphicName" value="Paint Placeholder">
               <div class="pb55PaintTools" id="pb55PaintTools">
@@ -10233,15 +10223,13 @@ Click me again to advance.</textarea>
               <div class="triple"><div><label>Preset Stamp</label><select id="pb55GraphicShape"><option value="plant">Plant</option><option value="zombie">Zombie</option><option value="boss">Boss</option><option value="projectile">Projectile</option><option value="packet">Packet Icon</option></select></div><div><label>Accent Color</label><input id="pb55GraphicColorB" type="color" value="#225522"></div><div><label>&nbsp;</label><button id="pb55StampPreset" type="button" class="blue">Stamp Preset</button></div></div>
               <div class="row"><button id="pb55GenerateGraphic" type="button">Save Canvas Graphic</button><button id="pb55UseGraphicAsBase" type="button" class="blue">Use Canvas As Base Sprite</button></div>
               <div class="row"><button id="pb55UseGraphicAsProjectile" type="button" class="blue">Use Canvas As Projectile</button><button id="pb55UseGraphicAsCampaignIcon" type="button" class="warn">Use Canvas As Level Icon</button></div>
-              <label>Assign 3D Model / Optional Texture To Template Form Or Selected Entity</label><input id="pb55FbxInput" type="file" multiple accept=".fbx,.obj,.glb,.gltf,.png,.jpg,.jpeg,.webp,.gif,.apng,model/fbx,model/gltf-binary,model/gltf+json,application/octet-stream,image/*">
-              <label>Texture Image For 3D Model</label><input id="pb55ModelTextureInput" type="file" multiple accept="image/*,.png,.jpg,.jpeg,.webp,.gif,.apng">
-              <div class="row"><button id="pb55UseCanvasAsModelTexture" type="button" class="blue">Use Canvas As 3D Texture</button><button id="pb55ClearModelAssets" type="button" class="danger">Clear Model/Texture</button></div><button id="pb55AssignModelToSelectedEntity" type="button" class="blue">Assign Current 3D Model To Selected Entity</button><div id="pb55ThreeRenderStatus" class="pb55ThreeNote">3D renderer loading when needed.</div>
-              <div id="pb55FbxStatus" class="pb55Status">No 3D model loaded. Textures are stored with the model/template for export.</div>
-              <div id="pb55ModelTexturePreview" class="pb55PaintPreview">No texture preview.</div>
+              <label>Import 2D Graphic Assets</label><input id="pb555SpriteImport" type="file" multiple accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
+              <div class="row"><button id="pb555ImportAsBase" type="button" class="blue">Use Import As Base Sprite</button><button id="pb555ImportAsProjectile" type="button" class="blue">Use Import As Projectile</button></div>
+              <div class="row"><button id="pb555ImportAsIcon" type="button" class="warn">Use Import As Level Icon</button><button id="pb555Clear2DAsset" type="button" class="danger">Clear Pending 2D Asset</button></div>
+              <div id="pb555SpriteImportStatus" class="pb55Status">No imported 2D asset selected. 3D support has been removed from this build.</div>
+              <div id="pb555SpriteImportPreview" class="pb55PaintPreview">No 2D import preview.</div>
               <h3 style="margin-top:10px">Saved Graphics</h3>
               <div id="pb55GraphicsList" class="pb55List"></div>
-              <h3 style="margin-top:10px">3D Model Library</h3>
-              <div id="pb55ModelList" class="pb55List"></div>
             </div>
           </div>`;
         const firstH2 = [...sidebar.children].find(n => n.tagName === 'H2');
@@ -10367,8 +10355,6 @@ Click me again to advance.</textarea>
         renderBehaviorRules();
         renderTimelineEvents();
         renderGraphicsList();
-        renderModelList();
-        updateModelAssetStatus();
       }
 
       function getSelectedBehaviorTemplate() {
@@ -10494,11 +10480,11 @@ Click me again to advance.</textarea>
           const t = { ...(template || {}), ...(override || {}) };
           ent.behaviorRules = clone(t.behaviorRules || []);
           ent.bossPhases = clone(t.bossPhases || []);
-          ent.model3dSrc = t.model3dSrc || null;
-          ent.model3dName = t.model3dName || '';
-          ent.modelTextureSrc = t.modelTextureSrc || null;
-          ent.modelTextureName = t.modelTextureName || '';
-          ent.renderMode3d = t.model3dSrc ? '3d' : (t.renderMode3d || '2d');
+          ent.renderMode3d = '2d';
+          delete ent.model3dSrc;
+          delete ent.model3dName;
+          delete ent.modelTextureSrc;
+          delete ent.modelTextureName;
           return ent;
         };
 
@@ -10533,16 +10519,7 @@ Click me again to advance.</textarea>
             return;
           }
           oldDraw55.apply(this, arguments);
-          if (e?.model3dSrc && state.display.labels) {
-            const h = (e.h || 80) * (e.scale || 1);
-            const waiting = pb55EntityHasRenderableModel(e) && !pb55EntityModelIsReady(e);
-            ctx.save();
-            ctx.fillStyle = waiting ? '#fde68a' : '#bae6fd';
-            ctx.font = '11px system-ui';
-            ctx.textAlign = 'center';
-            ctx.fillText(waiting ? 'loading 3D model...' : (e.modelTextureSrc ? '3D model + texture stored' : '3D model stored'), e.x, e.y - h / 2 - 28);
-            ctx.restore();
-          }
+          // 3D model labels removed in 5.5.5.
         };
 
         const oldDrawScene55 = draw;
@@ -10559,21 +10536,20 @@ Click me again to advance.</textarea>
           const previous = state.templates.find(x => x.name === t.name);
           t.behaviorRules = clone(previous?.behaviorRules || []);
           t.bossPhases = clone(previous?.bossPhases || []);
-          t.model3dSrc = currentAssetCache.model3dSrc || previous?.model3dSrc || null;
-          t.model3dName = currentAssetCache.model3dName || previous?.model3dName || '';
-          t.modelTextureSrc = currentAssetCache.modelTextureSrc || previous?.modelTextureSrc || null;
-          t.modelTextureName = currentAssetCache.modelTextureName || previous?.modelTextureName || '';
-          t.renderMode3d = t.model3dSrc ? '3d' : (previous?.renderMode3d || '2d');
+          t.renderMode3d = '2d';
+          delete t.model3dSrc;
+          delete t.model3dName;
+          delete t.modelTextureSrc;
+          delete t.modelTextureName;
           return t;
         };
         const oldLoad55 = loadTemplateToForm;
         loadTemplateToForm = function(t) {
           oldLoad55.apply(this, arguments);
-          currentAssetCache.model3dSrc = t?.model3dSrc || null;
-          currentAssetCache.model3dName = t?.model3dName || '';
-          currentAssetCache.modelTextureSrc = t?.modelTextureSrc || null;
-          currentAssetCache.modelTextureName = t?.modelTextureName || '';
-          updateModelAssetStatus();
+          currentAssetCache.model3dSrc = null;
+          currentAssetCache.model3dName = '';
+          currentAssetCache.modelTextureSrc = null;
+          currentAssetCache.modelTextureName = '';
           refreshPB55Lists();
         };
         const oldRefresh55 = refreshTemplates;
@@ -10586,7 +10562,6 @@ Click me again to advance.</textarea>
           const data = oldSer55.apply(this, arguments) || {};
           data.version = '5.5.3';
           data.pb55Graphics = clone(state.pb55Graphics || []);
-          data.pb55ModelLibrary = clone(state.pb55ModelLibrary || []);
           data.pb55BossBlueprints = clone(state.pb55BossBlueprints || []);
           data.timelineEvents = clone(state.timelineEvents || []);
           return data;
@@ -10600,7 +10575,6 @@ Click me again to advance.</textarea>
               const data = JSON.parse(reader.result);
               setTimeout(() => {
                 state.pb55Graphics = data.pb55Graphics || state.pb55Graphics || [];
-                state.pb55ModelLibrary = data.pb55ModelLibrary || state.pb55ModelLibrary || [];
                 state.pb55BossBlueprints = data.pb55BossBlueprints || state.pb55BossBlueprints || [];
                 state.timelineEvents = data.timelineEvents || state.timelineEvents || [];
                 refreshPB55Lists();
@@ -10633,7 +10607,6 @@ Click me again to advance.</textarea>
           campaigns: selectedOnly ? [] : clone(state.campaigns || []),
           boostTemplates: selectedOnly ? [] : clone(state.boostTemplates || []),
           graphics: selectedOnly ? [] : clone(state.pb55Graphics || []),
-          models: selectedOnly ? [] : clone(state.pb55ModelLibrary || []),
           bossBlueprints: selectedOnly ? [] : clone(state.pb55BossBlueprints || []),
           timelineEvents: selectedOnly ? [] : clone(state.timelineEvents || []),
           compatibility: { legacyJsonStillSupported: true, notes: 'Raw JSON import/export lives in the Legacy JSON / Fusion drawer.' }
@@ -10680,7 +10653,6 @@ Click me again to advance.</textarea>
               if (Array.isArray(pkg.campaigns)) state.campaigns = [...(state.campaigns || []), ...pkg.campaigns];
               if (Array.isArray(pkg.boostTemplates)) mergeByName(state.boostTemplates ??= [], pkg.boostTemplates);
               if (Array.isArray(pkg.graphics)) mergeByName(state.pb55Graphics ??= [], pkg.graphics);
-              if (Array.isArray(pkg.models)) mergeByName(state.pb55ModelLibrary ??= [], pkg.models);
               if (Array.isArray(pkg.bossBlueprints)) mergeByName(state.pb55BossBlueprints ??= [], pkg.bossBlueprints);
               if (Array.isArray(pkg.timelineEvents)) state.timelineEvents = [...(state.timelineEvents || []), ...pkg.timelineEvents];
               refreshTemplates();
@@ -10719,7 +10691,6 @@ Click me again to advance.</textarea>
           actionSrc: currentAssetCache.actionSrc || null, deathSrc: currentAssetCache.deathSrc || null,
           projectileSrc: currentAssetCache.projectileSrc || null, collectibleSrc:null,
           spawnSoundSrc: currentAssetCache.spawnSoundSrc || null, attackSoundSrc: currentAssetCache.attackSoundSrc || null, deathSoundSrc: currentAssetCache.deathSoundSrc || null, specialSoundSrc: currentAssetCache.specialSoundSrc || null,
-          model3dSrc: currentAssetCache.model3dSrc || null, model3dName: currentAssetCache.model3dName || '', modelTextureSrc: currentAssetCache.modelTextureSrc || null, modelTextureName: currentAssetCache.modelTextureName || '', renderMode3d: currentAssetCache.model3dSrc ? '3d' : '2d',
           color:'#c084fc', layer:2, rotation:0
         };
       }
@@ -11190,8 +11161,6 @@ Click me again to advance.</textarea>
         }
 
         if (currentAssetCache.modelTextureSrc) attachTextureToCurrentModel();
-        renderModelList();
-        updateModelAssetStatus();
 
         if (!modelFiles.length && !textureFiles.length) {
           if (status) status.textContent = 'That file was not a supported 3D model or image texture. Use FBX/OBJ/GLB/GLTF for the model and PNG/JPG/WebP/GIF for texture.';
@@ -11331,7 +11300,7 @@ Click me again to advance.</textarea>
           ['dragleave','drop'].forEach(type => gfxDropTarget.addEventListener(type, ev => { ev.preventDefault(); gfxDropTarget.style.outline = ''; }));
           gfxDropTarget.addEventListener('drop', async ev => {
             const files = ev.dataTransfer?.files;
-            if (files?.length) await loadPB553DAssetFiles(files, 'drop');
+            if (files?.length) await window.ProjectBuild5_5_5_2DEditorQoL?.load2DAssetFiles?.(files, 'drop');
           });
         }
         by('pb55PaintCanvasSize')?.addEventListener('change', e => resizePaintCanvas(Number(e.target.value) || 220));
@@ -11344,31 +11313,9 @@ Click me again to advance.</textarea>
         by('pb55UseGraphicAsBase')?.addEventListener('click', () => { currentAssetCache.entityImageSrc = drawGeneratedGraphic(); toast('Canvas assigned as base sprite'); });
         by('pb55UseGraphicAsProjectile')?.addEventListener('click', () => { currentAssetCache.projectileSrc = drawGeneratedGraphic(); toast('Canvas assigned as projectile sprite'); });
         by('pb55UseGraphicAsCampaignIcon')?.addEventListener('click', () => { state.pendingCampaignIconSrc = drawGeneratedGraphic(); toast('Canvas assigned as campaign level icon'); });
-        by('pb55UseCanvasAsModelTexture')?.addEventListener('click', () => {
-          currentAssetCache.modelTextureSrc = drawGeneratedGraphic();
-          currentAssetCache.modelTextureName = (by('pb55GraphicName')?.value || 'Paint Texture') + '.png';
-          attachTextureToCurrentModel();
-          updateModelAssetStatus();
-          toast('Canvas assigned as 3D model texture');
-        });
-        by('pb55ClearModelAssets')?.addEventListener('click', () => {
-          currentAssetCache.model3dSrc = null;
-          currentAssetCache.model3dName = '';
-          currentAssetCache.modelTextureSrc = null;
-          currentAssetCache.modelTextureName = '';
-          updateModelAssetStatus();
-          toast('Cleared current model and texture');
-        });
-        by('pb55AssignModelToSelectedEntity')?.addEventListener('click', assignCurrentModelToSelectedEntity);
-        by('pb55FbxInput')?.addEventListener('change', async e => {
-          await loadPB553DAssetFiles(e.target.files, 'model');
-        });
-        by('pb55ModelTextureInput')?.addEventListener('change', async e => {
-          await loadPB553DAssetFiles(e.target.files, 'texture');
-        });
+        // 3D model/texture controls removed in 5.5.5. 2D asset import is installed by the 5.5.5 QoL patch below.
         clearPaintCanvas();
         stampPresetGraphic(false);
-        updateModelAssetStatus();
       }
 
       makeQuickHub();
@@ -11381,14 +11328,14 @@ Click me again to advance.</textarea>
       setupBossUI();
       setupTimelineUI();
       setupGraphicsUI();
-      installPB553DRenderLayer();
+      // 3D renderer removed in 5.5.5.
       installTemplatePersistenceHooks();
       installBehaviorRuntime();
       refreshPB55Lists();
       accordionSidebar();
 
       window.ProjectBuild5_5AmbitiousCreatorSuite = {
-        version: '5.5.3-textured-3d-entity-rendering',
+        version: '5.5.5-2d-editor-qol-no-3d',
         exportModPackage: () => makeModPackage(false),
         addBehaviorRule,
         runTimelineEvent,
@@ -11396,6 +11343,1376 @@ Click me again to advance.</textarea>
       };
     })();
 
+
+
+
+    // Project: BUILD 5.5.5 - No-3D cleanup, extra entity functions, and level editor QoL.
+    (function installProjectBuild5_5_5_2DEditorQoL() {
+      if (window.ProjectBuild5_5_5_2DEditorQoL) return;
+      const by = id => document.getElementById(id);
+      const toast = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const clone = obj => (typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj || null)));
+      const strip3DKeys = obj => {
+        const seen = new WeakSet();
+        const walk = item => {
+          if (!item || typeof item !== 'object' || seen.has(item)) return item;
+          seen.add(item);
+          ['model3dSrc','model3dName','modelTextureSrc','modelTextureName','model3dScale','renderMode3d','pb55ModelLibrary'].forEach(k => {
+            if (Object.prototype.hasOwnProperty.call(item, k)) delete item[k];
+          });
+          Object.keys(item).forEach(k => walk(item[k]));
+          return item;
+        };
+        return walk(obj);
+      };
+
+      function clean3DState() {
+        try { by('pb55ThreeLayer')?.remove(); } catch {}
+        if (state) {
+          state.pb55ModelLibrary = [];
+          strip3DKeys(state.templates || []);
+          strip3DKeys(state.entities || []);
+        }
+        if (typeof currentAssetCache === 'object' && currentAssetCache) {
+          currentAssetCache.model3dSrc = null;
+          currentAssetCache.model3dName = '';
+          currentAssetCache.modelTextureSrc = null;
+          currentAssetCache.modelTextureName = '';
+        }
+        document.querySelectorAll('#pb55FbxInput,#pb55ModelTextureInput,#pb55ModelTexturePreview,#pb55ModelList,#pb55ThreeRenderStatus,#pb55FbxStatus').forEach(el => el.remove());
+        [...document.querySelectorAll('label,h3,p,div')].forEach(el => {
+          const txt = (el.textContent || '').toLowerCase();
+          if ((txt.includes('3d model') || txt.includes('fbx') || txt.includes('three.js')) && el.closest('#sidebar')) {
+            if (el.tagName === 'LABEL' || el.tagName === 'H3') el.remove();
+          }
+        });
+      }
+
+      // Keep future exports clean even when old imported files contain old model fields.
+      if (typeof serializableState === 'function' && !serializableState.pb555No3DWrapped) {
+        const prevSerializable = serializableState;
+        serializableState = function() {
+          return strip3DKeys(prevSerializable.apply(this, arguments));
+        };
+        serializableState.pb555No3DWrapped = true;
+      }
+      if (typeof entityFromTemplate === 'function' && !entityFromTemplate.pb555No3DWrapped) {
+        const prevEntityFromTemplate = entityFromTemplate;
+        entityFromTemplate = function(template, x, y, override = {}) {
+          const ent = prevEntityFromTemplate.apply(this, arguments);
+          strip3DKeys(ent);
+          ent.renderMode3d = '2d';
+          return ent;
+        };
+        entityFromTemplate.pb555No3DWrapped = true;
+      }
+
+      // 2D asset importer replacing the removed 3D model controls.
+      let pb555Last2DAsset = null;
+      function fileToDataURL555(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+      async function load2DAssetFiles(fileList, source = 'import') {
+        const files = [...(fileList || [])].filter(f => /^image\//i.test(f.type || '') || /\.(png|gif|jpe?g|webp|apng)$/i.test(f.name || ''));
+        const st = by('pb555SpriteImportStatus');
+        const preview = by('pb555SpriteImportPreview');
+        if (!files.length) {
+          if (st) st.textContent = 'No supported 2D image found. Use PNG, GIF, JPG, WebP, or APNG.';
+          toast('Use a 2D image file');
+          return null;
+        }
+        const file = files[0];
+        const src = await fileToDataURL555(file);
+        pb555Last2DAsset = { name:file.name || '2d-asset.png', src, source };
+        if (st) st.textContent = `Selected 2D asset: ${pb555Last2DAsset.name}. Pick where to use it.`;
+        if (preview) preview.innerHTML = `<img src="${src}" alt=""><span>${pb555Last2DAsset.name}</span>`;
+        return pb555Last2DAsset;
+      }
+      function useLast2D(kind) {
+        if (!pb555Last2DAsset) return toast('Import a 2D image first');
+        if (kind === 'base') {
+          currentAssetCache.entityImageSrc = pb555Last2DAsset.src;
+          currentAssetCache.idleSrc = pb555Last2DAsset.src;
+          toast('2D asset assigned as base sprite');
+        } else if (kind === 'projectile') {
+          currentAssetCache.projectileSrc = pb555Last2DAsset.src;
+          toast('2D asset assigned as projectile sprite');
+        } else if (kind === 'icon') {
+          state.pendingCampaignIconSrc = pb555Last2DAsset.src;
+          toast('2D asset assigned as level icon');
+        }
+      }
+      function setup2DImportUI() {
+        by('pb555SpriteImport')?.addEventListener('change', e => load2DAssetFiles(e.target.files, 'input'));
+        by('pb555ImportAsBase')?.addEventListener('click', () => useLast2D('base'));
+        by('pb555ImportAsProjectile')?.addEventListener('click', () => useLast2D('projectile'));
+        by('pb555ImportAsIcon')?.addEventListener('click', () => useLast2D('icon'));
+        by('pb555Clear2DAsset')?.addEventListener('click', () => {
+          pb555Last2DAsset = null;
+          const st = by('pb555SpriteImportStatus');
+          const preview = by('pb555SpriteImportPreview');
+          if (st) st.textContent = 'No imported 2D asset selected. 3D support has been removed from this build.';
+          if (preview) preview.textContent = 'No 2D import preview.';
+          toast('Pending 2D asset cleared');
+        });
+      }
+
+      const extraEntityFunctions = [
+        'entitySelfHealAura','entityDamageAura','entityKnockbackAura','entitySpawnMinionOnTimer',
+        'entitySplitOnDeath','entityPhaseAtHalfHp','entityProjectileBurst','entityLanePatrol',
+        'entityShieldRegen','entityStunNearby','entityRewardOnDeath','entityTrapDetonate'
+      ];
+      extraEntityFunctions.forEach(name => { if (Array.isArray(abilityList) && !abilityList.includes(name)) abilityList.push(name); });
+
+      function selectedAbilities555() {
+        try { return typeof selectedAbilities === 'function' ? selectedAbilities() : [...document.querySelectorAll('.pill.active')].map(p => p.dataset.ability); }
+        catch { return []; }
+      }
+      function setAbility555(name, on = true) {
+        const pill = [...document.querySelectorAll('.pill')].find(p => p.dataset.ability === name);
+        if (pill) pill.classList.toggle('active', !!on);
+      }
+      function refreshEntityFunctionChips() {
+        document.querySelectorAll('[data-pb555-ability]').forEach(chip => {
+          const pill = [...document.querySelectorAll('.pill')].find(p => p.dataset.ability === chip.dataset.pb555Ability);
+          chip.classList.toggle('active', !!pill?.classList.contains('active'));
+        });
+      }
+      function installEntityFunctionPanel() {
+        const saveBtn = by('saveTemplate');
+        const templateCard = saveBtn?.closest?.('.card');
+        if (!templateCard || by('pb555EntityFunctionTools')) return;
+        const panel = document.createElement('div');
+        panel.id = 'pb555EntityFunctionTools';
+        panel.className = 'pb45Panel';
+        panel.innerHTML = `
+          <h2>5.5.5 Extra Entity Functions</h2>
+          <p class="sectionNote">More generic 2D functions for plants, zombies, bosses, props, traps, and gimmick entities. These are real runtime abilities, not just labels.</p>
+          <div class="row">
+            <button id="pb555AddArenaPack" type="button" class="blue">Add Arena Pack</button>
+            <button id="pb555AddTrapPack" type="button" class="warn">Add Trap/Gimmick Pack</button>
+          </div>
+          <button id="pb555ClearEntityFunctions" type="button" class="danger">Clear 5.5.5 Functions</button>
+          <div class="pb54FunctionList">${extraEntityFunctions.map(n => `<span class="pb54FunctionChip" data-pb555-ability="${n}">${n}</span>`).join('')}</div>
+        `;
+        templateCard.insertBefore(panel, saveBtn);
+        panel.addEventListener('click', e => {
+          const chip = e.target.closest('[data-pb555-ability]');
+          if (!chip) return;
+          const pill = [...document.querySelectorAll('.pill')].find(p => p.dataset.ability === chip.dataset.pb555Ability);
+          if (pill) pill.classList.toggle('active');
+          refreshEntityFunctionChips();
+        });
+        by('pb555AddArenaPack')?.addEventListener('click', () => {
+          ['entityDamageAura','entityKnockbackAura','entityProjectileBurst','entityPhaseAtHalfHp','entityShieldRegen'].forEach(n => setAbility555(n, true));
+          refreshEntityFunctionChips();
+          toast('Arena entity pack added');
+        });
+        by('pb555AddTrapPack')?.addEventListener('click', () => {
+          ['entityTrapDetonate','entityStunNearby','entityRewardOnDeath','entitySplitOnDeath'].forEach(n => setAbility555(n, true));
+          refreshEntityFunctionChips();
+          toast('Trap/gimmick entity pack added');
+        });
+        by('pb555ClearEntityFunctions')?.addEventListener('click', () => {
+          extraEntityFunctions.forEach(n => setAbility555(n, false));
+          refreshEntityFunctionChips();
+          toast('5.5.5 entity functions cleared');
+        });
+        by('abilityPills')?.addEventListener('click', () => setTimeout(refreshEntityFunctionChips, 0));
+      }
+
+      const grid555 = () => state.grid || { cellW:80, cellH:100, offsetX:40, offsetY:80 };
+      const laneY555 = lane => window.ProjectBuildUniversal?.laneY ? window.ProjectBuildUniversal.laneY(lane) : grid555().offsetY + (Math.max(1, Math.min(5, Number(lane) || 1)) - 1) * grid555().cellH;
+      const laneFromY555 = y => Math.max(1, Math.min(5, Math.round(((Number(y) || grid555().offsetY) - grid555().offsetY) / Math.max(1, grid555().cellH)) + 1));
+      const sameLane555 = (a,b) => Math.abs((a?.y || 0) - (b?.y || 0)) < Math.max(52, (grid555().cellH || 100) * .46);
+      const dist555 = (a,b) => Math.hypot((a?.x || 0) - (b?.x || 0), (a?.y || 0) - (b?.y || 0));
+      function every555(e, key, seconds, dt) {
+        if (typeof entityTimer === 'function') return entityTimer(e, 'pb555_' + key, seconds);
+        e._pb555Timers ??= {};
+        e._pb555Timers[key] = (e._pb555Timers[key] || 0) - (dt || 1 / 60);
+        if (e._pb555Timers[key] <= 0) { e._pb555Timers[key] = seconds; return true; }
+        return false;
+      }
+      function enemyList555(e) {
+        return (state.entities || []).filter(o => o && o !== e && !o.dead && (typeof enemyOf === 'function' ? enemyOf(e, o) : o.side !== e.side && o.side !== 'neutral'));
+      }
+      function allyList555(e) {
+        return (state.entities || []).filter(o => o && o !== e && !o.dead && o.side === e.side);
+      }
+      function particle555(x,y,text) {
+        if (state.display?.particles !== false && Array.isArray(state.particles)) state.particles.push({ x, y, age:0, text:String(text) });
+      }
+      function spawnHelper555(source, x, y, overrides = {}) {
+        let base = state.templates?.find(t => t.side === source.side && t.name !== source.name) || source;
+        const data = { ...clone(base), ...overrides };
+        strip3DKeys(data);
+        const ent = entityFromTemplate(data, x, y);
+        strip3DKeys(ent);
+        state.entities.push(ent);
+        return ent;
+      }
+      function runExtraEntityFunctions(e, dt) {
+        if (!e || e.dead) return;
+        const ab = e.abilities || [];
+        if (!ab.some(a => extraEntityFunctions.includes(a))) return;
+        const enemies = enemyList555(e);
+        const allies = allyList555(e);
+        if (ab.includes('entitySelfHealAura') && every555(e, 'selfHealAura', 1, dt)) {
+          [e, ...allies.filter(a => dist555(e,a) < 150)].forEach(a => { a.hp = Math.min(a.maxHp || a.hp || 1, (a.hp || 1) + 5); });
+          particle555(e.x, e.y - 45, '+AURA');
+        }
+        if (ab.includes('entityDamageAura')) enemies.filter(o => dist555(e,o) < 128).forEach(o => damageEntity(o, 10 * (dt || 1/60), e));
+        if (ab.includes('entityKnockbackAura') && every555(e, 'knockbackAura', 4.5, dt)) {
+          enemies.filter(o => dist555(e,o) < 150).forEach(o => { o.x += Math.sign((o.x || 0) - (e.x || 0)) * 55 || 55; damageEntity(o, 4, e); });
+          particle555(e.x, e.y - 42, 'PUSH');
+        }
+        if (ab.includes('entitySpawnMinionOnTimer') && every555(e, 'spawnMinion', 10, dt)) {
+          spawnHelper555(e, e.x + (e.facing || 1) * 55, e.y + (Math.random() * 50 - 25), {
+            name:'Helper ' + (e.name || 'Entity'), hp:Math.max(20, (e.maxHp || 80) * .28), maxHp:Math.max(20, (e.maxHp || 80) * .28),
+            damage:Math.max(1, (e.damage || 8) * .45), scale:Math.max(.45, (e.scale || 1) * .7), abilities:[]
+          });
+          particle555(e.x, e.y - 44, 'SUMMON');
+        }
+        if (ab.includes('entityPhaseAtHalfHp') && !e._pb555HalfPhase && (e.hp || 0) <= (e.maxHp || 1) * .5) {
+          e._pb555HalfPhase = true;
+          e.damage = Math.max(1, (e.damage || 1) * 1.45);
+          e.cooldown = Math.max(.15, (e.cooldown || 1) * .72);
+          e.speed = (e.speed || 0) * 1.25;
+          particle555(e.x, e.y - 52, 'PHASE');
+        }
+        if (ab.includes('entityProjectileBurst') && enemies.length && every555(e, 'projectileBurst', 5.5, dt)) {
+          for (let i = 0; i < 8; i++) makeProjectile(e, i * Math.PI * 2 / 8, e.projectileSpeed || 360, .75);
+          setActionVisual?.(e, .45);
+        }
+        if (ab.includes('entityLanePatrol')) {
+          e._pb555PatrolOrigin ??= e.x;
+          e._pb555PatrolDir ??= 1;
+          const span = Number(e.patrolSpan || 135);
+          if (e.x > e._pb555PatrolOrigin + span) e._pb555PatrolDir = -1;
+          if (e.x < e._pb555PatrolOrigin - span) e._pb555PatrolDir = 1;
+          e.x += e._pb555PatrolDir * Math.max(.25, Math.abs(e.speed || 1.2)) * 20 * (dt || 1/60);
+        }
+        if (ab.includes('entityShieldRegen') && every555(e, 'shieldRegen', 1.5, dt)) {
+          e.hp = Math.min(e.maxHp || e.hp || 1, (e.hp || 1) + Math.max(3, (e.maxHp || 100) * .025));
+        }
+        if (ab.includes('entityStunNearby') && every555(e, 'stunNearby', 6, dt)) {
+          enemies.filter(o => dist555(e,o) < 150).forEach(o => { o._pb555StunUntil = (state.worldTime || 0) + 1.15; o.vx = 0; });
+          particle555(e.x, e.y - 42, 'STUN');
+        }
+        if (ab.includes('entityTrapDetonate')) {
+          const hit = enemies.find(o => Math.abs((o.x || 0) - (e.x || 0)) < ((o.w || 60) + (e.w || 60)) * .38 && sameLane555(e, o));
+          if (hit) {
+            enemies.filter(o => dist555(hit, o) < 115).forEach(o => damageEntity(o, Math.max(25, (e.damage || 20) * 2.5), e));
+            e.hp = 0; e.dead = true;
+            particle555(e.x, e.y - 30, 'BOOM');
+          }
+        }
+      }
+      function runExtraDeathFunctions() {
+        for (const e of [...(state.entities || [])]) {
+          if (!e?.dead || e._pb555DeathHandled) continue;
+          e._pb555DeathHandled = true;
+          const ab = e.abilities || [];
+          if (ab.includes('entitySplitOnDeath')) {
+            for (let i = 0; i < 2; i++) spawnHelper555(e, e.x + (Math.random() * 70 - 35), e.y + (Math.random() * 55 - 27), {
+              name:'Split ' + (e.name || 'Entity'), hp:Math.max(12, (e.maxHp || 60) * .28), maxHp:Math.max(12, (e.maxHp || 60) * .28),
+              damage:Math.max(1, (e.damage || 5) * .55), scale:Math.max(.35, (e.scale || 1) * .62), abilities:[]
+            });
+          }
+          if (ab.includes('entityRewardOnDeath')) {
+            state.sun = (state.sun || 0) + 50;
+            particle555(e.x, e.y - 38, '+50');
+          }
+        }
+      }
+      if (typeof update === 'function' && !update.pb555ExtraEntityWrapped) {
+        const previousUpdate = update;
+        update = function(dt) {
+          previousUpdate.apply(this, arguments);
+          if (state.paused) return;
+          for (const e of state.entities || []) {
+            if (e?._pb555StunUntil && (state.worldTime || 0) < e._pb555StunUntil) e.vx = 0;
+            runExtraEntityFunctions(e, dt || 1 / 60);
+          }
+          runExtraDeathFunctions();
+        };
+        update.pb555ExtraEntityWrapped = true;
+      }
+
+      function readWaveJSON555() {
+        const box = by('levelScriptModal') || by('waveScript');
+        try {
+          const parsed = JSON.parse(box?.value || '[]');
+          return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch (err) {
+          toast('Wave JSON error: ' + err.message);
+          return null;
+        }
+      }
+      function writeWaveJSON555(events) {
+        const clean = Array.isArray(events) ? events : [];
+        const txt = JSON.stringify(clean, null, 2);
+        if (by('levelScriptModal')) by('levelScriptModal').value = txt;
+        if (by('waveScript')) by('waveScript').value = txt;
+        try { localStorage.setItem('projectBuild.lastLevelWaveBackup', txt); } catch {}
+        by('builderSortWaves')?.click?.();
+        updateWaveStats555(clean);
+      }
+      function updateWaveStats555(events = readWaveJSON555() || []) {
+        const stat = by('pb555WaveStats');
+        if (!stat) return;
+        const total = events.reduce((sum, ev) => sum + Math.max(1, Number(ev.count) || 1), 0);
+        const end = events.reduce((max, ev) => Math.max(max, (Number(ev.time) || 0) + Math.max(1, Number(ev.count) || 1) * Math.max(.05, Number(ev.interval) || 0)), 0);
+        const invalid = events.filter(ev => !ev.template || !state.templates?.some(t => t.name === ev.template)).length;
+        stat.textContent = `${events.length} wave card(s), ${total} total spawns, ends around ${end.toFixed(1)}s${invalid ? `, ${invalid} missing template(s)` : ''}.`;
+      }
+      function installLevelQoLPanel() {
+        const grid = document.querySelector('#pbLevelModal .pbBuilderGrid');
+        if (!grid || by('pb555LevelQoLPanel')) return;
+        const panel = document.createElement('div');
+        panel.id = 'pb555LevelQoLPanel';
+        panel.className = 'pbBuilderPanel';
+        panel.innerHTML = `
+          <h3>🛠️ Level QoL</h3>
+          <p class="pbBuilderTiny">Batch edits for wave cards. These sync to the hidden JSON and the normal play-mode starter.</p>
+          <div id="pb555WaveStats" class="pbBuilderEmpty">No wave stats yet.</div>
+          <div class="triple">
+            <div><label>Time Offset</label><input id="pb555WaveOffset" type="number" value="1" step="0.5"></div>
+            <div><label>Spacing</label><input id="pb555WaveSpacing" type="number" value="3" step="0.5"></div>
+            <div><label>Bulk Count</label><input id="pb555BulkCount" type="number" value="5" min="1"></div>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb555OffsetWaves" type="button" class="blue">Offset Times</button>
+            <button id="pb555CompressWaves" type="button">Re-space Timeline</button>
+            <button id="pb555NormalizeLanes" type="button">Snap Lanes</button>
+            <button id="pb555MirrorLanes" type="button" class="warn">Mirror Lanes</button>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb555FarRightWaves" type="button">Far-Right X</button>
+            <button id="pb555DuplicateLastWave" type="button" class="blue">Duplicate Last</button>
+            <button id="pb555FiveLaneBurst" type="button" class="warn">5-Lane Burst</button>
+            <button id="pb555RemoveBadWaves" type="button" class="danger">Remove Bad</button>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb555SetTimeAfterLast" type="button">Set Time After Last</button>
+            <button id="pb555BackupWaves" type="button" class="blue">Backup Waves</button>
+            <button id="pb555RestoreWaves" type="button" class="warn">Restore Backup</button>
+            <button id="pb555CopyWaveJSON" type="button">Copy JSON</button>
+          </div>
+        `;
+        grid.appendChild(panel);
+        const mutate = (fn, label) => {
+          const events = readWaveJSON555();
+          if (!events) return;
+          const next = fn(events) || events;
+          writeWaveJSON555(next);
+          toast(label);
+        };
+        by('pb555OffsetWaves')?.addEventListener('click', () => mutate(events => {
+          const offset = Number(by('pb555WaveOffset')?.value) || 0;
+          events.forEach(ev => ev.time = Math.max(0, (Number(ev.time) || 0) + offset));
+        }, 'Wave times offset'));
+        by('pb555CompressWaves')?.addEventListener('click', () => mutate(events => {
+          const spacing = Math.max(.1, Number(by('pb555WaveSpacing')?.value) || 3);
+          events.sort((a,b) => (Number(a.time)||0) - (Number(b.time)||0)).forEach((ev, i) => ev.time = +(i * spacing).toFixed(2));
+        }, 'Wave timeline re-spaced'));
+        by('pb555NormalizeLanes')?.addEventListener('click', () => mutate(events => {
+          events.forEach(ev => ev.y = laneY555(laneFromY555(ev.y ?? 260)));
+        }, 'Wave lanes snapped to grid'));
+        by('pb555MirrorLanes')?.addEventListener('click', () => mutate(events => {
+          events.forEach(ev => ev.y = laneY555(6 - laneFromY555(ev.y ?? 260)));
+        }, 'Wave lanes mirrored'));
+        by('pb555FarRightWaves')?.addEventListener('click', () => mutate(events => {
+          events.forEach(ev => ev.x = -1);
+        }, 'All wave spawns set to far-right behavior'));
+        by('pb555DuplicateLastWave')?.addEventListener('click', () => mutate(events => {
+          const last = clone(events.sort((a,b) => (Number(a.time)||0) - (Number(b.time)||0)).at(-1));
+          if (!last) return events;
+          last.id = 'wave-' + Date.now() + '-' + Math.floor(Math.random() * 99999);
+          last.time = +(Number(last.time || 0) + Math.max(.1, Number(by('pb555WaveSpacing')?.value) || 3)).toFixed(2);
+          events.push(last);
+        }, 'Last wave duplicated'));
+        by('pb555FiveLaneBurst')?.addEventListener('click', () => mutate(events => {
+          const base = events.at(-1) || (typeof eventFromBuilderControls === 'function' ? eventFromBuilderControls() : null) || { template: state.templates?.find(t => t.side === 'zombie' || t.side === 'boss')?.name, time:0, count:1, interval:1, x:-1, jitter:15 };
+          const start = (events.reduce((m, ev) => Math.max(m, Number(ev.time) || 0), 0) || Number(by('levelTime')?.value) || 0) + Math.max(.1, Number(by('pb555WaveSpacing')?.value) || 3);
+          for (let lane = 1; lane <= 5; lane++) events.push({ ...clone(base), id:'wave-' + Date.now() + '-' + lane + '-' + Math.floor(Math.random()*999), time:+(start + (lane - 1) * .25).toFixed(2), y:laneY555(lane), x:-1, count:Math.max(1, Number(by('pb555BulkCount')?.value) || Number(base.count) || 1) });
+        }, 'Five-lane burst added'));
+        by('pb555RemoveBadWaves')?.addEventListener('click', () => mutate(events => events.filter(ev => ev && ev.template && state.templates?.some(t => t.name === ev.template)), 'Invalid wave cards removed'));
+        by('pb555SetTimeAfterLast')?.addEventListener('click', () => {
+          const events = readWaveJSON555() || [];
+          const end = events.reduce((max, ev) => Math.max(max, (Number(ev.time) || 0) + Math.max(1, Number(ev.count) || 1) * Math.max(.05, Number(ev.interval) || 0)), 0);
+          if (by('levelTime')) by('levelTime').value = +(end + Math.max(.1, Number(by('pb555WaveSpacing')?.value) || 3)).toFixed(2);
+          toast('Start time set after the last wave');
+        });
+        by('pb555BackupWaves')?.addEventListener('click', () => {
+          const events = readWaveJSON555();
+          if (!events) return;
+          try { localStorage.setItem('projectBuild.manualLevelWaveBackup', JSON.stringify(events, null, 2)); toast('Wave backup saved'); }
+          catch { toast('Could not save backup'); }
+        });
+        by('pb555RestoreWaves')?.addEventListener('click', () => {
+          try {
+            const raw = localStorage.getItem('projectBuild.manualLevelWaveBackup') || localStorage.getItem('projectBuild.lastLevelWaveBackup');
+            if (!raw) return toast('No wave backup found');
+            const parsed = JSON.parse(raw);
+            if (!Array.isArray(parsed)) return toast('Backup was not a wave list');
+            writeWaveJSON555(parsed);
+            toast('Wave backup restored');
+          } catch (err) { toast('Backup restore failed: ' + err.message); }
+        });
+        by('pb555CopyWaveJSON')?.addEventListener('click', async () => {
+          const txt = by('levelScriptModal')?.value || by('waveScript')?.value || '[]';
+          try { await navigator.clipboard.writeText(txt); toast('Wave JSON copied'); }
+          catch { toast('Clipboard blocked by browser'); }
+        });
+        ['levelScriptModal','waveScript'].forEach(id => by(id)?.addEventListener('input', () => updateWaveStats555()));
+        updateWaveStats555();
+      }
+
+      function installSelectedEntityQoL() {
+        if (by('pb555SelectedEntityQoL')) return;
+        const toolsHeader = [...document.querySelectorAll('#sidebar .pb55Section')].find(d => (d.dataset.pb55Title || '').toLowerCase() === 'tool');
+        const dest = toolsHeader?.querySelector('.pb55SectionBody') || by('sidebar');
+        if (!dest) return;
+        const panel = document.createElement('div');
+        panel.id = 'pb555SelectedEntityQoL';
+        panel.className = 'card';
+        panel.innerHTML = `
+          <h2>Selected Entity QoL</h2>
+          <p class="sectionNote">Fast layout fixes for placed 2D entities.</p>
+          <div class="pbBuilderActions">
+            <button id="pb555AlignLane" type="button" class="blue">Align Lane</button>
+            <button id="pb555CloneAllLanes" type="button">Clone 5 Lanes</button>
+            <button id="pb555ResetTransform" type="button">Reset Transform</button>
+            <button id="pb555FullHeal" type="button" class="warn">Full HP</button>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb555NudgeLeft" type="button">←</button>
+            <button id="pb555NudgeUp" type="button">↑</button>
+            <button id="pb555NudgeDown" type="button">↓</button>
+            <button id="pb555NudgeRight" type="button">→</button>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb555SendBack" type="button">Back</button>
+            <button id="pb555BringFront" type="button">Front</button>
+            <button id="pb555LockGrid" type="button" class="blue">Snap Selected</button>
+            <button id="pb555DeleteDead" type="button" class="danger">Clear Dead</button>
+          </div>
+        `;
+        dest.appendChild(panel);
+        const requireSel = () => state.selected || (toast('Select an entity first'), null);
+        const nudge = (dx,dy) => { const e = requireSel(); if (!e) return; e.x += dx; e.y += dy; };
+        by('pb555AlignLane')?.addEventListener('click', () => { const e = requireSel(); if (!e) return; e.y = laneY555(laneFromY555(e.y)); toast('Selected entity aligned to nearest lane'); });
+        by('pb555CloneAllLanes')?.addEventListener('click', () => {
+          const e = requireSel(); if (!e) return;
+          for (let lane = 1; lane <= 5; lane++) {
+            if (lane === laneFromY555(e.y)) continue;
+            const copy = entityFromTemplate(e, e.x, laneY555(lane), { id: undefined });
+            strip3DKeys(copy);
+            state.entities.push(copy);
+          }
+          toast('Selected entity cloned across all lanes');
+        });
+        by('pb555ResetTransform')?.addEventListener('click', () => { const e = requireSel(); if (!e) return; e.scale = 1; e.rotation = 0; toast('Transform reset'); });
+        by('pb555FullHeal')?.addEventListener('click', () => { const e = requireSel(); if (!e) return; e.hp = e.maxHp || e.hp || 1; e.dead = false; toast('Selected entity healed'); });
+        by('pb555NudgeLeft')?.addEventListener('click', () => nudge(-10,0));
+        by('pb555NudgeRight')?.addEventListener('click', () => nudge(10,0));
+        by('pb555NudgeUp')?.addEventListener('click', () => nudge(0,-10));
+        by('pb555NudgeDown')?.addEventListener('click', () => nudge(0,10));
+        by('pb555SendBack')?.addEventListener('click', () => { const e = requireSel(); if (!e) return; state.entities = [e, ...state.entities.filter(o => o !== e)]; toast('Sent behind other entities'); });
+        by('pb555BringFront')?.addEventListener('click', () => { const e = requireSel(); if (!e) return; state.entities = [...state.entities.filter(o => o !== e), e]; toast('Brought in front of other entities'); });
+        by('pb555LockGrid')?.addEventListener('click', () => { const e = requireSel(); if (!e) return; const g = grid555(); e.x = g.offsetX + Math.round((e.x - g.offsetX) / Math.max(1,g.cellW)) * g.cellW; e.y = laneY555(laneFromY555(e.y)); toast('Selected entity snapped to grid/lane'); });
+        by('pb555DeleteDead')?.addEventListener('click', () => { const before = state.entities.length; state.entities = state.entities.filter(e => !e.dead); toast(`${before - state.entities.length} dead entities cleared`); });
+      }
+
+      function installBuilderShortcuts() {
+        const modal = by('pbLevelModal');
+        if (!modal || modal.dataset.pb555Shortcuts) return;
+        modal.dataset.pb555Shortcuts = '1';
+        modal.addEventListener('keydown', e => {
+          if (!modal.classList.contains('open')) return;
+          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); by('levelAddSpawn')?.click(); }
+          if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); by('levelSaveToCampaign')?.click(); }
+        });
+      }
+
+      // Re-render ability pills after adding the new function names, then restore the user's current choices.
+      const before = selectedAbilities555();
+      if (typeof renderAbilityPills === 'function') renderAbilityPills();
+      if (typeof setActiveAbilities === 'function') setActiveAbilities(before);
+      clean3DState();
+      setup2DImportUI();
+      installEntityFunctionPanel();
+      installLevelQoLPanel();
+      installSelectedEntityQoL();
+      installBuilderShortcuts();
+      refreshEntityFunctionChips();
+
+      window.ProjectBuild5_5_5_2DEditorQoL = {
+        version:'5.5.5-no-3d-2d-editor-qol',
+        load2DAssetFiles,
+        strip3DKeys,
+        extraEntityFunctions,
+        installLevelQoLPanel,
+        installSelectedEntityQoL
+      };
+      toast('5.5.5 installed: 3D removed, 2D entity functions and level QoL added');
+    })();
+
+
+
+
+    // Project: BUILD 5.5.6 - Puzzle/minigame level director + visual cutscene studio.
+    (function installProjectBuild5_5_6_LevelPuzzleCutsceneMegaPack() {
+      if (window.ProjectBuild5_5_6_LevelPuzzleCutsceneMegaPack) return;
+      const by = id => document.getElementById(id);
+      const toast = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const clone = obj => (typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj ?? null)));
+      const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+      const choice = arr => arr[Math.floor(Math.random() * Math.max(1, arr.length))];
+
+      state.pb556 ??= {};
+      state.pb556.rules ??= {
+        mode: 'classic', startingSun: 50, timeLimit: 0, targetScore: 10,
+        puzzleCount: 16, conveyorRate: 5, autoBoard: true, fog: false, storm: false,
+        lockedPackets: false, note: ''
+      };
+      state.pb556.boardItems ??= [];
+      state.pb556.runtime ??= null;
+      state.pb556.cutsceneDraft ??= { leftImage: null, rightImage: null, centerImage: null };
+
+      const modeCatalog556 = [
+        ['classic', 'Adventure / Classic Waves', 'Normal lane defense with cleaner wave presets.'],
+        ['conveyor', 'Conveyor Belt', 'Random packets arrive on a timer while waves run.'],
+        ['slotMachine', 'Slot Machine', 'Click a slot reel for random sun, plants, or enemy bursts.'],
+        ['lastStand', 'Last Stand', 'Big starting sun, no producer reliance, heavier wave blocks.'],
+        ['survival', 'Survival / Flags', 'Long escalating wave script with flag-style spikes.'],
+        ['fogNight', 'Fog / Storm Night', 'Low visibility and storm pulses layered on normal waves.'],
+        ['bowling', 'Wall-nut Bowling Style', 'Clickable bowling nuts roll down lanes into zombies.'],
+        ['vasebreaker', 'Vasebreaker Style', 'Clickable vases hide zombies or rewards.'],
+        ['reverseDefense', 'I-Zombie / Reverse', 'Pre-places plants as the puzzle obstacle and uses zombie-heavy tools.'],
+        ['beghouled', 'Beghouled / Match-3', 'A small match board that scores when gems line up.'],
+        ['whack', 'Whack-a-Zombie', 'Click popping targets before the timer moves them.'],
+        ['zombiquarium', 'Zombiquarium / Feeding', 'Feed/collect from fish-like objects for score and sun.'],
+        ['portalPanic', 'Portal Panic', 'Portal props and cross-lane disruption.'],
+        ['bossRush', 'Boss Rush', 'Boss-first timeline with support waves.'],
+        ['targetPractice', 'Target Practice', 'Clickable targets plus optional waves.'],
+        ['memory', 'Memory Match', 'Flip cards, match pairs, and track score.'],
+        ['goFish', 'Go Fish', 'Find requested ranks from a hand of cards/fish.']
+      ];
+
+      function grid556() { return state.grid || { cellW:80, cellH:100, offsetX:40, offsetY:80 }; }
+      function laneY556(lane = 1) {
+        if (window.ProjectBuildUniversal?.laneY) return window.ProjectBuildUniversal.laneY(lane);
+        const g = grid556();
+        return g.offsetY + (Math.max(1, Math.min(5, Number(lane) || 1)) - 1) * g.cellH;
+      }
+      function colX556(col = 1) {
+        const g = grid556();
+        return g.offsetX + (Number(col) || 1) * g.cellW;
+      }
+      function mouseHitItem556(m, item) {
+        const w = item.w || 58, h = item.h || 58;
+        return Math.abs(m.x - item.x) <= w / 2 && Math.abs(m.y - item.y) <= h / 2;
+      }
+      function firstTemplate556(sideList) {
+        const sides = Array.isArray(sideList) ? sideList : [sideList];
+        return state.templates?.find(t => sides.includes(t.side) || sides.includes(t.type)) || defaultTemplate;
+      }
+      function templateByName556(name, sides = null) {
+        return state.templates?.find(t => t.name === name && (!sides || sides.includes(t.side) || sides.includes(t.type))) || firstTemplate556(sides || ['zombie','boss']);
+      }
+      function spawnTemplate556(name, x, y, overrides = {}) {
+        const tpl = clone(templateByName556(name, overrides.sides || null) || defaultTemplate);
+        const ent = entityFromTemplate({ ...tpl, ...clone(overrides.templateOverride || {}) }, x, y, overrides.entityOverride || {});
+        if (overrides.side) { ent.side = overrides.side; ent.type = overrides.side; }
+        if (overrides.name) ent.name = overrides.name;
+        ent.dead = false;
+        state.entities.push(ent);
+        try { if (typeof isCombatEntity === 'function' && isCombatEntity(ent)) playSfx(ent.spawnSoundSrc, 0.7); } catch {}
+        return ent;
+      }
+      function getZombieNames556() {
+        const names = (state.templates || []).filter(t => t.side === 'zombie' || t.side === 'boss' || t.type === 'zombie' || t.type === 'boss').map(t => t.name).filter(Boolean);
+        return names.length ? names : ['Basic Zombie'];
+      }
+      function getPlantNames556() {
+        const names = (state.templates || []).filter(t => t.side === 'plant' || t.type === 'plant').map(t => t.name).filter(Boolean);
+        return names.length ? names : ['Custom Plant'];
+      }
+      function readBuilderEvents556() {
+        const raw = by('levelScriptModal')?.value || by('waveScript')?.value || '[]';
+        try { const parsed = JSON.parse(raw || '[]'); return Array.isArray(parsed) ? parsed : []; }
+        catch (err) { toast('Wave JSON error: ' + err.message); return []; }
+      }
+      function writeBuilderEvents556(events) {
+        const txt = JSON.stringify(Array.isArray(events) ? events : [], null, 2);
+        if (by('levelScriptModal')) by('levelScriptModal').value = txt;
+        if (by('waveScript')) by('waveScript').value = txt;
+        try { window.ProjectBuildFriendlyLevelBuilder?.writeBuilderScript?.(JSON.parse(txt)); } catch {}
+        try { by('builderSortWaves')?.click(); } catch {}
+      }
+      function readCutscenes556() {
+        const box = by('pbCutsceneScript');
+        if (box) {
+          try {
+            const parsed = JSON.parse(box.value || '{}');
+            state.cutscenes = {
+              pre: Array.isArray(parsed.pre) ? parsed.pre : [],
+              post: Array.isArray(parsed.post) ? parsed.post : []
+            };
+          } catch (err) { toast('Cutscene JSON error: ' + err.message); }
+        }
+        state.cutscenes ??= { pre: [], post: [] };
+        return state.cutscenes;
+      }
+      function writeCutscenes556() {
+        state.cutscenes ??= { pre: [], post: [] };
+        const box = by('pbCutsceneScript');
+        if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
+        renderVisualCutsceneList556();
+      }
+
+      function installStyles556() {
+        if (by('pb556Style')) return;
+        const style = document.createElement('style');
+        style.id = 'pb556Style';
+        style.textContent = `
+          .pb556ModeGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px;max-height:180px;overflow:auto}.pb556ModeChip{border:1px solid rgba(217,255,159,.32);border-radius:12px;background:rgba(0,0,0,.3);padding:7px;color:#e8efff;font-size:11px;cursor:pointer}.pb556ModeChip.active{background:rgba(217,255,159,.25);color:#d9ff9f;border-color:rgba(217,255,159,.78)}.pb556StatBox{border:1px dashed rgba(217,255,159,.38);border-radius:13px;padding:8px;margin-top:8px;background:rgba(0,0,0,.24);font-size:12px;color:#e8efff}.pb556CutsceneList{display:grid;gap:6px;max-height:185px;overflow:auto;margin-top:8px}.pb556CutsceneRow{display:grid;grid-template-columns:46px 1fr auto;gap:7px;align-items:center;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22);border-radius:12px;padding:7px;font-size:12px;color:#e8efff}.pb556CutsceneThumb{width:42px;height:42px;border-radius:12px;background:rgba(255,255,255,.13);display:grid;place-items:center;overflow:hidden}.pb556CutsceneThumb img{width:100%;height:100%;object-fit:cover}.pb556MiniHud{position:absolute;top:148px;right:86px;z-index:64;background:rgba(0,0,0,.78);border:1px solid rgba(217,255,159,.55);border-radius:14px;color:#d9ff9f;padding:8px 11px;font-size:12px;pointer-events:none;text-shadow:0 1px 2px #000}.pb556CutsceneOverlay{position:absolute;inset:0;z-index:94;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.1),rgba(0,0,0,.42));display:flex;align-items:flex-end;justify-content:center;padding:0 30px 92px}.pb556Actor{position:absolute;bottom:130px;width:min(28vw,240px);height:min(48vh,360px);display:flex;align-items:flex-end;justify-content:center;filter:drop-shadow(0 14px 22px rgba(0,0,0,.65))}.pb556Actor.left{left:5%}.pb556Actor.right{right:5%}.pb556Actor.center{left:50%;transform:translateX(-50%)}.pb556Actor img{max-width:100%;max-height:100%;object-fit:contain}.pb556ActorFallback{width:130px;height:130px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(#d9ff9f,#38bdf8);color:#082f49;font-size:62px;font-weight:900;border:4px solid rgba(255,255,255,.75)}.pb556DialogueBubble{width:min(760px,calc(100vw - 48px));border-radius:20px;border:2px solid rgba(217,255,159,.72);background:rgba(5,10,20,.92);box-shadow:0 14px 50px rgba(0,0,0,.5);padding:14px 17px;color:#e8efff}.pb556DialogueBubble b{display:block;color:#d9ff9f;margin-bottom:5px}.pb556DialogueBubble span{display:block;line-height:1.38}.pb556BoardLabel{font:700 12px system-ui;text-align:center}.pb556Selected{outline:3px solid #fde68a}.pb556Matched{opacity:.52}.pb556VisualPreview{height:58px;border:1px dashed rgba(217,255,159,.38);border-radius:12px;display:grid;place-items:center;overflow:hidden;background:rgba(0,0,0,.22);font-size:11px;color:#e8efff}.pb556VisualPreview img{width:100%;height:100%;object-fit:contain}@media(max-width:950px){.pb556ModeGrid{grid-template-columns:1fr}.pb556MiniHud{right:8px;top:112px}.pb556Actor{width:34vw}.pb556Actor.left{left:2%}.pb556Actor.right{right:2%}.pb556CutsceneOverlay{padding:0 8px 134px}.pb556DialogueBubble{font-size:13px}}`;
+        document.head.appendChild(style);
+      }
+
+      function readRulesFromUI556() {
+        const r = state.pb556.rules || {};
+        const rules = {
+          ...r,
+          mode: by('pb556Mode')?.value || r.mode || 'classic',
+          startingSun: Math.max(0, Number(by('pb556StartingSun')?.value ?? r.startingSun ?? 50) || 0),
+          timeLimit: Math.max(0, Number(by('pb556TimeLimit')?.value ?? r.timeLimit ?? 0) || 0),
+          targetScore: Math.max(1, Number(by('pb556TargetScore')?.value ?? r.targetScore ?? 10) || 10),
+          puzzleCount: Math.max(4, Number(by('pb556PuzzleCount')?.value ?? r.puzzleCount ?? 16) || 16),
+          conveyorRate: Math.max(.5, Number(by('pb556ConveyorRate')?.value ?? r.conveyorRate ?? 5) || 5),
+          fog: !!by('pb556Fog')?.checked,
+          storm: !!by('pb556Storm')?.checked,
+          lockedPackets: !!by('pb556LockedPackets')?.checked,
+          autoBoard: !!by('pb556AutoBoard')?.checked,
+          note: by('pb556RuleNote')?.value || ''
+        };
+        state.pb556.rules = rules;
+        refreshModeChips556();
+        renderMiniStats556();
+        return rules;
+      }
+      function syncRulesToUI556() {
+        const r = state.pb556.rules || {};
+        if (by('pb556Mode')) by('pb556Mode').value = r.mode || 'classic';
+        if (by('pb556StartingSun')) by('pb556StartingSun').value = r.startingSun ?? 50;
+        if (by('pb556TimeLimit')) by('pb556TimeLimit').value = r.timeLimit ?? 0;
+        if (by('pb556TargetScore')) by('pb556TargetScore').value = r.targetScore ?? 10;
+        if (by('pb556PuzzleCount')) by('pb556PuzzleCount').value = r.puzzleCount ?? 16;
+        if (by('pb556ConveyorRate')) by('pb556ConveyorRate').value = r.conveyorRate ?? 5;
+        if (by('pb556Fog')) by('pb556Fog').checked = !!r.fog;
+        if (by('pb556Storm')) by('pb556Storm').checked = !!r.storm;
+        if (by('pb556LockedPackets')) by('pb556LockedPackets').checked = !!r.lockedPackets;
+        if (by('pb556AutoBoard')) by('pb556AutoBoard').checked = r.autoBoard !== false;
+        if (by('pb556RuleNote')) by('pb556RuleNote').value = r.note || '';
+        refreshModeChips556();
+        renderMiniStats556();
+      }
+      function refreshModeChips556() {
+        document.querySelectorAll('[data-pb556-mode]').forEach(chip => chip.classList.toggle('active', chip.dataset.pb556Mode === (state.pb556.rules?.mode || 'classic')));
+      }
+      function renderMiniStats556() {
+        const box = by('pb556MiniStats');
+        if (!box) return;
+        const r = state.pb556.rules || {};
+        const rt = state.pb556.runtime;
+        const modeName = modeCatalog556.find(m => m[0] === r.mode)?.[1] || r.mode || 'classic';
+        const boardCount = state.pb556.boardItems?.length || 0;
+        const scoreText = rt ? ` | score ${rt.score || 0}/${rt.targetScore || r.targetScore || 10}` : '';
+        const timeText = rt?.timeLeft ? ` | ${Math.ceil(rt.timeLeft)}s left` : '';
+        box.textContent = `${modeName} | ${boardCount} puzzle object(s) | start sun ${r.startingSun ?? 50}${scoreText}${timeText}`;
+      }
+
+      function eventsForMode556(mode) {
+        const zombies = getZombieNames556();
+        const bosses = (state.templates || []).filter(t => t.side === 'boss' || t.type === 'boss').map(t => t.name);
+        const events = [];
+        const add = (time, template, count = 1, lane = 1, interval = .65, x = -1, jitter = 14) => events.push({
+          time:+time.toFixed(2), template, count, interval, x, y:laneY556(lane), jitter,
+          tag:'pb556-' + mode
+        });
+        if (mode === 'lastStand') {
+          for (let f = 0; f < 5; f++) for (let lane = 1; lane <= 5; lane++) add(8 + f * 11 + lane * .15, choice(zombies), 2 + f, lane, .55, -1, 8);
+        } else if (mode === 'survival') {
+          for (let f = 0; f < 9; f++) {
+            const base = 4 + f * 9;
+            for (let lane = 1; lane <= 5; lane += (f % 2 ? 2 : 1)) add(base + lane * .35, choice(zombies), 1 + Math.floor(f / 2), lane, .6, -1, 18);
+            if (f % 3 === 2) add(base + 5.5, choice(bosses.length ? bosses : zombies), 1, randInt(1,5), 1, -1, 5);
+          }
+        } else if (mode === 'bossRush') {
+          const pool = bosses.length ? bosses : zombies;
+          for (let i = 0; i < 5; i++) add(5 + i * 13, choice(pool), 1, randInt(1,5), 1, -1, 8);
+          for (let i = 0; i < 10; i++) add(8 + i * 6, choice(zombies), 2 + Math.floor(i / 3), randInt(1,5), .45, -1, 16);
+        } else if (mode === 'fogNight' || mode === 'conveyor' || mode === 'portalPanic') {
+          for (let i = 0; i < 18; i++) add(3 + i * 4, choice(zombies), 1 + Math.floor(i / 5), randInt(1,5), .7, -1, 24);
+        } else if (mode === 'reverseDefense') {
+          for (let i = 0; i < 12; i++) add(4 + i * 4, choice(zombies), 2, randInt(1,5), .5, 1, 12);
+        } else if (['bowling','vasebreaker','whack','targetPractice','beghouled','zombiquarium','memory','goFish','slotMachine'].includes(mode)) {
+          for (let i = 0; i < 8; i++) add(10 + i * 7, choice(zombies), 1, randInt(1,5), .8, -1, 20);
+        } else {
+          for (let i = 0; i < 14; i++) add(2 + i * 5, choice(zombies), 1 + Math.floor(i / 5), randInt(1,5), .8, -1, 18);
+        }
+        return events.sort((a,b) => a.time - b.time);
+      }
+      function applyPreset556() {
+        const mode = by('pb556Mode')?.value || state.pb556.rules.mode || 'classic';
+        const defaults = {
+          classic:{startingSun:50,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:false,storm:false,lockedPackets:false},
+          conveyor:{startingSun:0,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:4,fog:false,storm:false,lockedPackets:true},
+          slotMachine:{startingSun:25,timeLimit:0,targetScore:8,puzzleCount:1,conveyorRate:6,fog:false,storm:false,lockedPackets:true},
+          lastStand:{startingSun:5000,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          survival:{startingSun:150,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:false,storm:false,lockedPackets:false},
+          fogNight:{startingSun:25,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:true,storm:true,lockedPackets:false},
+          bowling:{startingSun:0,timeLimit:120,targetScore:12,puzzleCount:5,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          vasebreaker:{startingSun:0,timeLimit:0,targetScore:10,puzzleCount:20,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          reverseDefense:{startingSun:0,timeLimit:0,targetScore:10,puzzleCount:10,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          beghouled:{startingSun:0,timeLimit:120,targetScore:12,puzzleCount:35,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          whack:{startingSun:0,timeLimit:90,targetScore:20,puzzleCount:15,conveyorRate:1.4,fog:false,storm:false,lockedPackets:true},
+          zombiquarium:{startingSun:0,timeLimit:120,targetScore:18,puzzleCount:10,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          portalPanic:{startingSun:75,timeLimit:0,targetScore:10,puzzleCount:4,conveyorRate:5,fog:false,storm:false,lockedPackets:false},
+          bossRush:{startingSun:200,timeLimit:0,targetScore:5,puzzleCount:5,conveyorRate:5,fog:false,storm:false,lockedPackets:false},
+          targetPractice:{startingSun:0,timeLimit:90,targetScore:25,puzzleCount:18,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          memory:{startingSun:0,timeLimit:150,targetScore:8,puzzleCount:16,conveyorRate:5,fog:false,storm:false,lockedPackets:true},
+          goFish:{startingSun:0,timeLimit:120,targetScore:10,puzzleCount:10,conveyorRate:5,fog:false,storm:false,lockedPackets:true}
+        }[mode] || {};
+        state.pb556.rules = { ...state.pb556.rules, mode, ...defaults, autoBoard:true };
+        if (by('campaignLevelGimmick')) by('campaignLevelGimmick').value = modeCatalog556.find(m => m[0] === mode)?.[1] || mode;
+        if (by('builderLevelGimmick')) by('builderLevelGimmick').value = by('campaignLevelGimmick')?.value || '';
+        syncRulesToUI556();
+        toast('Preset applied: ' + (modeCatalog556.find(m => m[0] === mode)?.[1] || mode));
+      }
+      function generateWavePreset556() {
+        const rules = readRulesFromUI556();
+        const events = eventsForMode556(rules.mode);
+        writeBuilderEvents556(events);
+        toast(`Generated ${events.length} ${rules.mode} wave card(s)`);
+      }
+
+      function makeItem556(kind, x, y, label, extra = {}) {
+        return { id:'pb556-' + kind + '-' + Date.now() + '-' + Math.floor(Math.random()*999999), kind, x, y, w:60, h:60, label, hidden:false, active:false, used:false, matched:false, ...extra };
+      }
+      function generateBoardForMode556(mode = state.pb556.rules?.mode || 'classic', announce = true) {
+        const rules = state.pb556.rules || {};
+        const items = [];
+        const n = Math.max(4, Number(rules.puzzleCount) || 16);
+        if (mode === 'memory') {
+          const pairs = Math.floor(n / 2);
+          const labels = [];
+          for (let i = 0; i < pairs; i++) labels.push(String.fromCharCode(65 + (i % 26)), String.fromCharCode(65 + (i % 26)));
+          labels.sort(() => Math.random() - .5);
+          labels.forEach((lab, i) => {
+            const col = i % 4, row = Math.floor(i / 4);
+            items.push(makeItem556('memoryCard', colX556(2 + col), laneY556(1 + row), '?', { pair:lab, hidden:true, w:64, h:76 }));
+          });
+        } else if (mode === 'goFish') {
+          const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+          state.pb556.runtime ??= {};
+          state.pb556.runtime.targetRank = choice(ranks);
+          for (let i = 0; i < Math.min(10, n); i++) {
+            const rank = choice(ranks);
+            items.push(makeItem556('fishCard', colX556(1 + (i % 5)), laneY556(1 + Math.floor(i / 5) * 2), rank, { rank, w:66, h:76 }));
+          }
+        } else if (mode === 'vasebreaker') {
+          const zombies = getZombieNames556();
+          for (let i = 0; i < n; i++) {
+            const col = 2 + (i % 5), lane = 1 + Math.floor(i / 5);
+            const payload = Math.random() < .62 ? { type:'zombie', template:choice(zombies) } : { type:'reward', value:25 + randInt(0,3)*25 };
+            items.push(makeItem556('vase', colX556(col), laneY556(lane), 'Vase', { payload, hidden:true, w:58, h:70 }));
+          }
+        } else if (mode === 'bowling') {
+          for (let lane = 1; lane <= 5; lane++) items.push(makeItem556('bowlingNut', colX556(0.5), laneY556(lane), 'Nut', { lane, w:58, h:58 }));
+        } else if (mode === 'whack') {
+          for (let i = 0; i < Math.min(15, n); i++) items.push(makeItem556('whackHole', colX556(1 + (i % 5)), laneY556(1 + Math.floor(i / 5)), 'Hole', { active:false, w:64, h:52 }));
+        } else if (mode === 'slotMachine') {
+          items.push(makeItem556('slotReel', colX556(4), laneY556(3), 'SPIN', { w:130, h:90 }));
+        } else if (mode === 'beghouled') {
+          const gems = ['Pea','Sun','Wall','Ice','Fire'];
+          for (let lane = 1; lane <= 5; lane++) for (let col = 1; col <= 7; col++) items.push(makeItem556('gem', colX556(col), laneY556(lane), choice(gems), { gem:choice(gems), col, lane, w:54, h:54 }));
+          items.forEach(it => it.label = it.gem);
+        } else if (mode === 'zombiquarium') {
+          for (let i = 0; i < Math.min(10, n); i++) items.push(makeItem556('fish', colX556(1 + (i % 5)), laneY556(1 + Math.floor(i / 5) * 2), 'Fish', { hunger:randInt(1,3), w:62, h:44 }));
+        } else if (mode === 'portalPanic') {
+          items.push(makeItem556('portalA', colX556(2), laneY556(2), 'A', { w:70, h:88 }));
+          items.push(makeItem556('portalB', colX556(7), laneY556(4), 'B', { w:70, h:88 }));
+          items.push(makeItem556('portalA', colX556(2), laneY556(4), 'A', { w:70, h:88 }));
+          items.push(makeItem556('portalB', colX556(7), laneY556(2), 'B', { w:70, h:88 }));
+        } else if (mode === 'targetPractice') {
+          for (let i = 0; i < Math.min(18, n); i++) items.push(makeItem556('target', colX556(2 + (i % 6)), laneY556(1 + Math.floor(i / 6)), 'Target', { w:56, h:56 }));
+        } else if (mode === 'reverseDefense') {
+          const plants = getPlantNames556();
+          for (let i = 0; i < Math.min(10, n); i++) {
+            const lane = 1 + (i % 5), col = 3 + Math.floor(i / 5) * 2;
+            spawnTemplate556(choice(plants), colX556(col), laneY556(lane), { side:'plant', sides:['plant'] });
+          }
+        }
+        state.pb556.boardItems = items;
+        state.pb556.runtime = { ...(state.pb556.runtime || {}), score:0, targetScore:Number(rules.targetScore)||10, mode, timeLeft:Number(rules.timeLimit)||0, nextConveyor:0, nextWhack:0, selectedGem:null, flipped:[] };
+        renderMiniStats556();
+        if (announce) toast(`${items.length} ${mode} puzzle object(s) generated`);
+        return items;
+      }
+
+      function boardItemColor556(item) {
+        if (item.kind === 'vase') return '#b45309';
+        if (item.kind === 'memoryCard' || item.kind === 'fishCard') return '#1d4ed8';
+        if (item.kind === 'bowlingNut') return '#84cc16';
+        if (item.kind === 'whackHole') return item.active ? '#dc2626' : '#292524';
+        if (item.kind === 'slotReel') return '#f59e0b';
+        if (item.kind === 'gem') return '#7c3aed';
+        if (item.kind === 'fish') return '#06b6d4';
+        if (item.kind.startsWith('portal')) return '#a855f7';
+        if (item.kind === 'target') return '#ef4444';
+        return '#64748b';
+      }
+      function drawBoardItems556() {
+        const items = state.pb556?.boardItems || [];
+        if (!items.length) return;
+        ctx.save();
+        items.forEach(item => {
+          if (item.used && !item.matched) return;
+          const w = item.w || 58, h = item.h || 58;
+          ctx.save();
+          ctx.globalAlpha = item.matched ? .42 : 1;
+          ctx.translate(item.x, item.y);
+          ctx.fillStyle = boardItemColor556(item);
+          ctx.strokeStyle = item.selected ? '#fde68a' : 'rgba(255,255,255,.82)';
+          ctx.lineWidth = item.selected ? 4 : 2;
+          const r = Math.min(14, w * .22);
+          ctx.beginPath();
+          ctx.roundRect(-w/2, -h/2, w, h, r);
+          ctx.fill();
+          ctx.stroke();
+          ctx.fillStyle = '#fff';
+          ctx.font = '700 12px system-ui';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          let label = item.label || item.kind;
+          if (item.kind === 'memoryCard' && item.hidden) label = '?';
+          if (item.kind === 'vase' && item.hidden) label = 'Vase';
+          if (item.kind === 'whackHole') label = item.active ? 'ZOMBIE!' : 'hole';
+          if (item.kind === 'fish' && item.hunger > 0) label = 'Fish ' + item.hunger;
+          if (item.kind === 'gem') label = item.gem || label;
+          ctx.fillText(label, 0, 0);
+          ctx.restore();
+        });
+        const rt = state.pb556.runtime;
+        if (rt && (state.playMode?.active || items.length)) {
+          ctx.fillStyle = 'rgba(0,0,0,.62)';
+          ctx.fillRect(10, 10, 240, 34);
+          ctx.fillStyle = '#d9ff9f';
+          ctx.font = '700 13px system-ui';
+          ctx.textAlign = 'left';
+          const target = rt.targetRank ? ` | Find ${rt.targetRank}` : '';
+          ctx.fillText(`Mode: ${rt.mode || state.pb556.rules.mode} | Score ${rt.score || 0}/${rt.targetScore || state.pb556.rules.targetScore}${target}`, 20, 31);
+        }
+        ctx.restore();
+      }
+
+      function score556(points = 1) {
+        state.pb556.runtime ??= { score:0, targetScore:state.pb556.rules?.targetScore || 10 };
+        state.pb556.runtime.score = (state.pb556.runtime.score || 0) + points;
+        renderMiniStats556();
+        if (state.pb556.runtime.score >= (state.pb556.runtime.targetScore || state.pb556.rules?.targetScore || 10)) {
+          toast('Mini-game goal met');
+        }
+      }
+      function shootBowling556(item) {
+        item.used = true;
+        state.projectiles.push({
+          x:item.x + 34, y:item.y, vx:520, vy:0, damage:90, side:'plant', ownerId:'pb556-bowling', radius:22,
+          pierce:8, slow:false, homing:false, splash:true, boomerang:false, imageSrc:null, image:null, gifEl:null, age:0, dead:false
+        });
+        score556(1);
+      }
+      function revealVase556(item) {
+        if (!item.hidden) return;
+        item.hidden = false;
+        item.label = item.payload?.type === 'zombie' ? 'Z!' : '+' + (item.payload?.value || 25);
+        if (item.payload?.type === 'zombie') spawnTemplate556(item.payload.template, item.x, item.y, { side:'zombie', sides:['zombie','boss'] });
+        else state.sun = (state.sun || 0) + (item.payload?.value || 25);
+        item.used = true;
+        setTimeout(() => { item.matched = true; }, 400);
+        score556(1);
+      }
+      function clickMemory556(item) {
+        const rt = state.pb556.runtime ||= { flipped:[], score:0 };
+        if (item.matched || !item.hidden || rt.flipped?.length >= 2) return;
+        item.hidden = false;
+        item.label = item.pair;
+        rt.flipped ||= [];
+        rt.flipped.push(item.id);
+        if (rt.flipped.length === 2) {
+          const [a,b] = rt.flipped.map(id => state.pb556.boardItems.find(x => x.id === id));
+          if (a && b && a.pair === b.pair) {
+            a.matched = b.matched = true;
+            rt.flipped = [];
+            score556(1);
+          } else {
+            setTimeout(() => { [a,b].forEach(c => { if (c) { c.hidden = true; c.label = '?'; } }); rt.flipped = []; }, 700);
+          }
+        }
+      }
+      function clickFishCard556(item) {
+        const rt = state.pb556.runtime ||= {};
+        if (!rt.targetRank) rt.targetRank = choice(['A','2','3','4','5','6','7','8','9','10','J','Q','K']);
+        if (item.rank === rt.targetRank) {
+          item.matched = true;
+          score556(1);
+          rt.targetRank = choice(['A','2','3','4','5','6','7','8','9','10','J','Q','K']);
+          toast('Go fish: match found. New rank: ' + rt.targetRank);
+        } else {
+          item.selected = true;
+          setTimeout(() => { item.selected = false; }, 450);
+          toast('Go fish: not that rank');
+        }
+      }
+      function clickSlot556(item) {
+        const roll = randInt(1, 6);
+        if (roll <= 2) { state.sun = (state.sun || 0) + 100; item.label = '+SUN'; score556(1); }
+        else if (roll <= 4) { spawnTemplate556(choice(getPlantNames556()), colX556(1), laneY556(randInt(1,5)), { side:'plant', sides:['plant'] }); item.label = 'PLANT'; score556(1); }
+        else { spawnTemplate556(choice(getZombieNames556()), colX556(8), laneY556(randInt(1,5)), { side:'zombie', sides:['zombie','boss'] }); item.label = 'ZOMBIE'; }
+        setTimeout(() => { item.label = 'SPIN'; }, 800);
+      }
+      function clickGem556(item) {
+        const rt = state.pb556.runtime ||= {};
+        const prev = rt.selectedGem ? state.pb556.boardItems.find(x => x.id === rt.selectedGem) : null;
+        if (!prev) { item.selected = true; rt.selectedGem = item.id; return; }
+        prev.selected = false;
+        item.selected = false;
+        rt.selectedGem = null;
+        const adjacent = Math.abs((prev.col || 0) - (item.col || 0)) + Math.abs((prev.lane || 0) - (item.lane || 0)) === 1;
+        if (!adjacent) return toast('Pick adjacent gems');
+        [prev.gem, item.gem] = [item.gem, prev.gem];
+        [prev.label, item.label] = [prev.gem, item.gem];
+        const matched = findGemMatches556();
+        if (matched.length) {
+          matched.forEach(m => { m.gem = choice(['Pea','Sun','Wall','Ice','Fire']); m.label = m.gem; });
+          score556(Math.max(1, Math.floor(matched.length / 3)));
+        } else toast('No match');
+      }
+      function findGemMatches556() {
+        const items = (state.pb556.boardItems || []).filter(i => i.kind === 'gem');
+        const at = (c,l) => items.find(i => i.col === c && i.lane === l);
+        const found = new Set();
+        for (let lane = 1; lane <= 5; lane++) for (let col = 1; col <= 5; col++) {
+          const a = at(col,lane), b = at(col+1,lane), c = at(col+2,lane);
+          if (a && b && c && a.gem === b.gem && b.gem === c.gem) [a,b,c].forEach(x => found.add(x));
+        }
+        for (let col = 1; col <= 7; col++) for (let lane = 1; lane <= 3; lane++) {
+          const a = at(col,lane), b = at(col,lane+1), c = at(col,lane+2);
+          if (a && b && c && a.gem === b.gem && b.gem === c.gem) [a,b,c].forEach(x => found.add(x));
+        }
+        return [...found];
+      }
+      function handleBoardClick556(m, ev) {
+        const item = [...(state.pb556.boardItems || [])].reverse().find(i => !i.matched && !i.used && mouseHitItem556(m, i));
+        if (!item) return false;
+        ev?.preventDefault?.(); ev?.stopPropagation?.(); ev?.stopImmediatePropagation?.();
+        if (item.kind === 'memoryCard') clickMemory556(item);
+        else if (item.kind === 'fishCard') clickFishCard556(item);
+        else if (item.kind === 'vase') revealVase556(item);
+        else if (item.kind === 'bowlingNut') shootBowling556(item);
+        else if (item.kind === 'whackHole' && item.active) { item.active = false; score556(1); }
+        else if (item.kind === 'slotReel') clickSlot556(item);
+        else if (item.kind === 'gem') clickGem556(item);
+        else if (item.kind === 'fish') { item.hunger = Math.max(0, (item.hunger || 0) - 1); if (item.hunger === 0) { item.matched = true; score556(1); state.sun = (state.sun || 0) + 25; } }
+        else if (item.kind === 'target') { item.matched = true; score556(1); }
+        else if (item.kind.startsWith('portal')) { spawnTemplate556(choice(getZombieNames556()), item.x, item.y, { side:'zombie', sides:['zombie','boss'] }); score556(1); }
+        renderMiniStats556();
+        return true;
+      }
+      function updateMiniRuntime556(dt) {
+        const r = state.pb556.rules || {};
+        const rt = state.pb556.runtime;
+        if (!rt || state.paused) return;
+        if (rt.timeLeft > 0) rt.timeLeft = Math.max(0, rt.timeLeft - dt);
+        if (r.fog && Math.random() < dt * 3 && Array.isArray(state.particles)) state.particles.push({ x:randInt(0, canvas.clientWidth || 900), y:randInt(80, canvas.clientHeight || 540), age:0, text:'fog' });
+        if (r.storm && Math.random() < dt * .9) {
+          const enemies = (state.entities || []).filter(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead);
+          const z = choice(enemies);
+          if (z && typeof damageEntity === 'function') { damageEntity(z, 12, { side:'plant', damage:12 }); if (Array.isArray(state.particles)) state.particles.push({ x:z.x, y:z.y - 45, age:0, text:'⚡' }); }
+        }
+        if (rt.mode === 'conveyor') {
+          rt.nextConveyor = (rt.nextConveyor || 0) - dt;
+          if (rt.nextConveyor <= 0) {
+            rt.nextConveyor = Math.max(.5, Number(r.conveyorRate) || 5);
+            state.sun = (state.sun || 0) + 25;
+            const p = choice(getPlantNames556());
+            if (Array.isArray(state.particles)) state.particles.push({ x:colX556(randInt(1,7)), y:50, age:0, text:'Packet: ' + p });
+          }
+        }
+        if (rt.mode === 'whack') {
+          rt.nextWhack = (rt.nextWhack || 0) - dt;
+          if (rt.nextWhack <= 0) {
+            rt.nextWhack = Math.max(.35, Number(r.conveyorRate) || 1.4);
+            (state.pb556.boardItems || []).forEach(i => { if (i.kind === 'whackHole') i.active = false; });
+            const hole = choice((state.pb556.boardItems || []).filter(i => i.kind === 'whackHole'));
+            if (hole) hole.active = true;
+          }
+        }
+        if ((rt.score || 0) >= (rt.targetScore || r.targetScore || 10) && state.level?.running && ['memory','goFish','targetPractice','whack','zombiquarium','beghouled'].includes(rt.mode)) {
+          state.level.queue = [];
+          const enemiesLeft = state.entities.some(e => (e.side === 'zombie' || e.side === 'boss') && !e.dead);
+          if (!enemiesLeft) {
+            state.level.running = false;
+            if (typeof window.finishPlayMode === 'function') window.finishPlayMode(true);
+            else if (typeof finishPlayMode === 'function') finishPlayMode(true);
+          }
+        }
+        renderMiniStats556();
+      }
+
+      async function fileToDataURL556(file) {
+        if (!file) return null;
+        return await new Promise(resolve => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => resolve(null); r.readAsDataURL(file); });
+      }
+      function addVisualCutscenePanel556() {
+        const grid = document.querySelector('#pbLevelModal .pbBuilderGrid');
+        if (!grid || by('pb556CutscenePanel')) return;
+        const panel = document.createElement('div');
+        panel.id = 'pb556CutscenePanel';
+        panel.className = 'pbBuilderPanel';
+        panel.innerHTML = `
+          <h3>🎭 Visual Cutscene Studio</h3>
+          <p class="pbBuilderTiny">Build back-and-forth dialogue with onscreen NPC actors. This writes to the same cutscene JSON, but you do not need to hand-type it.</p>
+          <div class="triple">
+            <div><label>Slot</label><select id="pb556CutSlot"><option value="pre">Before Level</option><option value="post">After Level</option></select></div>
+            <div><label>Duration MS</label><input id="pb556CutDuration" type="number" value="2200" min="250" step="100"></div>
+            <div><label>Focus</label><select id="pb556CutFocus"><option value="left">Left NPC</option><option value="right">Right NPC</option><option value="center">Center NPC</option></select></div>
+          </div>
+          <div class="row">
+            <div><label>Left NPC Name</label><input id="pb556LeftName" value="Crazy Dave"><label>Left Sprite</label><input id="pb556LeftImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng"><div id="pb556LeftPreview" class="pb556VisualPreview">No left sprite</div></div>
+            <div><label>Right NPC Name</label><input id="pb556RightName" value="Zombie"><label>Right Sprite</label><input id="pb556RightImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng"><div id="pb556RightPreview" class="pb556VisualPreview">No right sprite</div></div>
+          </div>
+          <label>Left Dialogue</label><textarea id="pb556LeftText">We're setting up a weird one.</textarea>
+          <label>Right Dialogue</label><textarea id="pb556RightText">Brains... but with rules?</textarea>
+          <div class="pbBuilderActions">
+            <button id="pb556AddLeftLine" type="button">Add Left Line</button>
+            <button id="pb556AddRightLine" type="button">Add Right Line</button>
+            <button id="pb556AddDialoguePair" type="button" class="blue">Add Back/Forth</button>
+            <button id="pb556PreviewVisualCutscene" type="button" class="warn">Preview Slot</button>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb556ClearCutSlot" type="button" class="danger">Clear Slot</button>
+            <button id="pb556ImportPlacedNpcs" type="button">Use Placed NPC Names</button>
+            <button id="pb556SyncCutsceneJson" type="button" class="blue">Sync JSON</button>
+            <button id="pb556OpenOldCutscene" type="button">Sidebar JSON</button>
+          </div>
+          <div id="pb556CutsceneList" class="pb556CutsceneList"></div>`;
+        grid.appendChild(panel);
+
+        by('pb556LeftImage')?.addEventListener('change', async e => {
+          state.pb556.cutsceneDraft.leftImage = await fileToDataURL556(e.target.files?.[0]);
+          if (by('pb556LeftPreview')) by('pb556LeftPreview').innerHTML = state.pb556.cutsceneDraft.leftImage ? `<img src="${state.pb556.cutsceneDraft.leftImage}" alt="">` : 'No left sprite';
+        });
+        by('pb556RightImage')?.addEventListener('change', async e => {
+          state.pb556.cutsceneDraft.rightImage = await fileToDataURL556(e.target.files?.[0]);
+          if (by('pb556RightPreview')) by('pb556RightPreview').innerHTML = state.pb556.cutsceneDraft.rightImage ? `<img src="${state.pb556.cutsceneDraft.rightImage}" alt="">` : 'No right sprite';
+        });
+        const addLine = side => {
+          readCutscenes556();
+          const slot = by('pb556CutSlot')?.value || 'pre';
+          const isLeft = side === 'left';
+          const speaker = by(isLeft ? 'pb556LeftName' : 'pb556RightName')?.value || (isLeft ? 'Left NPC' : 'Right NPC');
+          const text = by(isLeft ? 'pb556LeftText' : 'pb556RightText')?.value || '';
+          const image = state.pb556.cutsceneDraft[isLeft ? 'leftImage' : 'rightImage'] || null;
+          state.cutscenes[slot] ??= [];
+          state.cutscenes[slot].push({ speaker, text, duration:Number(by('pb556CutDuration')?.value)||2200, layout:'visualDialogue', position:side, image, leftName:by('pb556LeftName')?.value || '', rightName:by('pb556RightName')?.value || '' });
+          writeCutscenes556();
+          toast('Visual dialogue line added');
+        };
+        by('pb556AddLeftLine')?.addEventListener('click', () => addLine('left'));
+        by('pb556AddRightLine')?.addEventListener('click', () => addLine('right'));
+        by('pb556AddDialoguePair')?.addEventListener('click', () => { addLine('left'); addLine('right'); });
+        by('pb556PreviewVisualCutscene')?.addEventListener('click', () => playEnhancedCutscene556(by('pb556CutSlot')?.value || 'pre'));
+        by('pb556ClearCutSlot')?.addEventListener('click', () => {
+          readCutscenes556();
+          const slot = by('pb556CutSlot')?.value || 'pre';
+          if (!confirm('Clear this cutscene slot?')) return;
+          state.cutscenes[slot] = [];
+          writeCutscenes556();
+        });
+        by('pb556ImportPlacedNpcs')?.addEventListener('click', () => {
+          const npcs = (state.entities || []).filter(e => e.side === 'npc' || e.role === 'npc');
+          if (npcs[0] && by('pb556LeftName')) by('pb556LeftName').value = npcs[0].name || 'NPC A';
+          if (npcs[1] && by('pb556RightName')) by('pb556RightName').value = npcs[1].name || 'NPC B';
+          if (npcs[0]?.imageSrc) { state.pb556.cutsceneDraft.leftImage = npcs[0].imageSrc; if (by('pb556LeftPreview')) by('pb556LeftPreview').innerHTML = `<img src="${npcs[0].imageSrc}" alt="">`; }
+          if (npcs[1]?.imageSrc) { state.pb556.cutsceneDraft.rightImage = npcs[1].imageSrc; if (by('pb556RightPreview')) by('pb556RightPreview').innerHTML = `<img src="${npcs[1].imageSrc}" alt="">`; }
+          toast(npcs.length ? 'Placed NPC names/sprites copied' : 'Place NPCs first, then try again');
+        });
+        by('pb556SyncCutsceneJson')?.addEventListener('click', () => { readCutscenes556(); writeCutscenes556(); toast('Cutscene JSON synced'); });
+        by('pb556OpenOldCutscene')?.addEventListener('click', () => { by('pbCutsceneTools')?.scrollIntoView?.({ behavior:'smooth', block:'start' }); toast('Old cutscene JSON panel is in the sidebar'); });
+        by('pb556CutSlot')?.addEventListener('change', renderVisualCutsceneList556);
+        renderVisualCutsceneList556();
+      }
+      function renderVisualCutsceneList556() {
+        const box = by('pb556CutsceneList');
+        if (!box) return;
+        const slot = by('pb556CutSlot')?.value || 'pre';
+        const slides = (state.cutscenes?.[slot] || []);
+        if (!slides.length) { box.innerHTML = '<div class="pbBuilderEmpty">No visual lines in this slot yet.</div>'; return; }
+        box.innerHTML = '';
+        slides.forEach((s, i) => {
+          const row = document.createElement('div');
+          row.className = 'pb556CutsceneRow';
+          row.innerHTML = `<div class="pb556CutsceneThumb">${s.image ? `<img src="${s.image}" alt="">` : (s.position === 'right' ? '→' : s.position === 'center' ? '●' : '←')}</div><div><b>${i + 1}. ${s.speaker || 'Speaker'} ${s.position ? '(' + s.position + ')' : ''}</b><span>${String(s.text || '').slice(0, 90)}</span></div><button type="button" class="danger" data-pb556-del-line="${i}">×</button>`;
+          box.appendChild(row);
+        });
+        box.querySelectorAll('[data-pb556-del-line]').forEach(btn => btn.addEventListener('click', () => {
+          readCutscenes556();
+          const idx = Number(btn.dataset.pb556DelLine);
+          state.cutscenes[slot].splice(idx, 1);
+          writeCutscenes556();
+        }));
+      }
+      function delay556(ms) { return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0))); }
+      async function showEnhancedSlide556(slide = {}) {
+        if (!slide.layout && !slide.position && !slide.image) {
+          if (window.ProjectBuildUniversal?.run) {
+            await window.ProjectBuildUniversal.run('dialog', slide);
+            return delay556(Number(slide.duration) || 1500);
+          }
+        }
+        const stage = by('stageWrap');
+        if (!stage) return;
+        const overlay = document.createElement('div');
+        overlay.className = 'pb556CutsceneOverlay';
+        const pos = slide.position || 'center';
+        const actor = document.createElement('div');
+        actor.className = 'pb556Actor ' + pos;
+        if (slide.image) actor.innerHTML = `<img src="${slide.image}" alt="">`;
+        else actor.innerHTML = `<div class="pb556ActorFallback">${String(slide.speaker || '?').trim().slice(0,1).toUpperCase()}</div>`;
+        const bubble = document.createElement('div');
+        bubble.className = 'pb556DialogueBubble';
+        bubble.innerHTML = `<b>${slide.speaker || 'Cutscene'}</b><span>${String(slide.text || '').replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]))}</span>`;
+        overlay.appendChild(actor);
+        overlay.appendChild(bubble);
+        stage.appendChild(overlay);
+        if (slide.action && window.ProjectBuildUniversal?.run) window.ProjectBuildUniversal.run(slide.action, slide.args || slide);
+        await delay556(Number(slide.duration) || 2200);
+        overlay.remove();
+      }
+      async function playEnhancedCutscene556(which = 'pre') {
+        readCutscenes556();
+        const slides = Array.isArray(state.cutscenes?.[which]) ? state.cutscenes[which] : [];
+        if (!slides.length) return false;
+        for (const slide of slides) await showEnhancedSlide556(slide);
+        const box = by('dialogBox');
+        if (box) box.style.display = 'none';
+        return true;
+      }
+
+      function addMiniGamePanel556() {
+        const grid = document.querySelector('#pbLevelModal .pbBuilderGrid');
+        if (!grid || by('pb556MegaPanel')) return;
+        const panel = document.createElement('div');
+        panel.id = 'pb556MegaPanel';
+        panel.className = 'pbBuilderPanel';
+        panel.innerHTML = `
+          <h3>🧩 Puzzle / Mini-game Director</h3>
+          <p class="pbBuilderTiny">PVZ1-style puzzle presets plus custom Memory and Go Fish. Presets write real wave cards, level rules, and clickable puzzle objects.</p>
+          <label>Level Mode</label>
+          <select id="pb556Mode">${modeCatalog556.map(m => `<option value="${m[0]}">${m[1]}</option>`).join('')}</select>
+          <div class="pb556ModeGrid">${modeCatalog556.map(m => `<div class="pb556ModeChip" data-pb556-mode="${m[0]}" title="${m[2]}"><b>${m[1]}</b><br><span>${m[2]}</span></div>`).join('')}</div>
+          <div class="triple">
+            <div><label>Starting Sun</label><input id="pb556StartingSun" type="number" value="50" min="0"></div>
+            <div><label>Time Limit Sec</label><input id="pb556TimeLimit" type="number" value="0" min="0"></div>
+            <div><label>Target Score</label><input id="pb556TargetScore" type="number" value="10" min="1"></div>
+          </div>
+          <div class="triple">
+            <div><label>Puzzle Count</label><input id="pb556PuzzleCount" type="number" value="16" min="4"></div>
+            <div><label>Conveyor/Whack Rate</label><input id="pb556ConveyorRate" type="number" value="5" min="0.5" step="0.5"></div>
+            <div><label>Rule Note</label><input id="pb556RuleNote" placeholder="short designer note"></div>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb556ApplyPreset" type="button" class="blue">Apply Preset</button>
+            <button id="pb556GenerateWaves" type="button">Generate Waves</button>
+            <button id="pb556GenerateBoard" type="button" class="warn">Generate Puzzle Board</button>
+            <button id="pb556ClearBoard" type="button" class="danger">Clear Board</button>
+          </div>
+          <div class="pbBuilderActions">
+            <button id="pb556ApplyRules" type="button" class="blue">Save Rules</button>
+            <button id="pb556PreviewBoard" type="button">Test Board Now</button>
+            <button id="pb556AddFlagSpike" type="button" class="warn">Add Flag Spike</button>
+            <button id="pb556AddAmbush" type="button">Add Ambush</button>
+          </div>
+          <label><input id="pb556Fog" type="checkbox" style="width:auto;min-height:0"> Fog overlay rule</label>
+          <label><input id="pb556Storm" type="checkbox" style="width:auto;min-height:0"> Storm/lightning rule</label>
+          <label><input id="pb556LockedPackets" type="checkbox" style="width:auto;min-height:0"> Locked puzzle packets</label>
+          <label><input id="pb556AutoBoard" type="checkbox" checked style="width:auto;min-height:0"> Auto-create puzzle board when level starts</label>
+          <div id="pb556MiniStats" class="pb556StatBox">No mini-game stats yet.</div>`;
+        grid.appendChild(panel);
+        panel.querySelectorAll('[data-pb556-mode]').forEach(chip => chip.addEventListener('click', () => {
+          if (by('pb556Mode')) by('pb556Mode').value = chip.dataset.pb556Mode;
+          readRulesFromUI556();
+        }));
+        by('pb556Mode')?.addEventListener('change', readRulesFromUI556);
+        ['pb556StartingSun','pb556TimeLimit','pb556TargetScore','pb556PuzzleCount','pb556ConveyorRate','pb556RuleNote','pb556Fog','pb556Storm','pb556LockedPackets','pb556AutoBoard'].forEach(id => by(id)?.addEventListener('input', readRulesFromUI556));
+        by('pb556ApplyPreset')?.addEventListener('click', applyPreset556);
+        by('pb556GenerateWaves')?.addEventListener('click', generateWavePreset556);
+        by('pb556GenerateBoard')?.addEventListener('click', () => { readRulesFromUI556(); generateBoardForMode556(state.pb556.rules.mode); });
+        by('pb556ClearBoard')?.addEventListener('click', () => { state.pb556.boardItems = []; state.pb556.runtime = null; renderMiniStats556(); toast('Puzzle board cleared'); });
+        by('pb556ApplyRules')?.addEventListener('click', () => { readRulesFromUI556(); toast('Level rules saved'); });
+        by('pb556PreviewBoard')?.addEventListener('click', () => { readRulesFromUI556(); if (!state.pb556.boardItems.length) generateBoardForMode556(state.pb556.rules.mode, false); state.pb556.runtime = { ...(state.pb556.runtime || {}), mode:state.pb556.rules.mode, score:0, targetScore:state.pb556.rules.targetScore, timeLeft:state.pb556.rules.timeLimit || 0, nextConveyor:0, nextWhack:0, flipped:[] }; toast('Puzzle board is clickable on the lawn now'); });
+        by('pb556AddFlagSpike')?.addEventListener('click', () => {
+          const events = readBuilderEvents556();
+          const base = events.reduce((m,e) => Math.max(m, Number(e.time)||0), 0) + 5;
+          for (let lane = 1; lane <= 5; lane++) events.push({ time:base + lane * .15, template:choice(getZombieNames556()), count:3, interval:.35, x:-1, y:laneY556(lane), jitter:10, flag:true });
+          writeBuilderEvents556(events); toast('Flag spike added');
+        });
+        by('pb556AddAmbush')?.addEventListener('click', () => {
+          const events = readBuilderEvents556();
+          const base = events.reduce((m,e) => Math.max(m, Number(e.time)||0), 0) + 3;
+          for (let i = 0; i < 6; i++) events.push({ time:base + i * .7, template:choice(getZombieNames556()), count:1, interval:1, x:randInt(2,7), y:laneY556(randInt(1,5)), jitter:5, ambush:true });
+          writeBuilderEvents556(events); toast('Mid-lawn ambush added');
+        });
+        syncRulesToUI556();
+      }
+
+      function initModeRuntime556() {
+        const rules = readRulesFromUI556();
+        state.sun = Math.max(Number(state.sun) || 0, Number(rules.startingSun) || 0);
+        state.pb556.runtime = { mode:rules.mode, score:0, targetScore:Number(rules.targetScore)||10, timeLeft:Number(rules.timeLimit)||0, nextConveyor:0, nextWhack:0, flipped:[], selectedGem:null };
+        if (rules.autoBoard && (!state.pb556.boardItems?.length || state.pb556.boardItemsMode !== rules.mode)) {
+          generateBoardForMode556(rules.mode, false);
+          state.pb556.boardItemsMode = rules.mode;
+        }
+        renderMiniStats556();
+      }
+
+      function restorePB556FromWorld(data) {
+        if (!data) return;
+        if (data.pb556LevelRules) state.pb556.rules = { ...state.pb556.rules, ...clone(data.pb556LevelRules) };
+        if (Array.isArray(data.pb556BoardItems)) state.pb556.boardItems = clone(data.pb556BoardItems);
+        if (data.cutscenes) state.cutscenes = clone(data.cutscenes);
+        syncRulesToUI556();
+        writeCutscenes556();
+      }
+
+      function installPersistenceAndRuntime556() {
+        if (typeof serializableState === 'function' && !serializableState.pb556RulesWrapped) {
+          const oldSerializable = serializableState;
+          serializableState = function(...args) {
+            const data = oldSerializable.apply(this, args) || {};
+            try { readRulesFromUI556(); } catch {}
+            try { readCutscenes556(); } catch {}
+            data.pb556LevelRules = clone(state.pb556.rules || {});
+            data.pb556BoardItems = clone(state.pb556.boardItems || []);
+            data.cutscenes = clone(state.cutscenes || { pre:[], post:[] });
+            return data;
+          };
+          serializableState.pb556RulesWrapped = true;
+        }
+        if (window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel && !window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb556RulesWrapped) {
+          const oldRestore = window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel;
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel = function(data, ...args) {
+            const result = oldRestore.call(this, data, ...args);
+            restorePB556FromWorld(data);
+            return result;
+          };
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb556RulesWrapped = true;
+        }
+        try {
+          if (typeof restoreWorldSnapshotForLevel === 'function' && !restoreWorldSnapshotForLevel.pb556RulesWrapped) {
+            const oldRestoreGlobal = restoreWorldSnapshotForLevel;
+            restoreWorldSnapshotForLevel = function(data, ...args) {
+              const result = oldRestoreGlobal.apply(this, [data, ...args]);
+              restorePB556FromWorld(data);
+              return result;
+            };
+            restoreWorldSnapshotForLevel.pb556RulesWrapped = true;
+          }
+        } catch {}
+        if (typeof draw === 'function' && !draw.pb556BoardWrapped) {
+          const oldDraw = draw;
+          draw = function(...args) { const result = oldDraw.apply(this, args); drawBoardItems556(); return result; };
+          draw.pb556BoardWrapped = true;
+        }
+        if (typeof update === 'function' && !update.pb556MiniWrapped) {
+          const oldUpdate = update;
+          update = function(dt) { const result = oldUpdate.apply(this, arguments); updateMiniRuntime556(dt || 1/60); return result; };
+          update.pb556MiniWrapped = true;
+        }
+        if (canvas && !canvas.pb556BoardClickWrapped) {
+          canvas.addEventListener('mousedown', e => {
+            if (!state.pb556?.boardItems?.length) return;
+            const m = typeof getMouse === 'function' ? getMouse(e) : { x:e.offsetX, y:e.offsetY };
+            if (handleBoardClick556(m, e)) return false;
+          }, true);
+          canvas.pb556BoardClickWrapped = true;
+        }
+        const oldStart = typeof startLevel === 'function' ? startLevel : null;
+        if (oldStart && !oldStart.pb556StartWrapped) {
+          startLevel = async function(...args) {
+            readRulesFromUI556();
+            await playEnhancedCutscene556('pre');
+            const result = await oldStart.apply(this, args);
+            initModeRuntime556();
+            return result;
+          };
+          startLevel.pb556StartWrapped = true;
+          ['startLevel','levelStart'].forEach(id => {
+            const btn = by(id);
+            if (btn) btn.onclick = e => { e?.preventDefault?.(); e?.stopPropagation?.(); startLevel(); };
+          });
+        }
+        const oldFinish = window.finishPlayMode || (typeof finishPlayMode === 'function' ? finishPlayMode : null);
+        if (oldFinish && !oldFinish.pb556FinishWrapped) {
+          const wrapped = function(won, ...args) {
+            const result = oldFinish.call(this, won, ...args);
+            if (won) setTimeout(() => playEnhancedCutscene556('post'), 120);
+            return result;
+          };
+          wrapped.pb556FinishWrapped = true;
+          window.finishPlayMode = wrapped;
+          try { finishPlayMode = wrapped; } catch {}
+        }
+        if (window.ProjectBuildUniversal) {
+          window.ProjectBuildUniversal.playEnhancedCutscene = playEnhancedCutscene556;
+          window.ProjectBuildUniversal.playCutscene = playEnhancedCutscene556;
+        }
+      }
+
+      function installPanels556() {
+        addMiniGamePanel556();
+        addVisualCutscenePanel556();
+        // The friendly builder is recreated only once in this build, but this retry keeps the add-on durable.
+        setTimeout(() => { addMiniGamePanel556(); addVisualCutscenePanel556(); syncRulesToUI556(); writeCutscenes556(); }, 250);
+      }
+
+      installStyles556();
+      installPanels556();
+      installPersistenceAndRuntime556();
+      syncRulesToUI556();
+      writeCutscenes556();
+
+      window.ProjectBuild5_5_6_LevelPuzzleCutsceneMegaPack = {
+        version:'5.5.6-level-puzzle-cutscene-megapack',
+        modes:modeCatalog556.map(m => m[0]),
+        applyPreset:applyPreset556,
+        generateWavePreset:generateWavePreset556,
+        generateBoardForMode:generateBoardForMode556,
+        playCutscene:playEnhancedCutscene556,
+        state
+      };
+      toast('5.5.6 installed: puzzle/minigame director and visual cutscene studio added');
+    })();
 
 
 
