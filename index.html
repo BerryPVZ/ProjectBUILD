@@ -15534,5 +15534,710 @@ Click me again to advance.</textarea>
     })();
   </script>
 
+
+  <script>
+    // Project: BUILD 6.0.4 - NPC actor + speech bubble visibility hotfix.
+    // Uses a dedicated overlay so NPC sprites and bubbles cannot be hidden by the old dialogBox CSS.
+    (() => {
+      const VERSION = '6.0.4-npc-dialogue-overlay-hotfix';
+      const $ = id => document.getElementById(id);
+      const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+      const say = msg => (typeof showToast === 'function' ? showToast(msg) : console.log(msg));
+      if (window.ProjectBuild6_0_4_NpcDialogueOverlay?.installed) return;
+
+      let advanceCallback = null;
+
+      function installStyle() {
+        if ($('pb604NpcDialogueStyle')) return;
+        const style = document.createElement('style');
+        style.id = 'pb604NpcDialogueStyle';
+        style.textContent = `
+          #pb604DialogueLayer {
+            position: absolute;
+            inset: 0;
+            z-index: 145;
+            display: none;
+            pointer-events: auto;
+            background: linear-gradient(180deg, rgba(0,0,0,0.04), rgba(0,0,0,0.18));
+          }
+          body.pb604DialogueOpen #dialogBox {
+            display: none !important;
+          }
+          .pb604NpcTalk {
+            position: absolute;
+            left: 50%;
+            bottom: 82px;
+            transform: translateX(-50%);
+            width: min(820px, calc(100vw - 32px));
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            gap: 14px;
+            pointer-events: auto;
+          }
+          .pb604NpcTalk.left {
+            left: 24px;
+            right: auto;
+            transform: none;
+            justify-content: flex-start;
+          }
+          .pb604NpcTalk.right {
+            left: auto;
+            right: 92px;
+            transform: none;
+            flex-direction: row-reverse;
+            justify-content: flex-start;
+          }
+          .pb604NpcTalk.banner {
+            width: min(760px, calc(100vw - 32px));
+          }
+          .pb604NpcActor {
+            flex: 0 0 auto;
+            width: 112px;
+            height: 112px;
+            display: grid;
+            place-items: end center;
+            filter: drop-shadow(0 12px 14px rgba(0,0,0,.48));
+            user-select: none;
+            pointer-events: none;
+          }
+          .pb604NpcActor img {
+            max-width: 112px;
+            max-height: 112px;
+            object-fit: contain;
+            image-rendering: auto;
+          }
+          .pb604NpcFallback {
+            width: 88px;
+            height: 88px;
+            border-radius: 22px;
+            display: grid;
+            place-items: center;
+            background: linear-gradient(180deg, #d9ff9f, #73d13d);
+            border: 3px solid rgba(255,255,255,.82);
+            color: #12320b;
+            font-size: 42px;
+            font-weight: 900;
+            text-shadow: none;
+            box-shadow: inset 0 3px 0 rgba(255,255,255,.55), 0 6px 0 rgba(0,0,0,.25);
+          }
+          .pb604Bubble {
+            position: relative;
+            flex: 1 1 auto;
+            min-width: 0;
+            min-height: 86px;
+            padding: 14px 18px 13px;
+            border-radius: 28px;
+            border: 3px solid rgba(217,255,159,.9);
+            background: rgba(255,255,255,.96);
+            color: #111827;
+            box-shadow: 0 18px 48px rgba(0,0,0,.46);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            cursor: pointer;
+          }
+          .pb604Bubble::before {
+            content: '';
+            position: absolute;
+            left: -16px;
+            bottom: 30px;
+            width: 27px;
+            height: 27px;
+            background: rgba(255,255,255,.96);
+            border-left: 3px solid rgba(217,255,159,.9);
+            border-bottom: 3px solid rgba(217,255,159,.9);
+            transform: rotate(45deg);
+            box-shadow: -5px 6px 12px rgba(0,0,0,.12);
+          }
+          .pb604NpcTalk.right .pb604Bubble::before {
+            left: auto;
+            right: -16px;
+            border-left: 0;
+            border-right: 3px solid rgba(217,255,159,.9);
+            border-bottom: 3px solid rgba(217,255,159,.9);
+            transform: rotate(-45deg);
+            box-shadow: 5px 6px 12px rgba(0,0,0,.12);
+          }
+          .pb604Bubble.thought {
+            border-radius: 38px;
+            border-style: dashed;
+          }
+          .pb604Bubble.thought::before {
+            width: 20px;
+            height: 20px;
+            left: -30px;
+            bottom: 44px;
+            border-radius: 999px;
+            border: 3px solid rgba(217,255,159,.9);
+            background: rgba(255,255,255,.96);
+            transform: none;
+          }
+          .pb604Bubble.thought::after {
+            content: '';
+            position: absolute;
+            left: -48px;
+            bottom: 30px;
+            width: 10px;
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.96);
+            border: 2px solid rgba(217,255,159,.9);
+          }
+          .pb604NpcTalk.right .pb604Bubble.thought::before {
+            left: auto;
+            right: -30px;
+          }
+          .pb604NpcTalk.right .pb604Bubble.thought::after {
+            left: auto;
+            right: -48px;
+          }
+          .pb604NpcTalk.banner .pb604NpcActor,
+          .pb604NpcTalk.noActor .pb604NpcActor {
+            display: none;
+          }
+          .pb604NpcTalk.banner .pb604Bubble {
+            min-height: 74px;
+            text-align: center;
+            border-radius: 18px;
+          }
+          .pb604NpcTalk.banner .pb604Bubble::before,
+          .pb604NpcTalk.banner .pb604Bubble::after,
+          .pb604NpcTalk.noActor .pb604Bubble::before,
+          .pb604NpcTalk.noActor .pb604Bubble::after {
+            display: none;
+            content: none;
+          }
+          .pb604Name {
+            color: #14532d;
+            font-size: 14px;
+            line-height: 1.1;
+            font-weight: 900;
+            margin-bottom: 5px;
+          }
+          .pb604Text {
+            color: #111827;
+            font-size: 15px;
+            line-height: 1.35;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+          }
+          .pb604Hint {
+            color: #475569;
+            font-size: 11px;
+            margin-top: 8px;
+          }
+          @media (max-width: 820px), (pointer: coarse) {
+            #pb604DialogueLayer { z-index: 150; }
+            .pb604NpcTalk,
+            .pb604NpcTalk.left,
+            .pb604NpcTalk.right {
+              left: 8px;
+              right: 8px;
+              bottom: 178px;
+              transform: none;
+              width: auto;
+              gap: 8px;
+            }
+            .pb604NpcActor {
+              width: 68px;
+              height: 68px;
+            }
+            .pb604NpcActor img {
+              max-width: 68px;
+              max-height: 68px;
+            }
+            .pb604NpcFallback {
+              width: 58px;
+              height: 58px;
+              border-radius: 16px;
+              font-size: 28px;
+            }
+            .pb604Bubble {
+              min-height: 70px;
+              padding: 10px 12px;
+              border-radius: 20px;
+            }
+            .pb604Bubble::before {
+              left: -11px;
+              bottom: 24px;
+              width: 19px;
+              height: 19px;
+            }
+            .pb604NpcTalk.right .pb604Bubble::before {
+              right: -11px;
+            }
+            .pb604Bubble.thought::before {
+              left: -22px;
+              bottom: 34px;
+              width: 14px;
+              height: 14px;
+            }
+            .pb604Bubble.thought::after {
+              left: -34px;
+              bottom: 22px;
+              width: 8px;
+              height: 8px;
+            }
+            .pb604NpcTalk.right .pb604Bubble.thought::before {
+              left: auto;
+              right: -22px;
+            }
+            .pb604NpcTalk.right .pb604Bubble.thought::after {
+              left: auto;
+              right: -34px;
+            }
+          }
+          @media (max-width: 430px) {
+            .pb604NpcTalk,
+            .pb604NpcTalk.left,
+            .pb604NpcTalk.right {
+              bottom: 180px;
+            }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      function ensureLayer() {
+        installStyle();
+        let layer = $('pb604DialogueLayer');
+        if (!layer) {
+          layer = document.createElement('div');
+          layer.id = 'pb604DialogueLayer';
+          const stage = $('stageWrap') || document.body;
+          stage.appendChild(layer);
+          layer.addEventListener('click', ev => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            advanceDialogue();
+          });
+        }
+        return layer;
+      }
+
+      function parseLine(line) {
+        if (line && typeof line === 'object') return line;
+        const raw = String(line ?? '').trim();
+        if (!raw) return { text:'' };
+        if (raw[0] === '{') {
+          try { return JSON.parse(raw); } catch {}
+        }
+        const parts = raw.split('|');
+        if (parts.length >= 4) {
+          return { speaker:parts[0].trim(), position:parts[1].trim(), bubble:parts[2].trim(), text:parts.slice(3).join('|').trim() };
+        }
+        return { text:raw };
+      }
+
+      function textOf(line) {
+        return String(line?.text ?? line?.dialog ?? line?.message ?? '');
+      }
+
+      function imageOf(source, line) {
+        return line?.imageSrc || line?.image || line?.portraitSrc || line?.portrait || line?.npcImageSrc || source?.portraitSrc || source?.imageSrc || source?.idleSrc || source?.actionSrc || '';
+      }
+
+      function showDialogue(source, line, opts = {}) {
+        const obj = parseLine(line);
+        const layer = ensureLayer();
+        const speaker = obj.speaker || obj.name || opts.speaker || source?.name || 'Dialog';
+        const body = textOf(obj) || String(line ?? '');
+        const positionRaw = String(obj.position || opts.position || 'middle').toLowerCase();
+        const position = positionRaw.includes('right') ? 'right' : positionRaw.includes('left') ? 'left' : 'middle';
+        const bubbleRaw = String(obj.bubble || opts.bubble || 'speech').toLowerCase();
+        const isBanner = bubbleRaw.includes('banner');
+        const isThought = bubbleRaw.includes('thought');
+        const src = imageOf(source, obj);
+        const actorInitial = esc((speaker || '?').trim().slice(0, 1).toUpperCase() || '?');
+        const hasActor = !isBanner;
+        layer.innerHTML = `
+          <div class="pb604NpcTalk ${position} ${isBanner ? 'banner' : ''} ${hasActor ? '' : 'noActor'}">
+            <div class="pb604NpcActor">${src ? `<img src="${esc(src)}" alt="">` : `<div class="pb604NpcFallback">${actorInitial}</div>`}</div>
+            <div class="pb604Bubble ${isThought ? 'thought' : ''}">
+              <div class="pb604Name">${esc(speaker)}</div>
+              <div class="pb604Text">${esc(body)}</div>
+              <div class="pb604Hint">${esc(obj.hint || opts.hint || 'Tap / click to continue. Esc closes.')}</div>
+            </div>
+          </div>`;
+        layer.style.display = 'block';
+        document.body.classList.add('pb604DialogueOpen');
+        const oldBox = $('dialogBox');
+        if (oldBox) oldBox.style.display = 'none';
+        advanceCallback = typeof opts.onAdvance === 'function' ? opts.onAdvance : null;
+        const sfx = obj.soundSrc || obj.clickSoundSrc || obj.sfxSrc || source?.npcSoundSrc || opts.soundSrc;
+        if (sfx) {
+          try {
+            if (typeof playSfx === 'function') playSfx(sfx, 0.9);
+            else new Audio(sfx).play?.().catch(() => {});
+          } catch {}
+        }
+        return true;
+      }
+
+      function closeDialogue() {
+        advanceCallback = null;
+        const layer = $('pb604DialogueLayer');
+        if (layer) {
+          layer.style.display = 'none';
+          layer.innerHTML = '';
+        }
+        document.body.classList.remove('pb604DialogueOpen');
+        if (typeof state !== 'undefined' && state.dialog) state.dialog = { entity:null, index:0 };
+        const oldBox = $('dialogBox');
+        if (oldBox) { oldBox.style.display = 'none'; oldBox.className = ''; }
+      }
+
+      function advanceDialogue() {
+        if (typeof advanceCallback === 'function') {
+          const cb = advanceCallback;
+          cb();
+          return;
+        }
+        const ent = (typeof state !== 'undefined' && state.dialog) ? state.dialog.entity : null;
+        if (ent && typeof playNpc === 'function') playNpc(ent);
+        else closeDialogue();
+      }
+
+      function patchProjectBuildDialogue() {
+        window.ProjectBuildDialogue = {
+          ...(window.ProjectBuildDialogue || {}),
+          show: showDialogue,
+          close: closeDialogue,
+          advance: advanceDialogue,
+          parse: parseLine
+        };
+      }
+
+      function patchNpcRuntime() {
+        if (typeof playNpc !== 'function' || playNpc.__pb604Overlay) return false;
+        const patched = function(ent) {
+          if (!ent || !(ent.side === 'npc' || ent.role === 'npc')) return;
+          const sourceLines = Array.isArray(ent.dialog) ? ent.dialog : [];
+          const lines = sourceLines.map(parseLine).filter(line => textOf(line).length || imageOf(ent, line));
+          if (!lines.length) return;
+          if (state.dialog?.entity?.id !== ent.id) state.dialog = { entity:ent, index:0 };
+          else state.dialog.index = (Number(state.dialog.index) + 1) % lines.length;
+          showDialogue(ent, lines[state.dialog.index], { onAdvance:() => patched(ent) });
+        };
+        patched.__pb604Overlay = true;
+        playNpc = patched;
+        return true;
+      }
+
+      function patchLabels() {
+        const helper = $('pb601NpcLineBuilder')?.querySelector('.pb601Tiny');
+        if (helper) helper.textContent = 'Adds lines that show an NPC actor beside a separate speech/thought bubble. Plain text lines still work.';
+        const speech = $('pb601NpcBubble')?.querySelector('option[value="speech"]');
+        if (speech) speech.textContent = 'Speech Bubble Beside NPC';
+        const beatSpeech = $('pb60BeatBubble')?.querySelector('option[value="speech"]');
+        if (beatSpeech) beatSpeech.textContent = 'Speech Bubble Beside NPC';
+      }
+
+      function init() {
+        installStyle();
+        ensureLayer();
+        patchProjectBuildDialogue();
+        patchNpcRuntime();
+        patchLabels();
+        window.addEventListener('keydown', ev => {
+          const layer = $('pb604DialogueLayer');
+          if (!layer || layer.style.display === 'none') return;
+          if (ev.key === 'Escape') { ev.preventDefault(); closeDialogue(); }
+          if (ev.key === ' ' || ev.key === 'Enter') { ev.preventDefault(); advanceDialogue(); }
+        }, true);
+        window.ProjectBuild6_0_4_NpcDialogueOverlay = { installed:true, version:VERSION, show:showDialogue, close:closeDialogue, advance:advanceDialogue };
+        say('6.0.4 NPC dialogue overlay loaded');
+      }
+
+      const boot = setInterval(() => {
+        const ready = $('stageWrap') && $('dialogBox') && typeof state !== 'undefined';
+        if (!ready) return;
+        init();
+        clearInterval(boot);
+      }, 120);
+      setTimeout(() => {
+        clearInterval(boot);
+        if (!window.ProjectBuild6_0_4_NpcDialogueOverlay?.installed && $('stageWrap')) init();
+      }, 8000);
+    })();
+
+
+    // Project BUILD 6.0.5 - zombie spawn type dropdown for Template Maker
+    (() => {
+      const VERSION = '6.0.5-zombie-spawn-type-dropdown';
+      if (window.ProjectBuild6_0_5_ZombieSpawnDropdown?.installed) return;
+      const $ = id => document.getElementById(id);
+      const say = msg => (typeof showToast === 'function' ? showToast(msg) : console.log(msg));
+      const clone = value => {
+        try { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
+        catch { return value; }
+      };
+      const spawnAbilityNames = new Set([
+        'summonMinions','spawnWave','zombieGraveSpawn','zombieCallBackup','bossSummonHorde','bossRageSummon','bossSummonShielders','objectAutoSpawner',
+        'zombieDancing','zombieGargantuar','zombieDrZomboss','zombieMiniSplit','zombieBarrelRoller','zombieChickenWrangler','zombieWeaselHoarder','zombieImpCannon'
+      ]);
+
+      function esc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+      }
+
+      function normalizeSpawnNames(source = {}) {
+        const raw = source.spawnZombieTypes ?? source.spawnZombieTemplates ?? source.spawnZombies ?? source.summonZombieTypes ?? source.summonPool ?? [];
+        const arr = Array.isArray(raw) ? raw : String(raw || '').split(/[\n,|;]/);
+        return [...new Set(arr.map(item => {
+          if (item && typeof item === 'object') return item.name || item.template || item.id || '';
+          return String(item || '').trim();
+        }).filter(Boolean))];
+      }
+
+      function isEnemyTemplate(t) {
+        if (!t) return false;
+        const side = String(t.side || '').toLowerCase();
+        const type = String(t.type || '').toLowerCase();
+        const role = String(t.role || '').toLowerCase();
+        const name = String(t.name || '').toLowerCase();
+        return side === 'zombie' || side === 'boss' || type === 'zombie' || type === 'boss' || role === 'zombie' || role === 'boss' || role === 'gargantuar' || /zombie|zomboss|gargantuar|imp|dancer|buckethead|conehead|football|weasel|chicken|barrel/.test(name);
+      }
+
+      function enemyTemplates() {
+        return (state.templates || []).filter(t => t && t.name && isEnemyTemplate(t));
+      }
+
+      function selectedAbilityNames() {
+        try { return typeof selectedAbilities === 'function' ? selectedAbilities() : [...document.querySelectorAll('.pill.active')].map(p => p.dataset.ability); }
+        catch { return []; }
+      }
+
+      function shouldShowPickerForCurrentForm() {
+        const side = String($('entitySide')?.value || '').toLowerCase();
+        const role = String($('entityRole')?.value || '').toLowerCase();
+        const isNpc = side === 'npc' || role === 'npc';
+        const hasSpawnAbility = selectedAbilityNames().some(a => spawnAbilityNames.has(a));
+        return !isNpc && side !== 'plant' && (side === 'zombie' || side === 'boss' || role === 'spawner' || hasSpawnAbility);
+      }
+
+      function readSelectedSpawnNames() {
+        const sel = $('pb605SpawnZombieSelect');
+        if (!sel) return [];
+        return [...sel.selectedOptions].map(o => o.value).filter(Boolean);
+      }
+
+      function writeSelectedSpawnNames(names = []) {
+        const sel = $('pb605SpawnZombieSelect');
+        if (!sel) return;
+        const set = new Set(normalizeSpawnNames({ spawnZombieTypes:names }));
+        [...sel.options].forEach(opt => { opt.selected = set.has(opt.value); });
+        updateSpawnStatus();
+      }
+
+      function updateSpawnStatus() {
+        const status = $('pb605SpawnZombieStatus');
+        if (!status) return;
+        const names = readSelectedSpawnNames();
+        status.textContent = names.length
+          ? `Selected spawn pool: ${names.join(', ')}. Each spawn/drop picks one of these at random.`
+          : 'No custom spawn pool selected. These abilities will use their normal built-in Backup Dancer / Imp / minion defaults.';
+      }
+
+      function renderSpawnOptions(selectedNames = readSelectedSpawnNames()) {
+        const sel = $('pb605SpawnZombieSelect');
+        if (!sel) return;
+        const previous = new Set(normalizeSpawnNames({ spawnZombieTypes:selectedNames }));
+        sel.innerHTML = '';
+        const templates = enemyTemplates();
+        if (!templates.length) {
+          const opt = document.createElement('option');
+          opt.value = '';
+          opt.textContent = 'No zombie or boss templates saved yet';
+          opt.disabled = true;
+          sel.appendChild(opt);
+        }
+        templates.forEach(t => {
+          const opt = document.createElement('option');
+          opt.value = t.name;
+          opt.textContent = `${t.name} (${t.side || t.type || 'zombie'}${t.role ? '/' + t.role : ''})`;
+          opt.selected = previous.has(t.name);
+          sel.appendChild(opt);
+        });
+        previous.forEach(name => {
+          if (!name || [...sel.options].some(o => o.value === name)) return;
+          const opt = document.createElement('option');
+          opt.value = name;
+          opt.textContent = `${name} (missing template)`;
+          opt.selected = true;
+          sel.appendChild(opt);
+        });
+        updateSpawnStatus();
+      }
+
+      function syncSpawnPickerUI() {
+        const box = $('pb605SpawnZombiePicker');
+        if (!box) return;
+        box.classList.toggle('hidden', !shouldShowPickerForCurrentForm());
+        renderSpawnOptions();
+      }
+
+      function injectPickerUI() {
+        if ($('pb605SpawnZombiePicker')) return;
+        const templateCard = $('saveTemplate')?.closest('.card');
+        if (!templateCard) return;
+        const box = document.createElement('div');
+        box.id = 'pb605SpawnZombiePicker';
+        box.innerHTML = `
+          <label>Spawned Zombie Type(s)</label>
+          <select id="pb605SpawnZombieSelect" multiple size="5" aria-label="Spawned zombie types"></select>
+          <div class="row">
+            <button id="pb605RefreshSpawnZombieList" type="button" class="blue">Refresh Zombie Types</button>
+            <button id="pb605ClearSpawnZombieList" type="button" class="danger">Clear Selection</button>
+          </div>
+          <div id="pb605SpawnZombieStatus" class="miniNote"></div>
+          <p class="miniNote">Template Maker only. Used by spawning/drop abilities like Dancing Zombie backups, Gargantuar imp throws, Zomboss minions, call backup, grave spawn, boss summons, imp cannon, chicken/weasel drops, and auto spawners. Hold Ctrl/Cmd or Shift to select multiple saved zombie/boss templates.</p>
+        `;
+        const projectileInput = $('projectileImage');
+        const anchor = projectileInput?.previousElementSibling || $('saveTemplate');
+        templateCard.insertBefore(box, anchor);
+        $('pb605RefreshSpawnZombieList').onclick = () => { renderSpawnOptions(); say('Spawned zombie type list refreshed'); };
+        $('pb605ClearSpawnZombieList').onclick = () => { writeSelectedSpawnNames([]); say('Spawned zombie type selection cleared'); };
+        $('pb605SpawnZombieSelect').addEventListener('change', updateSpawnStatus);
+      }
+
+      function findTemplateBySpawnName(name) {
+        return (state.templates || []).find(t => t && t.name === name && isEnemyTemplate(t));
+      }
+
+      function spawnNamesForSource(source) {
+        let names = normalizeSpawnNames(source || {});
+        if (!names.length && source?.name) {
+          const t = (state.templates || []).find(x => x && x.name === source.name && (x.side === source.side || x.type === source.type || x.role === source.role));
+          names = normalizeSpawnNames(t || {});
+        }
+        return names;
+      }
+
+      function chooseSpawnTemplate(source) {
+        const names = spawnNamesForSource(source);
+        const pool = names.map(findTemplateBySpawnName).filter(Boolean);
+        if (!pool.length) return null;
+        return clone(pool[Math.floor(Math.random() * pool.length)]);
+      }
+
+      function isEnemySpawnCall(type, template = {}) {
+        const typeText = String(type || '').toLowerCase();
+        const sideText = String(template.side || '').toLowerCase();
+        const roleText = String(template.role || '').toLowerCase();
+        const nameText = String(template.name || '').toLowerCase();
+        return typeText === 'zombie' || typeText === 'boss' || sideText === 'zombie' || sideText === 'boss' || roleText === 'gargantuar' || /zombie|imp|dancer|gargantuar|zomboss|weasel|chicken|barrel/.test(nameText);
+      }
+
+      function normalizeChosenSpawnPayload(t) {
+        const isBoss = String(t.side || '').toLowerCase() === 'boss' || String(t.type || '').toLowerCase() === 'boss' || String(t.role || '').toLowerCase() === 'boss';
+        const spawnType = isBoss ? 'boss' : 'zombie';
+        return {
+          spawnType,
+          template: {
+            ...t,
+            side: isBoss ? 'boss' : 'zombie',
+            type: spawnType,
+            role: t.role || (isBoss ? 'boss' : 'fighter')
+          }
+        };
+      }
+
+      function patchTemplateSaving() {
+        const oldGetTemplateForm605 = getTemplateForm;
+        getTemplateForm = function() {
+          const t = oldGetTemplateForm605();
+          const names = shouldShowPickerForCurrentForm() ? readSelectedSpawnNames() : [];
+          t.spawnZombieTypes = names;
+          t.spawnZombieTemplates = [...names];
+          return t;
+        };
+
+        const oldLoadTemplateToForm605 = loadTemplateToForm;
+        loadTemplateToForm = function(t) {
+          oldLoadTemplateToForm605(t);
+          renderSpawnOptions(normalizeSpawnNames(t || {}));
+          syncSpawnPickerUI();
+        };
+
+        const oldEntityFromTemplate605 = entityFromTemplate;
+        entityFromTemplate = function(template, x, y, override = {}) {
+          const ent = oldEntityFromTemplate605(template, x, y, override);
+          const merged = { ...(template || {}), ...(override || {}) };
+          const names = normalizeSpawnNames(merged);
+          ent.spawnZombieTypes = names;
+          ent.spawnZombieTemplates = [...names];
+          return ent;
+        };
+
+        const oldRefreshTemplates605 = refreshTemplates;
+        refreshTemplates = function() {
+          oldRefreshTemplates605();
+          renderSpawnOptions();
+          syncSpawnPickerUI();
+        };
+      }
+
+      function patchRuntimeSpawns() {
+        let activeSpawner = null;
+        const oldSpawn605 = spawn;
+        spawn = function(type, x, y, template = {}) {
+          const source = activeSpawner;
+          const chosen = source && isEnemySpawnCall(type, template) ? chooseSpawnTemplate(source) : null;
+          const previous = activeSpawner;
+          activeSpawner = null;
+          try {
+            if (chosen) {
+              const payload = normalizeChosenSpawnPayload(chosen);
+              return oldSpawn605(payload.spawnType, x, y, payload.template);
+            }
+            return oldSpawn605(type, x, y, template);
+          } finally {
+            activeSpawner = previous;
+          }
+        };
+
+        const oldApplyAbilityLogic605 = applyAbilityLogic;
+        applyAbilityLogic = function(e, dt) {
+          const previous = activeSpawner;
+          activeSpawner = e || null;
+          try { return oldApplyAbilityLogic605(e, dt); }
+          finally { activeSpawner = previous; }
+        };
+      }
+
+      function init() {
+        const style = document.createElement('style');
+        style.id = 'pb605SpawnZombieStyle';
+        style.textContent = `
+          #pb605SpawnZombiePicker {
+            border: 1px solid rgba(217,255,159,.26);
+            border-radius: 14px;
+            padding: 9px;
+            margin-top: 10px;
+            background: rgba(0,0,0,.18);
+          }
+          #pb605SpawnZombieSelect {
+            min-height: 118px;
+          }
+        `;
+        if (!$('pb605SpawnZombieStyle')) document.head.appendChild(style);
+        injectPickerUI();
+        patchTemplateSaving();
+        patchRuntimeSpawns();
+        renderSpawnOptions();
+        syncSpawnPickerUI();
+        $('entitySide')?.addEventListener('change', syncSpawnPickerUI);
+        $('entityRole')?.addEventListener('change', syncSpawnPickerUI);
+        $('abilityPills')?.addEventListener('click', () => setTimeout(syncSpawnPickerUI, 0));
+        window.ProjectBuild6_0_5_ZombieSpawnDropdown = { installed:true, version:VERSION, render:renderSpawnOptions };
+        say('6.0.5 zombie spawn type dropdown loaded');
+      }
+
+      init();
+    })();
+  </script>
+
 </body>
 </html>
