@@ -12716,6 +12716,532 @@ Click me again to advance.</textarea>
 
 
 
+    // Project: BUILD 5.5.7 - buildmod campaign asset save + level-type runtime fix.
+    (function installProjectBuild5_5_7_BuildmodCampaignAndLevelTypeFix() {
+      if (window.ProjectBuild5_5_7_BuildmodCampaignAndLevelTypeFix) return;
+      const by = id => document.getElementById(id);
+      const toast = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const clone = obj => (typeof structuredClone === 'function' ? structuredClone(obj ?? null) : JSON.parse(JSON.stringify(obj ?? null)));
+      const safeFileName557 = name => String(name || 'project-build-mod').replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || 'project-build-mod';
+      const embedded557 = src => /^data:/i.test(String(src || '').trim());
+      const nonDefault557 = (src, kind = 'lawn') => {
+        const value = String(src || '').trim();
+        if (!value) return false;
+        const fallback = kind === 'music' ? 'main.mp3' : 'main.png';
+        return embedded557(value) || !(new RegExp('(^|/)' + fallback.replace('.', '\\.') + '([?#].*)?$', 'i')).test(value);
+      };
+      const firstAsset557 = (kind, ...values) => {
+        for (const value of values) {
+          const src = String(value || '').trim();
+          if (src && embedded557(src)) return src;
+        }
+        for (const value of values) {
+          const src = String(value || '').trim();
+          if (src && nonDefault557(src, kind)) return src;
+        }
+        return null;
+      };
+
+      const modeLabels557 = {
+        classic:'Adventure / Classic Waves', conveyor:'Conveyor Belt', slotMachine:'Slot Machine', lastStand:'Last Stand', survival:'Survival / Flags',
+        fogNight:'Fog / Storm Night', bowling:'Wall-nut Bowling Style', vasebreaker:'Vasebreaker Style', reverseDefense:'I-Zombie / Reverse',
+        beghouled:'Beghouled / Match-3', whack:'Whack-a-Zombie', zombiquarium:'Zombiquarium / Feeding', portalPanic:'Portal Panic',
+        bossRush:'Boss Rush', targetPractice:'Target Practice', memory:'Memory Match', goFish:'Go Fish'
+      };
+      const modeDefaults557 = {
+        classic:{startingSun:50,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:false,storm:false,lockedPackets:false,autoBoard:true},
+        conveyor:{startingSun:0,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:4,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        slotMachine:{startingSun:25,timeLimit:0,targetScore:8,puzzleCount:1,conveyorRate:6,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        lastStand:{startingSun:5000,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        survival:{startingSun:150,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:false,storm:false,lockedPackets:false,autoBoard:true},
+        fogNight:{startingSun:25,timeLimit:0,targetScore:10,puzzleCount:12,conveyorRate:5,fog:true,storm:true,lockedPackets:false,autoBoard:true},
+        bowling:{startingSun:0,timeLimit:120,targetScore:12,puzzleCount:5,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        vasebreaker:{startingSun:0,timeLimit:0,targetScore:10,puzzleCount:20,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        reverseDefense:{startingSun:0,timeLimit:0,targetScore:10,puzzleCount:10,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        beghouled:{startingSun:0,timeLimit:120,targetScore:12,puzzleCount:35,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        whack:{startingSun:0,timeLimit:90,targetScore:20,puzzleCount:15,conveyorRate:1.4,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        zombiquarium:{startingSun:0,timeLimit:120,targetScore:18,puzzleCount:10,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        portalPanic:{startingSun:75,timeLimit:0,targetScore:10,puzzleCount:4,conveyorRate:5,fog:false,storm:false,lockedPackets:false,autoBoard:true},
+        bossRush:{startingSun:200,timeLimit:0,targetScore:5,puzzleCount:5,conveyorRate:5,fog:false,storm:false,lockedPackets:false,autoBoard:true},
+        targetPractice:{startingSun:0,timeLimit:90,targetScore:25,puzzleCount:18,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        memory:{startingSun:0,timeLimit:150,targetScore:8,puzzleCount:16,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true},
+        goFish:{startingSun:0,timeLimit:120,targetScore:10,puzzleCount:10,conveyorRate:5,fog:false,storm:false,lockedPackets:true,autoBoard:true}
+      };
+      const normalizeModeText557 = value => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+      const modeAlias557 = (() => {
+        const map = new Map();
+        Object.entries(modeLabels557).forEach(([id, label]) => {
+          [id, label, label.replace(/\/.*$/, ''), label.replace(/style/i, '')].forEach(v => map.set(normalizeModeText557(v), id));
+        });
+        [
+          ['adventure','classic'], ['classicwaves','classic'], ['waves','classic'], ['regular','classic'], ['normal','classic'],
+          ['conveyorbelt','conveyor'], ['slots','slotMachine'], ['slot','slotMachine'], ['laststand','lastStand'], ['survivalflags','survival'],
+          ['fog','fogNight'], ['storm','fogNight'], ['fognight','fogNight'], ['wallnutbowling','bowling'], ['bowling','bowling'],
+          ['vase','vasebreaker'], ['vasebreaker','vasebreaker'], ['izombie','reverseDefense'], ['reverse','reverseDefense'], ['reversedefense','reverseDefense'],
+          ['beghouled','beghouled'], ['match3','beghouled'], ['whackazombie','whack'], ['whack','whack'], ['aquarium','zombiquarium'], ['zombiquarium','zombiquarium'],
+          ['portal','portalPanic'], ['portalpanic','portalPanic'], ['boss','bossRush'], ['bossrush','bossRush'], ['target','targetPractice'], ['targetpractice','targetPractice'],
+          ['memory','memory'], ['memorymatch','memory'], ['matching','memory'], ['gofish','goFish'], ['fish','goFish']
+        ].forEach(([alias, id]) => map.set(alias, id));
+        return map;
+      })();
+      function modeFromText557(value) {
+        if (value && modeDefaults557[value]) return value;
+        const key = normalizeModeText557(value);
+        return modeAlias557.get(key) || null;
+      }
+      function inferLevelMode557(level = state.currentCampaignLevel) {
+        const strictCandidates = [
+          level?.world?.pb556LevelRules?.mode,
+          level?.pb556LevelRules?.mode,
+          level?.levelType,
+          level?.gimmickMode,
+          level?.mode,
+          level?.type
+        ];
+        for (const c of strictCandidates) {
+          const mode = modeFromText557(c);
+          if (mode) return mode;
+        }
+        const textCandidates = [
+          level?.gimmick,
+          by('builderLevelGimmick')?.value,
+          by('campaignLevelGimmick')?.value
+        ];
+        for (const c of textCandidates) {
+          const mode = modeFromText557(c);
+          if (mode) return mode;
+        }
+        const uiMode = modeFromText557(by('pb556Mode')?.value);
+        if (uiMode && uiMode !== 'classic') return uiMode;
+        const stateMode = modeFromText557(state.pb556?.rules?.mode);
+        if (stateMode && stateMode !== 'classic') return stateMode;
+        return uiMode || stateMode || 'classic';
+      }
+      function numberFromUI557(id, fallback, min = -Infinity) {
+        const el = by(id);
+        const n = Number(el?.value);
+        return Math.max(min, Number.isFinite(n) ? n : fallback);
+      }
+      function boolFromUI557(id, fallback) {
+        const el = by(id);
+        return el ? !!el.checked : !!fallback;
+      }
+      function setRuleUI557(rules) {
+        if (by('pb556Mode')) by('pb556Mode').value = rules.mode || 'classic';
+        if (by('pb556StartingSun')) by('pb556StartingSun').value = rules.startingSun ?? 50;
+        if (by('pb556TimeLimit')) by('pb556TimeLimit').value = rules.timeLimit ?? 0;
+        if (by('pb556TargetScore')) by('pb556TargetScore').value = rules.targetScore ?? 10;
+        if (by('pb556PuzzleCount')) by('pb556PuzzleCount').value = rules.puzzleCount ?? 16;
+        if (by('pb556ConveyorRate')) by('pb556ConveyorRate').value = rules.conveyorRate ?? 5;
+        if (by('pb556Fog')) by('pb556Fog').checked = !!rules.fog;
+        if (by('pb556Storm')) by('pb556Storm').checked = !!rules.storm;
+        if (by('pb556LockedPackets')) by('pb556LockedPackets').checked = !!rules.lockedPackets;
+        if (by('pb556AutoBoard')) by('pb556AutoBoard').checked = rules.autoBoard !== false;
+        if (by('pb556RuleNote')) by('pb556RuleNote').value = rules.note || '';
+        const label = modeLabels557[rules.mode] || rules.mode || '';
+        if (label && by('builderLevelGimmick') && (!by('builderLevelGimmick').value || modeFromText557(by('builderLevelGimmick').value))) by('builderLevelGimmick').value = label;
+        if (label && by('campaignLevelGimmick') && (!by('campaignLevelGimmick').value || modeFromText557(by('campaignLevelGimmick').value))) by('campaignLevelGimmick').value = label;
+        document.querySelectorAll('[data-pb556-mode]').forEach(chip => chip.classList.toggle('active', chip.dataset.pb556Mode === rules.mode));
+      }
+      function captureRules557(level = state.currentCampaignLevel) {
+        state.pb556 ??= {};
+        const mode = inferLevelMode557(level);
+        const saved = clone(level?.world?.pb556LevelRules || level?.pb556LevelRules || {});
+        const previous = clone(state.pb556.rules || {});
+        const base = { ...(modeDefaults557[mode] || modeDefaults557.classic), ...previous, ...saved, mode };
+        const fromUI = by('pb556Mode') ? {
+          startingSun:numberFromUI557('pb556StartingSun', base.startingSun ?? 50, 0),
+          timeLimit:numberFromUI557('pb556TimeLimit', base.timeLimit ?? 0, 0),
+          targetScore:numberFromUI557('pb556TargetScore', base.targetScore ?? 10, 1),
+          puzzleCount:numberFromUI557('pb556PuzzleCount', base.puzzleCount ?? 16, 4),
+          conveyorRate:numberFromUI557('pb556ConveyorRate', base.conveyorRate ?? 5, .5),
+          fog:boolFromUI557('pb556Fog', base.fog),
+          storm:boolFromUI557('pb556Storm', base.storm),
+          lockedPackets:boolFromUI557('pb556LockedPackets', base.lockedPackets),
+          autoBoard:boolFromUI557('pb556AutoBoard', base.autoBoard !== false),
+          note:by('pb556RuleNote')?.value || base.note || ''
+        } : {};
+        const rules = { ...base, ...fromUI, mode };
+        state.pb556.rules = rules;
+        setRuleUI557(rules);
+        return rules;
+      }
+      function readWaveEvents557() {
+        const raw = by('levelScriptModal')?.value?.trim() || by('waveScript')?.value?.trim() || '[]';
+        try { const parsed = JSON.parse(raw || '[]'); return Array.isArray(parsed) ? parsed : []; }
+        catch { return []; }
+      }
+      function writeWaveEvents557(events) {
+        const txt = JSON.stringify(Array.isArray(events) ? events : [], null, 2);
+        if (by('levelScriptModal')) by('levelScriptModal').value = txt;
+        if (by('waveScript')) by('waveScript').value = txt;
+      }
+      async function dataFromInput557(id) {
+        const file = by(id)?.files?.[0];
+        if (!file) return null;
+        return await new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(file);
+        });
+      }
+      async function refreshPendingAssets557() {
+        const builderLawn = await dataFromInput557('builderLevelLawn');
+        const builderMusic = await dataFromInput557('builderLevelMusic');
+        const mainLawn = await dataFromInput557('lawnImage');
+        const mainMusic = await dataFromInput557('lawnMusic');
+        if (builderLawn) state.pendingLevelLawnSrc = builderLawn;
+        if (builderMusic) state.pendingLevelMusicSrc = builderMusic;
+        if (!state.pendingLevelLawnSrc && mainLawn) state.pendingLevelLawnSrc = mainLawn;
+        if (!state.pendingLevelMusicSrc && mainMusic) state.pendingLevelMusicSrc = mainMusic;
+        const icon = await dataFromInput557('campaignLevelIcon');
+        if (icon) state.pendingCampaignIconSrc = icon;
+        return { builderLawn, builderMusic, mainLawn, mainMusic, icon };
+      }
+      function syncBuilderFields557() {
+        if (by('builderCampaignName') && by('campaignName')) by('campaignName').value = by('builderCampaignName').value || by('campaignName').value || 'Custom Campaign';
+        if (by('builderLevelName') && by('campaignLevelName')) by('campaignLevelName').value = by('builderLevelName').value || by('campaignLevelName').value || 'Level 1';
+        if (by('builderLevelGimmick') && by('campaignLevelGimmick')) by('campaignLevelGimmick').value = by('builderLevelGimmick').value || by('campaignLevelGimmick').value || '';
+        if (by('levelScriptModal') && by('waveScript')) by('waveScript').value = by('levelScriptModal').value || by('waveScript').value || '[]';
+      }
+      function ensureCampaign557() {
+        if (!Array.isArray(state.campaigns)) state.campaigns = [];
+        const idx = Number.isFinite(Number(state.activeCampaignIndex)) ? Number(state.activeCampaignIndex) : 0;
+        if (!state.campaigns.length) {
+          state.campaigns.push({ id:(crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())), name:by('campaignName')?.value || by('builderCampaignName')?.value || 'Custom Campaign', levels:[] });
+          state.activeCampaignIndex = 0;
+        } else if (!state.campaigns[idx]) state.activeCampaignIndex = 0;
+        return state.campaigns[state.activeCampaignIndex || 0] || state.campaigns[0];
+      }
+      function selectedNames557(selectId, chipBoxId, side) {
+        const chipNames = [...document.querySelectorAll(`#${chipBoxId} .pbBuilderChip.active`)].map(x => x.dataset.name).filter(Boolean);
+        if (chipNames.length) return chipNames;
+        const sel = by(selectId);
+        const selected = sel ? [...sel.selectedOptions].map(o => o.value).filter(Boolean) : [];
+        if (selected.length) return selected;
+        return (state.templates || []).filter(t => !side || t.side === side || (side === 'zombie' && t.side === 'boss')).map(t => t.name).filter(Boolean);
+      }
+      function makeSnapshot557(rules) {
+        const snap = typeof serializableState === 'function' ? clone(serializableState()) : {};
+        delete snap.campaigns;
+        snap.entities = (state.entities || []).map(e => {
+          try { return typeof serializableEntity === 'function' ? serializableEntity(e) : clone(e); }
+          catch { return clone(e); }
+        });
+        snap.projectiles = [];
+        snap.collectibles = [];
+        snap.particles = [];
+        snap.levelScript = readWaveEvents557();
+        snap.pb556LevelRules = clone(rules || state.pb556?.rules || {});
+        snap.pb556BoardItems = clone(state.pb556?.boardItems || []);
+        snap.cutscenes = clone(state.cutscenes || { pre:[], post:[] });
+        snap.lawn ||= {};
+        const lawnSrc = firstAsset557('lawn', state.pendingLevelLawnSrc, state.currentCampaignLevel?.lawnSrc, state.currentCampaignLevel?.world?.lawn?.imageSrc, snap.lawn.imageSrc, state.lawn?.imageSrc);
+        const musicSrc = firstAsset557('music', state.pendingLevelMusicSrc, state.currentCampaignLevel?.musicSrc, state.currentCampaignLevel?.world?.lawn?.musicSrc, snap.lawn.musicSrc, state.lawn?.musicSrc);
+        if (lawnSrc) snap.lawn.imageSrc = lawnSrc;
+        else delete snap.lawn.imageSrc;
+        if (musicSrc) snap.lawn.musicSrc = musicSrc;
+        else delete snap.lawn.musicSrc;
+        snap.lawn.fitMode = by('lawnFitMode')?.value || state.lawn?.fitMode || snap.lawn.fitMode || 'fitAll';
+        return snap;
+      }
+      function normalizeLevelForExport557(level, currentRules = null) {
+        if (!level || typeof level !== 'object') return level;
+        level.world ||= {};
+        level.world.lawn ||= {};
+        const rules = currentRules || level.world.pb556LevelRules || level.pb556LevelRules || null;
+        const mode = modeFromText557(rules?.mode || level.levelType || level.gimmickMode || level.gimmick) || 'classic';
+        const imageSrc = firstAsset557('lawn', level.lawnSrc, level.world.lawn.imageSrc, level.world.lawn.src, level.world.lawn.url);
+        const musicSrc = firstAsset557('music', level.musicSrc, level.world.lawn.musicSrc, level.world.lawn.bgmSrc, level.world.lawn.audioSrc);
+        if (imageSrc) { level.lawnSrc = imageSrc; level.world.lawn.imageSrc = imageSrc; } else { delete level.lawnSrc; delete level.world.lawn.imageSrc; delete level.world.lawn.src; delete level.world.lawn.url; }
+        if (musicSrc) { level.musicSrc = musicSrc; level.world.lawn.musicSrc = musicSrc; } else { delete level.musicSrc; delete level.world.lawn.musicSrc; delete level.world.lawn.bgmSrc; delete level.world.lawn.audioSrc; }
+        level.fitMode = level.fitMode || level.world.lawn.fitMode || 'fitAll';
+        level.world.lawn.fitMode = level.fitMode;
+        level.levelType = mode;
+        level.gimmickMode = mode;
+        level.world.pb556LevelRules = { ...(modeDefaults557[mode] || modeDefaults557.classic), ...(rules || {}), mode };
+        if (Array.isArray(level.world.pb556BoardItems)) level.pb556BoardItems = clone(level.world.pb556BoardItems);
+        return level;
+      }
+      async function upsertCurrentLevel557({ silent = false } = {}) {
+        syncBuilderFields557();
+        await refreshPendingAssets557();
+        const campaign = ensureCampaign557();
+        campaign.name = by('campaignName')?.value || by('builderCampaignName')?.value || campaign.name || 'Custom Campaign';
+        const levelName = by('campaignLevelName')?.value || by('builderLevelName')?.value || `Level ${(campaign.levels?.length || 0) + 1}`;
+        const existingIndex = (campaign.levels || []).findIndex(l => l.name === levelName);
+        const existing = existingIndex >= 0 ? campaign.levels[existingIndex] : null;
+        const mode = inferLevelMode557(existing || state.currentCampaignLevel || null);
+        if (by('builderLevelGimmick') && !by('builderLevelGimmick').value) by('builderLevelGimmick').value = modeLabels557[mode] || mode;
+        if (by('campaignLevelGimmick') && !by('campaignLevelGimmick').value) by('campaignLevelGimmick').value = modeLabels557[mode] || mode;
+        const rules = captureRules557({ ...(existing || {}), gimmick:by('campaignLevelGimmick')?.value || by('builderLevelGimmick')?.value || '', world:{ ...(existing?.world || {}), pb556LevelRules:existing?.world?.pb556LevelRules || state.pb556?.rules || {} } });
+        const snapshot = makeSnapshot557(rules);
+        const lawnSrc = firstAsset557('lawn', state.pendingLevelLawnSrc, snapshot.lawn?.imageSrc, existing?.lawnSrc, state.lawn?.imageSrc);
+        const musicSrc = firstAsset557('music', state.pendingLevelMusicSrc, snapshot.lawn?.musicSrc, existing?.musicSrc, state.lawn?.musicSrc);
+        const level = normalizeLevelForExport557({
+          id: existing?.id || (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())),
+          name: levelName,
+          iconSrc: state.pendingCampaignIconSrc || existing?.iconSrc || null,
+          gimmick: by('campaignLevelGimmick')?.value || by('builderLevelGimmick')?.value || modeLabels557[mode] || mode,
+          levelType: mode,
+          gimmickMode: mode,
+          allowedPlants: selectedNames557('campaignPlantSelect', 'builderPlantChips', 'plant'),
+          allowedZombies: selectedNames557('campaignZombieSelect', 'builderZombieChips', 'zombie'),
+          lawnSrc,
+          musicSrc,
+          fitMode: by('lawnFitMode')?.value || snapshot.lawn?.fitMode || 'fitAll',
+          world: snapshot,
+          createdAt: existing?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }, rules);
+        campaign.levels ||= [];
+        if (existingIndex >= 0) campaign.levels[existingIndex] = level;
+        else campaign.levels.push(level);
+        state.currentCampaignLevel = level;
+        state.pendingCampaignIconSrc = null;
+        try { if (typeof refreshCampaignSelects === 'function') refreshCampaignSelects(); } catch {}
+        try { if (typeof renderCampaignMap === 'function') renderCampaignMap(); } catch {}
+        try { window.ProjectBuildCampaigns?.openCampaignMap && document.getElementById('pbCampaignModal')?.classList.contains('open') && renderCampaignMap(); } catch {}
+        if (!silent) toast(`Saved campaign level: ${levelName}`);
+        return level;
+      }
+      function mergeByName557(target, incoming) {
+        incoming.forEach(item => {
+          const idx = target.findIndex(x => x?.name && item?.name && x.name === item.name);
+          if (idx >= 0) target[idx] = { ...target[idx], ...item };
+          else target.push(item);
+        });
+      }
+      function mergeCampaigns557(incoming) {
+        if (!Array.isArray(state.campaigns)) state.campaigns = [];
+        (incoming || []).forEach(raw => {
+          const campaign = clone(raw || {});
+          campaign.levels = (campaign.levels || []).map(l => normalizeLevelForExport557(l));
+          const idx = state.campaigns.findIndex(c => (c.id && campaign.id && c.id === campaign.id) || (c.name && campaign.name && c.name === campaign.name));
+          if (idx < 0) state.campaigns.push(campaign);
+          else {
+            const current = state.campaigns[idx];
+            current.name = campaign.name || current.name;
+            current.levels ||= [];
+            (campaign.levels || []).forEach(level => {
+              const li = current.levels.findIndex(l => (l.id && level.id && l.id === level.id) || (l.name && level.name && l.name === level.name));
+              if (li >= 0) current.levels[li] = level;
+              else current.levels.push(level);
+            });
+          }
+        });
+      }
+      function refreshAfterCampaignChange557() {
+        try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+        try { if (typeof refreshCampaignSelects === 'function') refreshCampaignSelects(); } catch {}
+        try { if (typeof renderCampaignMap === 'function') renderCampaignMap(); } catch {}
+        try { if (typeof refreshPB55Lists === 'function') refreshPB55Lists(); } catch {}
+        try { if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets(); } catch {}
+      }
+      function download557(filename, data, type = 'application/json') {
+        const blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], { type });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+      }
+      async function makeBuildmod557(selectedOnly = false) {
+        if (!selectedOnly) await upsertCurrentLevel557({ silent:true });
+        const selectedIndex = Number(by('templateSelect')?.value) || 0;
+        const selectedTemplate = state.templates?.[selectedIndex];
+        const campaigns = (state.campaigns || []).map(c => {
+          const copy = clone(c);
+          copy.levels = (copy.levels || []).map(l => normalizeLevelForExport557(l));
+          return copy;
+        });
+        return {
+          type:'project-build-mod-package',
+          packageVersion:2,
+          engine:'Project: BUILD',
+          engineVersion:'5.5.7',
+          name:by('pb55ModName')?.value || 'Project BUILD Mod',
+          exportedAt:new Date().toISOString(),
+          templates:selectedOnly && selectedTemplate ? [clone(selectedTemplate)] : clone(state.templates || []),
+          campaigns:selectedOnly ? [] : campaigns,
+          boostTemplates:selectedOnly ? [] : clone(state.boostTemplates || []),
+          graphics:selectedOnly ? [] : clone(state.pb55Graphics || []),
+          bossBlueprints:selectedOnly ? [] : clone(state.pb55BossBlueprints || []),
+          timelineEvents:selectedOnly ? [] : clone(state.timelineEvents || []),
+          pb556LevelRules:clone(state.pb556?.rules || {}),
+          pb556BoardItems:clone(state.pb556?.boardItems || []),
+          compatibility:{ legacyJsonStillSupported:true, savesCampaignLevels:true, embedsLevelLawnAndMusic:true, notes:'5.5.7 buildmods include campaign levels, per-level lawn/music, and puzzle mode metadata.' }
+        };
+      }
+      async function exportBuildmod557(selectedOnly, e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+        try {
+          const pkg = await makeBuildmod557(selectedOnly);
+          const filenameBase = selectedOnly ? (pkg.templates?.[0]?.name || pkg.name) + '.template' : pkg.name;
+          download557(safeFileName557(filenameBase) + '.buildmod', pkg, 'application/x-project-build-mod');
+          if (by('pb55ModStatus')) by('pb55ModStatus').textContent = selectedOnly ? 'Exported selected template .buildmod.' : 'Exported full .buildmod with campaign levels and embedded level lawn/music.';
+          toast(selectedOnly ? 'Template buildmod exported' : 'Buildmod exported with campaign levels');
+        } catch (err) {
+          if (by('pb55ModStatus')) by('pb55ModStatus').textContent = 'Export failed: ' + err.message;
+          toast('Buildmod export failed: ' + err.message);
+        }
+        return false;
+      }
+      async function importBuildmod557(e) {
+        const file = e?.target?.files?.[0];
+        if (!file) return;
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        e.stopImmediatePropagation?.();
+        try {
+          const text = await file.text();
+          const pkg = JSON.parse(text);
+          if (pkg.type !== 'project-build-mod-package') throw new Error('Not a Project BUILD .buildmod package');
+          if (Array.isArray(pkg.templates)) mergeByName557(state.templates ||= [], pkg.templates);
+          if (Array.isArray(pkg.campaigns)) mergeCampaigns557(pkg.campaigns);
+          if (Array.isArray(pkg.boostTemplates)) mergeByName557(state.boostTemplates ||= [], pkg.boostTemplates);
+          if (Array.isArray(pkg.graphics)) mergeByName557(state.pb55Graphics ||= [], pkg.graphics);
+          if (Array.isArray(pkg.bossBlueprints)) mergeByName557(state.pb55BossBlueprints ||= [], pkg.bossBlueprints);
+          if (Array.isArray(pkg.timelineEvents)) state.timelineEvents = [...(state.timelineEvents || []), ...pkg.timelineEvents];
+          if (pkg.pb556LevelRules) state.pb556 = { ...(state.pb556 || {}), rules:{ ...(state.pb556?.rules || {}), ...pkg.pb556LevelRules } };
+          if (Array.isArray(pkg.pb556BoardItems)) state.pb556 = { ...(state.pb556 || {}), boardItems:pkg.pb556BoardItems };
+          state.activeCampaignIndex = Math.max(0, state.campaigns.length - 1);
+          refreshAfterCampaignChange557();
+          if (by('pb55ModStatus')) by('pb55ModStatus').textContent = `Imported .buildmod: ${pkg.name || file.name}`;
+          toast('Buildmod imported with campaign data');
+        } catch (err) {
+          if (by('pb55ModStatus')) by('pb55ModStatus').textContent = 'Import failed: ' + err.message;
+          toast('Buildmod import failed: ' + err.message);
+        } finally {
+          try { e.target.value = ''; } catch {}
+        }
+      }
+      function ensureMiniBoardForMode557(mode) {
+        const puzzleModes = ['memory','goFish','targetPractice','whack','zombiquarium','beghouled','vasebreaker','bowling','slotMachine','portalPanic','reverseDefense'];
+        if (!puzzleModes.includes(mode)) return;
+        state.pb556 ??= {};
+        const wrongMode = state.pb556.boardItemsMode && state.pb556.boardItemsMode !== mode;
+        const emptyBoard = !Array.isArray(state.pb556.boardItems) || !state.pb556.boardItems.length;
+        if ((emptyBoard || wrongMode) && typeof window.ProjectBuild5_5_6_LevelPuzzleCutsceneMegaPack?.generateBoardForMode === 'function') {
+          window.ProjectBuild5_5_6_LevelPuzzleCutsceneMegaPack.generateBoardForMode(mode, false);
+          state.pb556.boardItemsMode = mode;
+        }
+        state.pb556.runtime = {
+          ...(state.pb556.runtime || {}),
+          mode,
+          score:0,
+          targetScore:Number(state.pb556.rules?.targetScore) || 10,
+          timeLeft:Number(state.pb556.rules?.timeLimit) || 0,
+          nextConveyor:0,
+          nextWhack:0,
+          flipped:[],
+          selectedGem:null
+        };
+      }
+      function syncLevelTypeForPlay557(level = state.currentCampaignLevel) {
+        const mode = inferLevelMode557(level);
+        const rules = captureRules557(level || { levelType:mode });
+        ensureMiniBoardForMode557(rules.mode);
+        return rules.mode;
+      }
+      function wireSaveButtons557() {
+        ['levelSaveToCampaign','builderSaveCampaign','addCampaignLevel','sidebarSaveLevelToCampaign'].forEach(id => {
+          const btn = by(id);
+          if (!btn || btn.dataset.pb557SaveFixed) return;
+          btn.dataset.pb557SaveFixed = '1';
+          btn.addEventListener('click', async e => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            e.stopImmediatePropagation?.();
+            await upsertCurrentLevel557({ silent:false });
+            refreshAfterCampaignChange557();
+          }, true);
+        });
+      }
+      function wireBuildmodButtons557() {
+        const full = by('pb55ExportMod');
+        if (full && !full.dataset.pb557BuildmodFixed) {
+          full.dataset.pb557BuildmodFixed = '1';
+          full.addEventListener('click', e => exportBuildmod557(false, e), true);
+        }
+        const selected = by('pb55ExportSelectedTemplate');
+        if (selected && !selected.dataset.pb557BuildmodFixed) {
+          selected.dataset.pb557BuildmodFixed = '1';
+          selected.addEventListener('click', e => exportBuildmod557(true, e), true);
+        }
+        const imp = by('pb55ImportMod');
+        if (imp && !imp.dataset.pb557BuildmodFixed) {
+          imp.dataset.pb557BuildmodFixed = '1';
+          imp.addEventListener('change', importBuildmod557, true);
+        }
+      }
+      function wrapStartAndRestore557() {
+        const oldStart = typeof startLevel === 'function' ? startLevel : null;
+        if (oldStart && !oldStart.pb557LevelTypeFixed) {
+          startLevel = async function(...args) {
+            syncLevelTypeForPlay557(state.currentCampaignLevel || null);
+            const result = await oldStart.apply(this, args);
+            syncLevelTypeForPlay557(state.currentCampaignLevel || null);
+            return result;
+          };
+          startLevel.pb557LevelTypeFixed = true;
+          ['startLevel','levelStart'].forEach(id => {
+            const btn = by(id);
+            if (btn) btn.onclick = e => { e?.preventDefault?.(); e?.stopPropagation?.(); startLevel(); };
+          });
+        }
+        if (window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel && !window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb557LevelTypeFixed) {
+          const oldRestore = window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel;
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel = function(data, ...args) {
+            const result = oldRestore.call(this, data, ...args);
+            if (data?.pb556LevelRules) {
+              state.pb556 ??= {};
+              state.pb556.rules = { ...(state.pb556.rules || {}), ...clone(data.pb556LevelRules) };
+            }
+            if (Array.isArray(data?.pb556BoardItems)) state.pb556.boardItems = clone(data.pb556BoardItems);
+            syncLevelTypeForPlay557(state.currentCampaignLevel || { world:data });
+            return result;
+          };
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel.pb557LevelTypeFixed = true;
+        }
+      }
+      if (typeof serializableState === 'function' && !serializableState.pb557BuildmodRulesFixed) {
+        const oldSerializable = serializableState;
+        serializableState = function(...args) {
+          const data = oldSerializable.apply(this, args) || {};
+          try { data.pb556LevelRules = clone(captureRules557(state.currentCampaignLevel || null)); } catch {}
+          data.pb556BoardItems = clone(state.pb556?.boardItems || []);
+          data.campaigns = (state.campaigns || []).map(c => {
+            const copy = clone(c);
+            copy.levels = (copy.levels || []).map(l => normalizeLevelForExport557(l));
+            return copy;
+          });
+          return data;
+        };
+        serializableState.pb557BuildmodRulesFixed = true;
+      }
+      wireSaveButtons557();
+      wireBuildmodButtons557();
+      wrapStartAndRestore557();
+      setTimeout(() => { wireSaveButtons557(); wireBuildmodButtons557(); wrapStartAndRestore557(); }, 350);
+
+      window.ProjectBuild5_5_7_BuildmodCampaignAndLevelTypeFix = {
+        version:'5.5.7-buildmod-campaign-leveltype-fix',
+        upsertCurrentLevel:upsertCurrentLevel557,
+        exportBuildmod:exportBuildmod557,
+        importBuildmod:importBuildmod557,
+        syncLevelTypeForPlay:syncLevelTypeForPlay557,
+        inferLevelMode:inferLevelMode557
+      };
+      toast('5.5.7 fix loaded: buildmods save campaign levels/assets and level types start correctly');
+    })();
+
+
+
     renderAbilityPills();
     setActiveAbilities(defaultTemplate.abilities);
     refreshTemplates();
