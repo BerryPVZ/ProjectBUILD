@@ -9639,7 +9639,7 @@ Click me again to advance.</textarea>
         .pb55PaintPreview img { width:100%; height:70px; object-fit:contain; image-rendering:pixelated; }
         .pb55LegacyBox { border:1px dashed rgba(255,255,255,.18); border-radius:12px; padding:8px; margin-top:8px; background:rgba(0,0,0,.18); }
         .pb55LegacyBox h4 { margin:0 0 6px; color:#fff; font-size:13px; }
-        #pb55ThreeLayer { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; z-index:4; overflow:hidden; transform:translateZ(0); }
+        #pb55ThreeLayer { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; z-index:5; overflow:hidden; transform:translateZ(0); isolation:isolate; }
         #pb55ThreeLayer canvas { display:block; width:100%; height:100%; pointer-events:none; }
         .pb55ThreeNote { color:#bae6fd; font-size:11px; margin-top:5px; line-height:1.25; }
         @media (max-width: 820px), (pointer: coarse) {
@@ -9720,6 +9720,7 @@ Click me again to advance.</textarea>
           pb55Three.scene.add(fill);
           pb55Three.ready = true;
           setPB553DStatus('3D renderer ready. FBX/OBJ/GLB/GLTF entities render with assigned textures.');
+          requestAnimationFrame(() => renderPB553DLayer());
         } catch (err) {
           pb55Three.failed = true;
           console.error('Project BUILD 3D renderer failed:', err);
@@ -9841,6 +9842,62 @@ Click me again to advance.</textarea>
         geometry.attributes.uv.needsUpdate = true;
       }
 
+      function pb55OrientModelForScreen(object) {
+        const { THREE } = pb55Three.modules || {};
+        if (!THREE || !object) return object;
+        object.updateMatrixWorld?.(true);
+        const box = new THREE.Box3().setFromObject(object);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (!Number.isFinite(maxDim) || maxDim <= 0.000001) return object;
+
+        // A lot of user-made FBX placeholders are flat planes exported on the X/Z floor.
+        // Looking at those from the 2D game camera makes them edge-on, which is why the
+        // game showed only the health bar + label. Rotate those flat-floor models so the
+        // textured face points at the camera before normalizing.
+        const yRatio = size.y / maxDim;
+        const zRatio = size.z / maxDim;
+        const xRatio = size.x / maxDim;
+        if (yRatio < 0.16 && zRatio > 0.34) {
+          object.rotation.x -= Math.PI / 2;
+          object.updateMatrixWorld?.(true);
+        } else if (xRatio < 0.12 && zRatio > 0.34 && yRatio > 0.34) {
+          object.rotation.y += Math.PI / 2;
+          object.updateMatrixWorld?.(true);
+        }
+        return object;
+      }
+
+      function pb55AddTextureBillboardFallback(object, texture) {
+        const { THREE } = pb55Three.modules || {};
+        if (!THREE || !object || !texture) return;
+        object.updateMatrixWorld?.(true);
+        const box = new THREE.Box3().setFromObject(object);
+        const size = box.getSize(new THREE.Vector3());
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (!Number.isFinite(maxDim) || maxDim <= 0.000001) return;
+
+        // If the loaded mesh still projects as a sliver after orientation, keep a textured
+        // Three.js plane in the same 3D layer as a backup. This is not the normal path; it
+        // is only there so bad/flat FBX exports do not become invisible again.
+        if ((size.x / maxDim) >= 0.08 && (size.y / maxDim) >= 0.08) return;
+        const mat = new THREE.MeshBasicMaterial({
+          color: 0xffffff,
+          map: texture,
+          side: THREE.DoubleSide,
+          transparent: true,
+          alphaTest: 0.01,
+          depthTest: false,
+          depthWrite: false
+        });
+        const plane = new THREE.Mesh(new THREE.PlaneGeometry(0.92, 0.92), mat);
+        plane.name = 'ProjectBuildTextureBillboardFallback';
+        plane.position.z = 0.02;
+        plane.renderOrder = 9000;
+        plane.frustumCulled = false;
+        object.add(plane);
+      }
+
       function pb55SafeHexColor(oldMat, fallbackColor = 0xffffff) {
         const hex = oldMat?.color?.getHex?.();
         if (!Number.isFinite(hex)) return fallbackColor;
@@ -9873,8 +9930,8 @@ Click me again to advance.</textarea>
               opacity: 1,
               alphaTest: chosenMap ? 0.01 : 0
             });
-            mat.depthTest = true;
-            mat.depthWrite = true;
+            mat.depthTest = false;
+            mat.depthWrite = false;
             mat.needsUpdate = true;
             return mat;
           });
@@ -9919,11 +9976,13 @@ Click me again to advance.</textarea>
           object = new FBXLoader().parse(buffer, '');
         }
         if (!object) throw new Error('Model parser returned no object');
+        object = pb55OrientModelForScreen(object);
         object = pb55NormalizeModel(object);
         if (pb55CountRenderableMeshes(object) < 1) throw new Error('Model loaded, but it has no renderable mesh data');
         const texture = await pb55TextureFromSource(textureSrc);
         pb55ApplyTextureToObject(object, texture, 0xd9ff9f);
-        object.traverse(child => { if (child?.isMesh) child.renderOrder = 5000; });
+        pb55AddTextureBillboardFallback(object, texture);
+        object.traverse(child => { if (child?.isMesh) child.renderOrder = child.name === 'ProjectBuildTextureBillboardFallback' ? 9000 : 5000; });
         pb55Three.modelCache.set(key, object);
         return object.clone(true);
       }
