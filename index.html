@@ -14824,5 +14824,452 @@ Click me again to advance.</textarea>
 
   </script>
 
+  <script>
+    // Project: BUILD 6.0.2 - cutscene test-play + campaign level targeting fix
+    (() => {
+      const VERSION = '6.0.2-cutscene-testplay-campaign-target-fix';
+      const $ = id => document.getElementById(id);
+      const say = msg => (typeof showToast === 'function' ? showToast(msg) : console.log(msg));
+      const clone = value => {
+        try { return typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value)); }
+        catch { return value; }
+      };
+      const uid = prefix => prefix + '-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+      const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+      const val = (id, fallback = '') => $(id)?.value ?? fallback;
+      const setVal = (id, value) => { const el = $(id); if (el) el.value = value ?? ''; };
+      const num = (id, fallback = 0) => {
+        const n = Number($(id)?.value);
+        return Number.isFinite(n) ? n : fallback;
+      };
+      const readFileAsDataURL = file => new Promise(resolve => {
+        if (!file) return resolve(null);
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      });
+
+      if (window.ProjectBuild6_0_2_CutsceneTargetFix?.installed) return;
+
+      const cache = { beatImageSrc:null, beatSfxSrc:null };
+
+      function ensurePB60() {
+        if (!state.pb60 || typeof state.pb60 !== 'object') state.pb60 = {};
+        if (!Array.isArray(state.pb60.cutscenes)) state.pb60.cutscenes = [];
+        if (!state.pb60.polish) state.pb60.polish = { autosave:true, compact:false, history:[], future:[], lastValidation:[] };
+        return state.pb60;
+      }
+
+      function getSelectedCutscene() {
+        ensurePB60();
+        const id = val('pb60CutsceneSelect', '');
+        return state.pb60.cutscenes.find(c => c.id === id) || state.pb60.cutscenes[0] || null;
+      }
+
+      function makeCutsceneFromFields() {
+        ensurePB60();
+        let cutscene = getSelectedCutscene();
+        if (!cutscene) {
+          cutscene = { id:uid('cutscene'), name:val('pb60CutsceneName', 'Opening Cutscene'), trigger:val('pb60CutsceneTrigger', 'manual'), beats:[] };
+          state.pb60.cutscenes.push(cutscene);
+        }
+        cutscene.name = val('pb60CutsceneName', cutscene.name || 'Cutscene');
+        cutscene.trigger = val('pb60CutsceneTrigger', cutscene.trigger || 'manual');
+        if (!Array.isArray(cutscene.beats)) cutscene.beats = [];
+        return cutscene;
+      }
+
+      async function makeBeatFromFields() {
+        const imageFile = $('pb60BeatImage')?.files?.[0];
+        const sfxFile = $('pb60BeatSfx')?.files?.[0];
+        if (imageFile) cache.beatImageSrc = await readFileAsDataURL(imageFile);
+        if (sfxFile) cache.beatSfxSrc = await readFileAsDataURL(sfxFile);
+        const beat = {
+          id:uid('beat'),
+          speaker:val('pb60BeatSpeaker', 'Narrator'),
+          action:val('pb60BeatAction', 'dialogue'),
+          text:val('pb60BeatText', ''),
+          x:num('pb60BeatX', 180),
+          y:num('pb60BeatY', 180),
+          duration:Math.max(0.1, num('pb60BeatDuration', 1.5)),
+          waitClick:!!$('pb60BeatWaitClick')?.checked,
+          position:val('pb60BeatPosition', 'middle'),
+          bubble:val('pb60BeatBubble', 'speech')
+        };
+        if (cache.beatImageSrc) beat.imageSrc = cache.beatImageSrc;
+        if (cache.beatSfxSrc) beat.soundSrc = cache.beatSfxSrc;
+        return beat;
+      }
+
+      function renderCutsceneUI(selectId = null) {
+        ensurePB60();
+        const sel = $('pb60CutsceneSelect');
+        const old = selectId || sel?.value || state.pb60.cutscenes[0]?.id || '';
+        if (sel) {
+          sel.innerHTML = state.pb60.cutscenes.map((c, i) => `<option value="${esc(c.id)}">${esc(c.name || `Cutscene ${i + 1}`)} [${esc(c.trigger || 'manual')}]</option>`).join('');
+          if (old && [...sel.options].some(o => o.value === old)) sel.value = old;
+        }
+        const c = getSelectedCutscene();
+        if (c) {
+          setVal('pb60CutsceneName', c.name || 'Cutscene');
+          setVal('pb60CutsceneTrigger', c.trigger || 'manual');
+        }
+        const list = $('pb60CutsceneBeatList');
+        if (list) {
+          const beats = c?.beats || [];
+          list.innerHTML = beats.length ? beats.map((b, i) => `
+            <div class="pb60Item">
+              <b>${i + 1}. ${esc(b.action || 'dialogue')} - ${esc(b.speaker || 'Narrator')}</b>
+              <small>${esc((b.text || '').slice(0, 140))}${b.waitClick ? '<br>Click-to-continue' : ''}${b.position ? `<br>Position: ${esc(b.position)} | Bubble: ${esc(b.bubble || 'speech')}` : ''}</small>
+              <div class="pb60ButtonRow3">
+                <button type="button" data-pb602-move-up="${i}">Move Up</button>
+                <button type="button" data-pb602-copy="${i}" class="blue">Copy</button>
+                <button type="button" data-pb602-delete="${i}" class="danger">Delete</button>
+              </div>
+            </div>`).join('') : '<div class="pb60Item">No beats yet. Add a beat, or Test Play will preview the current form fields once.</div>';
+          list.querySelectorAll('[data-pb602-delete]').forEach(btn => btn.onclick = () => {
+            const target = getSelectedCutscene();
+            if (!target) return;
+            target.beats.splice(Number(btn.dataset.pb602Delete), 1);
+            renderCutsceneUI(target.id);
+          });
+          list.querySelectorAll('[data-pb602-copy]').forEach(btn => btn.onclick = () => {
+            const target = getSelectedCutscene();
+            if (!target) return;
+            const original = target.beats[Number(btn.dataset.pb602Copy)];
+            target.beats.splice(Number(btn.dataset.pb602Copy) + 1, 0, { ...clone(original), id:uid('beat') });
+            renderCutsceneUI(target.id);
+          });
+          list.querySelectorAll('[data-pb602-move-up]').forEach(btn => btn.onclick = () => {
+            const target = getSelectedCutscene();
+            const i = Number(btn.dataset.pb602MoveUp);
+            if (!target || i <= 0) return;
+            const [beat] = target.beats.splice(i, 1);
+            target.beats.splice(i - 1, 0, beat);
+            renderCutsceneUI(target.id);
+          });
+        }
+        refreshTargetSelectors();
+      }
+
+      function closeDialog() {
+        if (window.ProjectBuildDialogue?.close) window.ProjectBuildDialogue.close();
+        if ($('dialogBox')) $('dialogBox').style.display = 'none';
+      }
+
+      function showBeatDialogue(beat) {
+        const line = {
+          speaker:beat.speaker || (beat.action === 'unlock' ? 'Reward' : 'Narrator'),
+          text:beat.text || '',
+          imageSrc:beat.imageSrc,
+          soundSrc:beat.soundSrc,
+          position:beat.position || 'middle',
+          bubble:beat.bubble || 'speech'
+        };
+        if (window.ProjectBuildDialogue?.show) {
+          window.ProjectBuildDialogue.show({ name:line.speaker }, line);
+          return;
+        }
+        if ($('dialogBox')) $('dialogBox').style.display = 'block';
+        if ($('dialogName')) $('dialogName').textContent = line.speaker;
+        if ($('dialogText')) $('dialogText').textContent = line.text;
+        if ($('dialogHint')) $('dialogHint').textContent = beat.waitClick ? 'Click, Space, or Enter to continue.' : 'Cutscene playing...';
+        if (line.soundSrc) {
+          try { new Audio(line.soundSrc).play?.().catch(() => {}); } catch {}
+        }
+      }
+
+      function waitForAdvance(minDelay = 800) {
+        return new Promise(resolve => {
+          let done = false;
+          let armed = false;
+          const finish = () => {
+            if (!armed || done) return;
+            done = true;
+            window.removeEventListener('click', finish, true);
+            window.removeEventListener('pointerdown', finish, true);
+            window.removeEventListener('keydown', key, true);
+            resolve();
+          };
+          const key = e => { if ([' ', 'Enter', 'Escape'].includes(e.key)) finish(); };
+          setTimeout(() => {
+            armed = true;
+            window.addEventListener('click', finish, true);
+            window.addEventListener('pointerdown', finish, true);
+            window.addEventListener('keydown', key, true);
+          }, 160);
+          setTimeout(() => { armed = true; finish(); }, Math.max(800, Number(minDelay) || 800) + 9000);
+        });
+      }
+
+      async function playBeat(beat) {
+        if (beat.soundSrc) {
+          try { new Audio(beat.soundSrc).play?.().catch(() => {}); } catch {}
+        }
+        if (beat.action === 'spawnNPC') {
+          const base = (state.templates || []).find(t => t.side === 'npc' || t.role === 'npc') || { name:beat.speaker || 'Cutscene NPC', side:'npc', role:'npc', type:'npc', w:90, h:90, hp:999 };
+          if (typeof spawn === 'function') {
+            spawn('npc', beat.x || 180, beat.y || 180, { ...base, name:beat.speaker || base.name, imageSrc:beat.imageSrc || base.imageSrc, dialog:[{ speaker:beat.speaker, text:beat.text || '', imageSrc:beat.imageSrc, soundSrc:beat.soundSrc, position:beat.position || 'middle', bubble:beat.bubble || 'speech' }] });
+          }
+          if (beat.text) showBeatDialogue(beat);
+        } else if (beat.action === 'cameraShake') {
+          const stage = $('stageWrap');
+          stage?.animate?.([{ transform:'translate(0,0)' }, { transform:'translate(8px,-4px)' }, { transform:'translate(-7px,5px)' }, { transform:'translate(0,0)' }], { duration:Math.max(220, beat.duration * 1000), iterations:1 });
+          if (beat.text) showBeatDialogue(beat);
+        } else if (beat.action === 'weather') {
+          const type = String(beat.text || 'rain').trim().split(/\s+/)[0] || 'rain';
+          if ($('pb60WeatherType')) $('pb60WeatherType').value = type;
+          $('pb60ApplyWeather')?.click?.();
+          if (beat.text) showBeatDialogue({ ...beat, text:`Weather changed to ${type}` });
+        } else if (beat.action === 'music') {
+          if (typeof music !== 'undefined' && beat.text) {
+            try { music.src = beat.text.trim(); music.play?.().catch(() => {}); } catch {}
+          }
+          showBeatDialogue({ ...beat, text:beat.text ? 'Music cue played.' : '' });
+        } else {
+          showBeatDialogue(beat);
+        }
+        if (beat.waitClick) await waitForAdvance(Math.max(800, beat.duration * 1000));
+        else await new Promise(resolve => setTimeout(resolve, Math.max(120, beat.duration * 1000)));
+      }
+
+      async function playCutscenePatched(cutscene, options = {}) {
+        ensurePB60();
+        if (!cutscene) return say('No cutscene selected');
+        let beats = Array.isArray(cutscene.beats) ? clone(cutscene.beats) : [];
+        if (!beats.length && options.previewFormBeat) beats = [await makeBeatFromFields()];
+        if (!beats.length) return say('No beats in this cutscene');
+        state.paused = true;
+        document.body.classList.add('pb60CutscenePlaying');
+        try {
+          for (const beat of beats) await playBeat(beat);
+        } finally {
+          closeDialog();
+          state.paused = false;
+          document.body.classList.remove('pb60CutscenePlaying');
+        }
+        return true;
+      }
+
+      function runTrigger(trigger) {
+        ensurePB60();
+        const c = state.pb60.cutscenes.find(x => x.trigger === trigger);
+        if (c) return playCutscenePatched(c);
+        return false;
+      }
+
+      function getCampaigns() { return Array.isArray(state.campaigns) ? state.campaigns : []; }
+      function getTargetCampaignIndex() {
+        const raw = Number($('pb602CutsceneTargetCampaign')?.value);
+        if (Number.isFinite(raw) && raw >= 0) return raw;
+        return Math.max(0, Number(state.activeCampaignIndex) || 0);
+      }
+      function getTargetLevelIndex() {
+        const raw = Number($('pb602CutsceneTargetLevel')?.value);
+        return Number.isFinite(raw) ? raw : -1;
+      }
+      function getTargetLevel() {
+        const campaign = getCampaigns()[getTargetCampaignIndex()];
+        if (!campaign) return null;
+        const level = campaign.levels?.[getTargetLevelIndex()];
+        return level ? { campaign, level, campaignIndex:getTargetCampaignIndex(), levelIndex:getTargetLevelIndex() } : null;
+      }
+
+      function refreshTargetSelectors() {
+        const campSel = $('pb602CutsceneTargetCampaign');
+        const levelSel = $('pb602CutsceneTargetLevel');
+        if (!campSel || !levelSel) return;
+        const oldCamp = campSel.value || String(Math.max(0, Number(state.activeCampaignIndex) || 0));
+        campSel.innerHTML = getCampaigns().length ? getCampaigns().map((c, i) => `<option value="${i}">${esc(c.name || `Campaign ${i + 1}`)}</option>`).join('') : '<option value="-1">No campaigns yet</option>';
+        if ([...campSel.options].some(o => o.value === oldCamp)) campSel.value = oldCamp;
+        else campSel.value = String(Math.max(0, Number(state.activeCampaignIndex) || 0));
+        const campaign = getCampaigns()[Number(campSel.value)] || getCampaigns()[0];
+        const oldLevel = levelSel.value;
+        const levels = campaign?.levels || [];
+        levelSel.innerHTML = levels.length ? levels.map((level, i) => `<option value="${i}">${esc(level.name || `Level ${i + 1}`)}</option>`).join('') : '<option value="-1">No levels in this campaign</option>';
+        if ([...levelSel.options].some(o => o.value === oldLevel)) levelSel.value = oldLevel;
+      }
+
+      function attachCutsceneToTargetLevel() {
+        const target = getTargetLevel();
+        if (!target) return say('Pick a campaign and level first');
+        const cutscene = makeCutsceneFromFields();
+        const copy = clone(cutscene);
+        target.level.world ||= {};
+        target.level.world.pb60 ||= {};
+        if (!Array.isArray(target.level.world.pb60.cutscenes)) target.level.world.pb60.cutscenes = [];
+        const list = target.level.world.pb60.cutscenes;
+        const idx = list.findIndex(c => (copy.id && c.id === copy.id) || (copy.name && c.name === copy.name));
+        if (idx >= 0) list[idx] = copy;
+        else list.push(copy);
+        target.level.pb60 ||= {};
+        target.level.pb60.cutscenes = clone(list);
+        target.level.updatedAt = new Date().toISOString();
+        say(`Added cutscene to ${target.campaign.name || 'campaign'} / ${target.level.name || 'level'}`);
+      }
+
+      function loadTargetLevelCutscenes() {
+        const target = getTargetLevel();
+        if (!target) return say('Pick a campaign and level first');
+        const cutscenes = target.level.world?.pb60?.cutscenes || target.level.pb60?.cutscenes || [];
+        if (!Array.isArray(cutscenes) || !cutscenes.length) return say('That level has no 6.0 cutscenes yet');
+        ensurePB60();
+        state.pb60.cutscenes = clone(cutscenes);
+        renderCutsceneUI(state.pb60.cutscenes[0]?.id || null);
+        say(`Loaded ${cutscenes.length} cutscene(s) from ${target.level.name || 'level'}`);
+      }
+
+      function installTargetPanel() {
+        const panel = $('pb60CutscenePanel');
+        if (!panel || $('pb602CutsceneTargetPanel')) return !!panel;
+        const div = document.createElement('div');
+        div.id = 'pb602CutsceneTargetPanel';
+        div.className = 'pb60Item';
+        div.style.marginTop = '8px';
+        div.innerHTML = `
+          <b>Campaign Level Target</b>
+          <small>Attach this cutscene to a specific level instead of only storing it globally.</small>
+          <div class="pb60MiniGrid">
+            <div><label>Campaign</label><select id="pb602CutsceneTargetCampaign"></select></div>
+            <div><label>Level</label><select id="pb602CutsceneTargetLevel"></select></div>
+          </div>
+          <div class="pb60ButtonRow3">
+            <button id="pb602AddCutsceneToLevel" type="button" class="warn">Add To Level</button>
+            <button id="pb602LoadLevelCutscenes" type="button" class="blue">Load From Level</button>
+            <button id="pb602RefreshTargets" type="button">Refresh Targets</button>
+          </div>`;
+        const anchor = $('pb60CutsceneBeatList') || $('pb60CutsceneSelect') || panel.lastElementChild;
+        anchor?.insertAdjacentElement('afterend', div);
+        $('pb602CutsceneTargetCampaign').addEventListener('change', refreshTargetSelectors);
+        $('pb602AddCutsceneToLevel').onclick = attachCutsceneToTargetLevel;
+        $('pb602LoadLevelCutscenes').onclick = loadTargetLevelCutscenes;
+        $('pb602RefreshTargets').onclick = () => { refreshTargetSelectors(); say('Cutscene level targets refreshed'); };
+        refreshTargetSelectors();
+        return true;
+      }
+
+      function wireCutsceneButtons() {
+        if (!$('pb60PlayCutscene')) return false;
+        $('pb60NewCutscene').onclick = () => {
+          ensurePB60();
+          const c = { id:uid('cutscene'), name:val('pb60CutsceneName', 'New Cutscene'), trigger:val('pb60CutsceneTrigger', 'manual'), beats:[] };
+          state.pb60.cutscenes.push(c);
+          renderCutsceneUI(c.id);
+          say('New cutscene created');
+        };
+        $('pb60SaveCutscene').onclick = () => {
+          const c = makeCutsceneFromFields();
+          renderCutsceneUI(c.id);
+          say('Cutscene saved');
+        };
+        $('pb60AddBeat').onclick = async () => {
+          const c = makeCutsceneFromFields();
+          c.beats.push(await makeBeatFromFields());
+          renderCutsceneUI(c.id);
+          say('Beat added');
+        };
+        $('pb60PlayCutscene').onclick = async ev => {
+          ev?.preventDefault?.();
+          ev?.stopPropagation?.();
+          ev?.stopImmediatePropagation?.();
+          const c = makeCutsceneFromFields();
+          renderCutsceneUI(c.id);
+          await playCutscenePatched(c, { previewFormBeat:true });
+        };
+        $('pb60DeleteCutscene').onclick = () => {
+          const c = getSelectedCutscene();
+          if (!c) return;
+          state.pb60.cutscenes = state.pb60.cutscenes.filter(x => x.id !== c.id);
+          renderCutsceneUI(state.pb60.cutscenes[0]?.id || null);
+          say('Cutscene deleted');
+        };
+        $('pb60CutsceneSelect').onchange = () => renderCutsceneUI($('pb60CutsceneSelect').value);
+        $('pb60BeatImage')?.addEventListener('change', async e => { cache.beatImageSrc = await readFileAsDataURL(e.target.files?.[0]); say('Cutscene beat portrait loaded'); });
+        $('pb60BeatSfx')?.addEventListener('change', async e => { cache.beatSfxSrc = await readFileAsDataURL(e.target.files?.[0]); say('Cutscene beat SFX loaded'); });
+        renderCutsceneUI();
+        return true;
+      }
+
+      function patchSnapshotAndRestore() {
+        if (typeof makeWorldSnapshotForLevel === 'function' && !makeWorldSnapshotForLevel.__pb602Cutscenes) {
+          const oldMake = makeWorldSnapshotForLevel;
+          makeWorldSnapshotForLevel = function(...args) {
+            const snap = oldMake.apply(this, args) || {};
+            ensurePB60();
+            snap.pb60 ||= {};
+            snap.pb60.cutscenes = clone(state.pb60.cutscenes || []);
+            return snap;
+          };
+          makeWorldSnapshotForLevel.__pb602Cutscenes = true;
+        }
+        if (typeof restoreWorldSnapshotForLevel === 'function' && !restoreWorldSnapshotForLevel.__pb602Cutscenes) {
+          const oldRestore = restoreWorldSnapshotForLevel;
+          restoreWorldSnapshotForLevel = function(data, ...args) {
+            const result = oldRestore.apply(this, [data, ...args]);
+            const cutscenes = data?.pb60?.cutscenes || data?.pb60Cutscenes || data?.cutscenes60;
+            if (Array.isArray(cutscenes)) {
+              ensurePB60();
+              state.pb60.cutscenes = clone(cutscenes);
+              setTimeout(() => renderCutsceneUI(state.pb60.cutscenes[0]?.id || null), 0);
+            }
+            return result;
+          };
+          restoreWorldSnapshotForLevel.__pb602Cutscenes = true;
+        }
+      }
+
+      function patchBeforeLevelTrigger() {
+        if (typeof startLevel === 'function' && !startLevel.__pb602BeforeLevelCutscenes) {
+          const oldStartLevel = startLevel;
+          startLevel = async function(...args) {
+            if (!state.__pb602StartingWithCutscene) {
+              state.__pb602StartingWithCutscene = true;
+              try { await runTrigger('beforeLevel'); }
+              finally { state.__pb602StartingWithCutscene = false; }
+            }
+            return oldStartLevel.apply(this, args);
+          };
+          startLevel.__pb602BeforeLevelCutscenes = true;
+          ['startLevel', 'levelStart'].forEach(id => {
+            const btn = $(id);
+            if (!btn) return;
+            btn.onclick = ev => { ev?.preventDefault?.(); ev?.stopPropagation?.(); startLevel(); };
+          });
+        }
+        if (window.ProjectBuild6_0_CreatorSystems) {
+          window.ProjectBuild6_0_CreatorSystems.runCutsceneTrigger = runTrigger;
+          window.ProjectBuild6_0_CreatorSystems.playCutscene = playCutscenePatched;
+        }
+      }
+
+      function init() {
+        ensurePB60();
+        installTargetPanel();
+        wireCutsceneButtons();
+        patchSnapshotAndRestore();
+        patchBeforeLevelTrigger();
+        refreshTargetSelectors();
+        window.ProjectBuild6_0_2_CutsceneTargetFix = {
+          installed:true,
+          version:VERSION,
+          playCutscene:playCutscenePatched,
+          render:renderCutsceneUI,
+          addToLevel:attachCutsceneToTargetLevel,
+          loadFromLevel:loadTargetLevelCutscenes
+        };
+        say('6.0.2 cutscene test play and campaign-level targeting loaded');
+      }
+
+      const boot = setInterval(() => {
+        const ready = $('pb60CutscenePanel') && $('pb60PlayCutscene') && $('pb60CutsceneSelect');
+        if (!ready) return;
+        clearInterval(boot);
+        init();
+      }, 120);
+      setTimeout(() => clearInterval(boot), 8000);
+    })();
+  </script>
+
 </body>
 </html>
