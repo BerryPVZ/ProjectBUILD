@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 5.5.5 - 2D Editor QoL Build</title>
+  <title>Project: BUILD 5.5.9 - Before Dialogue Countdown Fix</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1875,8 +1875,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.5.5</span></h1>
-      <p>Project: BUILD 5.5.5 sandbox. 3D support has been removed; this build focuses on 2D entities, stronger entity functions, cleaner template work, and level-editor QoL tools.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">5.5.9</span></h1>
+      <p>Project: BUILD 5.5.9 sandbox. 3D support has been removed; this build focuses on 2D entities, stronger entity functions, cleaner template work, level-editor QoL tools, and reliable before/after level dialogue triggers.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -13287,6 +13287,149 @@ Click me again to advance.</textarea>
 
       toast('5.5.8 fix loaded: before/after level dialogue now triggers through level start/win flow');
     })();
+
+
+    // Project: BUILD 5.5.9 - before-level dialogue hard start gate.
+    // The older start fixes used capture listeners that could still launch READY/SET/PREPARE
+    // before the cutscene wrapper got the click. This gate catches start clicks at window-capture
+    // time, loads campaign levels itself, then calls the wrapped startLevel path once.
+    (function installProjectBuild5_5_9_BeforeDialogueBeforeCountdownGate() {
+      if (window.ProjectBuild5_5_9_BeforeDialogueBeforeCountdownGate) return;
+      const by = id => document.getElementById(id);
+      const toast = text => { try { showToast(text); } catch { console.log(text); } };
+
+      function setReady559(text = '') {
+        const overlay = by('readyOverlay');
+        if (overlay) {
+          overlay.textContent = text || '';
+          overlay.style.display = text ? 'flex' : 'none';
+        }
+      }
+
+      function findCampaignLevelFromCard559(card) {
+        const grid = by('pbCampaignLevelGrid');
+        if (!card || !grid || !grid.contains(card)) return null;
+        const cards = [...grid.querySelectorAll('.pbCampaignLevelCard')];
+        const index = cards.indexOf(card);
+        const campaign = state.campaigns?.[state.activeCampaignIndex || 0];
+        return campaign?.levels?.[index] || null;
+      }
+
+      function loadCampaignLevelForStart559(level) {
+        if (!level) return false;
+        state.currentCampaignLevel = level;
+
+        const script = Array.isArray(level.world?.levelScript) ? level.world.levelScript : [];
+        const text = JSON.stringify(script, null, 2);
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+
+        if (level.world?.lawn) {
+          state.pendingLevelLawnSrc = level.world.lawn.imageSrc || null;
+          state.pendingLevelMusicSrc = level.world.lawn.musicSrc || null;
+        }
+
+        if (typeof window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === 'function') {
+          window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel(level.world);
+        } else if (typeof restoreWorldSnapshotForLevel === 'function') {
+          restoreWorldSnapshotForLevel(level.world);
+        }
+
+        if (typeof applyCampaignLevelToBuilderFields === 'function') {
+          try { applyCampaignLevelToBuilderFields(level); } catch {}
+        }
+        if (by('waveScript')) by('waveScript').value = text;
+        if (by('levelScriptModal')) by('levelScriptModal').value = text;
+
+        const modal = by('pbCampaignModal');
+        if (modal) {
+          modal.classList.remove('open');
+          modal.setAttribute('aria-hidden', 'true');
+        }
+        if (typeof window.renderProjectBuildPackets === 'function') {
+          try { window.renderProjectBuildPackets(); } catch {}
+        }
+        return true;
+      }
+
+      async function beginLevelThroughDialogue559(...args) {
+        if (state._pb559StartingLevel) return false;
+        state._pb559StartingLevel = true;
+        setReady559('');
+        try {
+          // startLevel is already wrapped by the 5.5.6 cutscene layer. Calling it here is the
+          // important part: it runs before-level dialogue first, then the real scheduler starts
+          // READY/SET/PREPARE afterward.
+          if (typeof startLevel === 'function') {
+            await startLevel(...args);
+            return true;
+          }
+          const raw = window.ProjectBuild5_2FinalTimingAndAssets?.__rawStartLevelFinal;
+          if (typeof raw === 'function') {
+            await raw(...args);
+            return true;
+          }
+          return false;
+        } finally {
+          setTimeout(() => { state._pb559StartingLevel = false; }, 250);
+        }
+      }
+
+      function interceptStartClick559(e) {
+        const target = e.target;
+        const startButton = target?.closest?.('#startLevel, #levelStart, #pbMobStart');
+        const campaignCard = target?.closest?.('#pbCampaignLevelGrid .pbCampaignLevelCard');
+        if (!startButton && !campaignCard) return;
+
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        e.stopImmediatePropagation?.();
+
+        if (campaignCard) {
+          const level = findCampaignLevelFromCard559(campaignCard);
+          if (!level) return;
+          if (!loadCampaignLevelForStart559(level)) return;
+          setTimeout(() => beginLevelThroughDialogue559(), 30);
+          return;
+        }
+
+        beginLevelThroughDialogue559();
+      }
+
+      // Window capture fires before the older document/button capture handlers, so the old raw
+      // scheduler cannot flash READY before the before-level dialogue anymore.
+      window.addEventListener('click', interceptStartClick559, true);
+
+      ['startLevel','levelStart'].forEach(id => {
+        const btn = by(id);
+        if (!btn) return;
+        btn.onclick = e => {
+          e?.preventDefault?.();
+          e?.stopPropagation?.();
+          e?.stopImmediatePropagation?.();
+          beginLevelThroughDialogue559();
+        };
+      });
+
+      if (window.ProjectBuild5_2FinalTimingAndAssets) {
+        window.ProjectBuild5_2FinalTimingAndAssets.startLevelFinal = (...args) => beginLevelThroughDialogue559(...args);
+      }
+      if (window.ProjectBuild5_2MapStart) {
+        window.ProjectBuild5_2MapStart.startCampaignLevel = level => {
+          if (!loadCampaignLevelForStart559(level)) return false;
+          setTimeout(() => beginLevelThroughDialogue559(), 30);
+          return true;
+        };
+      }
+
+      window.ProjectBuild5_5_9_BeforeDialogueBeforeCountdownGate = {
+        version:'5.5.9-before-dialogue-before-countdown',
+        start:beginLevelThroughDialogue559,
+        loadCampaignLevel:loadCampaignLevelForStart559
+      };
+      toast('5.5.9 fix loaded: before-level dialogue now happens before READY/SET/PREPARE');
+    })();
+
 
 
 
