@@ -8448,7 +8448,7 @@ Click me again to advance.</textarea>
           modal.setAttribute('aria-hidden', 'true');
         }
 
-        setTimeout(() => startLevelFinal(), 30);
+        setTimeout(() => { if (typeof startLevel === 'function') startLevel(); else startLevelFinal(); }, 30);
       }, true);
 
 
@@ -8486,9 +8486,9 @@ Click me again to advance.</textarea>
         setTimeout(() => {
           // Do not dispatch through old UI handlers here; directly use the final scheduler.
           if (typeof startLevelFinal === 'function') {
-            startLevelFinal();
-          } else if (typeof startLevel === 'function') {
             startLevel();
+          } else if (typeof startLevelFinal === 'function') {
+            startLevelFinal();
           } else {
             const startBtn = by('startLevel');
             if (startBtn) startBtn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
@@ -8547,7 +8547,7 @@ Click me again to advance.</textarea>
 
       window.ProjectBuild5_2FinalTimingAndAssets = {
         version: '5.2-final-timing-assets-fix',
-        startLevelFinal,
+        startLevelFinal: (...args) => (typeof startLevel === 'function' ? startLevel(...args) : startLevelFinal(...args)),
         buildExactTimedQueue,
         collectAndApplyCurrentLevelAssets,
         applyLevelVisuals
@@ -9231,8 +9231,8 @@ Click me again to advance.</textarea>
           toast('Mobile zombie tray toggled');
         });
         by('pbMobStart')?.addEventListener('click', () => {
-          if (typeof window.ProjectBuild5_2FinalTimingAndAssets?.startLevelFinal === 'function') window.ProjectBuild5_2FinalTimingAndAssets.startLevelFinal();
-          else if (typeof startLevel === 'function') startLevel();
+          if (typeof startLevel === 'function') startLevel();
+          else if (typeof window.ProjectBuild5_2FinalTimingAndAssets?.startLevelFinal === 'function') window.ProjectBuild5_2FinalTimingAndAssets.startLevelFinal();
           else by('startLevel')?.click?.();
         });
         by('pbMobStop')?.addEventListener('click', () => {
@@ -13238,6 +13238,54 @@ Click me again to advance.</textarea>
         inferLevelMode:inferLevelMode557
       };
       toast('5.5.7 fix loaded: buildmods save campaign levels/assets and level types start correctly');
+    })();
+
+
+    // Project: BUILD 5.5.8 dialogue trigger patch
+    // Forces every modern start path to route through the wrapped startLevel function, so
+    // before-level cutscenes run before waves. Also keeps the exported 5.2 starter safe for
+    // mobile buttons or older direct callers.
+    (function installProjectBuild5_5_8_DialogueTriggerPatch() {
+      const by = id => document.getElementById(id);
+      const toast = text => { try { showToast(text); } catch { console.log(text); } };
+
+      function wrappedStart558(...args) {
+        if (typeof startLevel === 'function') return startLevel(...args);
+        if (window.ProjectBuild5_2FinalTimingAndAssets?.__rawStartLevelFinal) {
+          return window.ProjectBuild5_2FinalTimingAndAssets.__rawStartLevelFinal(...args);
+        }
+        return null;
+      }
+
+      if (window.ProjectBuild5_2FinalTimingAndAssets && !window.ProjectBuild5_2FinalTimingAndAssets.pb558DialogueStartRouted) {
+        const rawStart = window.ProjectBuild5_2FinalTimingAndAssets.startLevelFinal;
+        window.ProjectBuild5_2FinalTimingAndAssets.__rawStartLevelFinal = rawStart;
+        window.ProjectBuild5_2FinalTimingAndAssets.startLevelFinal = (...args) => wrappedStart558(...args);
+        window.ProjectBuild5_2FinalTimingAndAssets.pb558DialogueStartRouted = true;
+      }
+
+      ['startLevel','levelStart'].forEach(id => {
+        const btn = by(id);
+        if (!btn) return;
+        btn.onclick = e => {
+          e?.preventDefault?.();
+          e?.stopPropagation?.();
+          wrappedStart558();
+        };
+      });
+
+      const mobileStart = by('pbMobStart');
+      if (mobileStart && !mobileStart.dataset.pb558DialogueStartFixed) {
+        mobileStart.dataset.pb558DialogueStartFixed = '1';
+        mobileStart.addEventListener('click', e => {
+          e.preventDefault?.();
+          e.stopPropagation?.();
+          e.stopImmediatePropagation?.();
+          wrappedStart558();
+        }, true);
+      }
+
+      toast('5.5.8 fix loaded: before/after level dialogue now triggers through level start/win flow');
     })();
 
 
