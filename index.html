@@ -9639,7 +9639,7 @@ Click me again to advance.</textarea>
         .pb55PaintPreview img { width:100%; height:70px; object-fit:contain; image-rendering:pixelated; }
         .pb55LegacyBox { border:1px dashed rgba(255,255,255,.18); border-radius:12px; padding:8px; margin-top:8px; background:rgba(0,0,0,.18); }
         .pb55LegacyBox h4 { margin:0 0 6px; color:#fff; font-size:13px; }
-        #pb55ThreeLayer { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; z-index:2; overflow:hidden; }
+        #pb55ThreeLayer { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; z-index:4; overflow:hidden; transform:translateZ(0); }
         #pb55ThreeLayer canvas { display:block; width:100%; height:100%; pointer-events:none; }
         .pb55ThreeNote { color:#bae6fd; font-size:11px; margin-top:5px; line-height:1.25; }
         @media (max-width: 820px), (pointer: coarse) {
@@ -9702,6 +9702,8 @@ Click me again to advance.</textarea>
           const renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true, preserveDrawingBuffer:false });
           renderer.setClearColor(0x000000, 0);
           renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+          renderer.outputColorSpace = THREE.SRGBColorSpace;
+          renderer.sortObjects = true;
           renderer.domElement.className = 'pb55ThreeCanvas';
           pb55Three.layer.appendChild(renderer.domElement);
           pb55Three.renderer = renderer;
@@ -9804,10 +9806,48 @@ Click me again to advance.</textarea>
             tex.colorSpace = THREE.SRGBColorSpace;
             tex.wrapS = THREE.ClampToEdgeWrapping;
             tex.wrapT = THREE.ClampToEdgeWrapping;
+            tex.minFilter = THREE.LinearFilter;
+            tex.magFilter = THREE.LinearFilter;
+            tex.generateMipmaps = false;
             tex.needsUpdate = true;
             resolve(tex);
           }, undefined, reject);
         });
+      }
+
+      function pb55CountRenderableMeshes(object) {
+        let count = 0;
+        object?.traverse?.(child => {
+          if (child?.isMesh && child.geometry?.attributes?.position?.count > 0) count++;
+        });
+        return count;
+      }
+
+      function pb55EnsureFallbackUVs(geometry) {
+        const { THREE } = pb55Three.modules || {};
+        if (!geometry?.attributes?.position || geometry.attributes.uv?.count === geometry.attributes.position.count) return;
+        geometry.computeBoundingBox?.();
+        const box = geometry.boundingBox;
+        if (!box) return;
+        const pos = geometry.attributes.position;
+        const width = Math.max(0.0001, box.max.x - box.min.x);
+        const height = Math.max(0.0001, box.max.y - box.min.y);
+        const uvs = new Float32Array(pos.count * 2);
+        for (let i = 0; i < pos.count; i++) {
+          uvs[i * 2] = (pos.getX(i) - box.min.x) / width;
+          uvs[i * 2 + 1] = 1 - ((pos.getY(i) - box.min.y) / height);
+        }
+        geometry.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        geometry.attributes.uv.needsUpdate = true;
+      }
+
+      function pb55SafeHexColor(oldMat, fallbackColor = 0xffffff) {
+        const hex = oldMat?.color?.getHex?.();
+        if (!Number.isFinite(hex)) return fallbackColor;
+        // A lot of exported FBX files come through as pure black materials. That reads as blank
+        // over this game's dark UI, so brighten those unless the texture itself supplies color.
+        if (hex === 0x000000) return fallbackColor;
+        return hex;
       }
 
       function pb55ApplyTextureToObject(object, texture, fallbackColor = 0xffffff) {
@@ -9817,33 +9857,49 @@ Click me again to advance.</textarea>
           child.castShadow = false;
           child.receiveShadow = false;
           child.frustumCulled = false;
-          const oldMat = Array.isArray(child.material) ? child.material[0] : child.material;
-          const mat = new THREE.MeshStandardMaterial({
-            color: texture ? 0xffffff : (oldMat?.color?.getHex?.() || fallbackColor),
-            map: texture || oldMat?.map || null,
-            roughness: 0.82,
-            metalness: 0.02,
-            side: THREE.DoubleSide,
-            transparent: !!oldMat?.transparent,
-            opacity: Number.isFinite(oldMat?.opacity) ? oldMat.opacity : 1
+          if (child.geometry) {
+            if (texture) pb55EnsureFallbackUVs(child.geometry);
+            if (!child.geometry.attributes?.normal) child.geometry.computeVertexNormals?.();
+            child.geometry.computeBoundingSphere?.();
+          }
+          const sourceMats = Array.isArray(child.material) ? child.material : [child.material];
+          const safeMats = sourceMats.map(oldMat => {
+            const chosenMap = texture || oldMat?.map || null;
+            const mat = new THREE.MeshBasicMaterial({
+              color: chosenMap ? 0xffffff : pb55SafeHexColor(oldMat, fallbackColor),
+              map: chosenMap,
+              side: THREE.DoubleSide,
+              transparent: false,
+              opacity: 1,
+              alphaTest: chosenMap ? 0.01 : 0
+            });
+            mat.depthTest = true;
+            mat.depthWrite = true;
+            mat.needsUpdate = true;
+            return mat;
           });
-          child.material = mat;
+          child.material = Array.isArray(child.material) ? safeMats : safeMats[0];
+          child.visible = true;
         });
       }
 
       function pb55NormalizeModel(object) {
         const { THREE } = pb55Three.modules || {};
-        object.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(object);
+        const wrapper = new THREE.Group();
+        wrapper.name = 'ProjectBuildNormalized3DModel';
+        wrapper.add(object);
+        wrapper.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(wrapper);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z) || 1;
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (!Number.isFinite(maxDim) || maxDim <= 0.000001) return wrapper;
         object.position.x -= center.x;
         object.position.y -= center.y;
         object.position.z -= center.z;
-        object.scale.multiplyScalar(1 / maxDim);
-        object.updateMatrixWorld(true);
-        return object;
+        wrapper.scale.setScalar(1 / maxDim);
+        wrapper.updateMatrixWorld(true);
+        return wrapper;
       }
 
       async function pb55LoadModelTemplate(src, name = '', textureSrc = null) {
@@ -9864,6 +9920,7 @@ Click me again to advance.</textarea>
         }
         if (!object) throw new Error('Model parser returned no object');
         object = pb55NormalizeModel(object);
+        if (pb55CountRenderableMeshes(object) < 1) throw new Error('Model loaded, but it has no renderable mesh data');
         const texture = await pb55TextureFromSource(textureSrc);
         pb55ApplyTextureToObject(object, texture, 0xd9ff9f);
         object.traverse(child => { if (child?.isMesh) child.renderOrder = 5000; });
@@ -9875,6 +9932,12 @@ Click me again to advance.</textarea>
         if (!e?.model3dSrc) return false;
         const key = pb55ModelKey(e.model3dSrc, e.modelTextureSrc, e.model3dName);
         return !pb55Three.failedKeys.has(key);
+      }
+
+      function pb55EntityModelIsReady(e) {
+        if (!pb55EntityHasRenderableModel(e) || !pb55Three.ready || pb55Three.failed) return false;
+        const entry = pb55Three.entityObjects.get(e.id);
+        return !!(entry?.ready && entry?.visibleMeshes > 0 && entry.group?.visible);
       }
 
       function drawPB553DEntityCanvasOverlay(e) {
@@ -9906,18 +9969,22 @@ Click me again to advance.</textarea>
             const group = new pb55Three.modules.THREE.Group();
             group.visible = false;
             pb55Three.scene.add(group);
-            entry = { key, group, loading:true, ready:false };
+            entry = { key, group, loading:true, ready:false, visibleMeshes:0 };
             pb55Three.entityObjects.set(e.id, entry);
             pb55LoadModelTemplate(e.model3dSrc, e.model3dName, e.modelTextureSrc).then(obj => {
+              const visibleMeshes = pb55CountRenderableMeshes(obj);
+              if (visibleMeshes < 1) throw new Error('Model has no visible mesh after loading');
               group.clear();
               group.add(obj);
               entry.loading = false;
               entry.ready = true;
+              entry.visibleMeshes = visibleMeshes;
               group.visible = true;
             }).catch(err => {
               console.error('Project BUILD model load failed:', err);
               entry.loading = false;
               entry.ready = false;
+              entry.visibleMeshes = 0;
               group.visible = false;
               pb55Three.failedKeys.add(key);
               setPB553DStatus(`Could not render ${e.model3dName || e.name || '3D model'}: ${err.message}`, true);
@@ -10373,18 +10440,19 @@ Click me again to advance.</textarea>
 
         const oldDraw55 = drawEntity;
         drawEntity = function(e) {
-          if (pb55EntityHasRenderableModel(e) && pb55Three.ready && !pb55Three.failed) {
+          if (pb55EntityModelIsReady(e)) {
             drawPB553DEntityCanvasOverlay(e);
             return;
           }
           oldDraw55.apply(this, arguments);
           if (e?.model3dSrc && state.display.labels) {
             const h = (e.h || 80) * (e.scale || 1);
+            const waiting = pb55EntityHasRenderableModel(e) && !pb55EntityModelIsReady(e);
             ctx.save();
-            ctx.fillStyle = '#bae6fd';
+            ctx.fillStyle = waiting ? '#fde68a' : '#bae6fd';
             ctx.font = '11px system-ui';
             ctx.textAlign = 'center';
-            ctx.fillText(e.modelTextureSrc ? '3D model + texture stored' : '3D model stored', e.x, e.y - h / 2 - 28);
+            ctx.fillText(waiting ? 'loading 3D model...' : (e.modelTextureSrc ? '3D model + texture stored' : '3D model stored'), e.x, e.y - h / 2 - 28);
             ctx.restore();
           }
         };
