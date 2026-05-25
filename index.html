@@ -5651,6 +5651,29 @@ Click me again to advance.</textarea>
         return campaign;
       }
 
+      function syncActiveCampaignNameBeforeExport() {
+        const campaign = getActiveCampaign();
+        if (!campaign) return campaign;
+
+        const sidebarName = by('campaignName')?.value?.trim() || '';
+        const builderName = by('builderCampaignName')?.value?.trim() || '';
+        const builderOpen = !!by('pbLevelModal')?.classList?.contains('open');
+        const activeId = document.activeElement?.id || '';
+
+        // The friendly builder has its own campaign-name box. Its Export button used
+        // to fire before syncSidebarFromBuilder(), so prefer it while the builder is open.
+        const typedName = (builderOpen || activeId === 'builderCampaignName')
+          ? (builderName || sidebarName)
+          : (sidebarName || builderName);
+
+        if (typedName) {
+          campaign.name = typedName;
+          if (by('campaignName')) by('campaignName').value = typedName;
+          if (by('builderCampaignName')) by('builderCampaignName').value = typedName;
+        }
+        return campaign;
+      }
+
       function downloadJSONFixed(filename, data) {
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         const a = document.createElement('a');
@@ -5669,6 +5692,7 @@ Click me again to advance.</textarea>
         e?.stopPropagation?.();
         e?.stopImmediatePropagation?.();
 
+        syncActiveCampaignNameBeforeExport();
         await bakeBase64AssetsIntoCurrentLevel();
 
         const campaign = scrubDefaultMainAssetsFromCampaign(cloneForExport(getActiveCampaign()));
@@ -5687,6 +5711,7 @@ Click me again to advance.</textarea>
         e?.stopPropagation?.();
         e?.stopImmediatePropagation?.();
 
+        syncActiveCampaignNameBeforeExport();
         await bakeBase64AssetsIntoCurrentLevel();
 
         const campaigns = cloneForExport(state.campaigns || []).map(scrubDefaultMainAssetsFromCampaign);
@@ -5753,6 +5778,7 @@ Click me again to advance.</textarea>
         version: '5.2-base64-campaign-export-fix',
         bakeBase64AssetsIntoCurrentLevel,
         scrubDefaultMainAssetsFromCampaign,
+        syncActiveCampaignNameBeforeExport,
         exportCurrentCampaignBase64,
         exportAllCampaignsBase64
       };
@@ -7222,8 +7248,22 @@ Click me again to advance.</textarea>
         a.click();
       }
 
-      function exportCurrentCampaign() {
+      function syncCampaignNameForLegacyExport() {
         const c = ensureCampaign();
+        const sidebarName = safe('campaignName')?.value?.trim() || '';
+        const builderName = safe('builderCampaignName')?.value?.trim() || '';
+        const builderOpen = !!safe('pbLevelModal')?.classList?.contains('open');
+        const typedName = builderOpen ? (builderName || sidebarName) : (sidebarName || builderName);
+        if (typedName) {
+          c.name = typedName;
+          if (safe('campaignName')) safe('campaignName').value = typedName;
+          if (safe('builderCampaignName')) safe('builderCampaignName').value = typedName;
+        }
+        return c;
+      }
+
+      function exportCurrentCampaign() {
+        const c = syncCampaignNameForLegacyExport();
         downloadJSON(`${(c.name || 'project-build-campaign').replace(/[^\w-]+/g, '_')}.projectbuild-campaign.json`, {
           version: '5.1-play-campaign',
           type: 'project-build-campaign',
@@ -7261,11 +7301,14 @@ Click me again to advance.</textarea>
       safe('pbCampaignBack')?.addEventListener('click', closeCampaignMap);
       safe('pbCampaignExportOne')?.addEventListener('click', exportCurrentCampaign);
       safe('exportCampaign')?.addEventListener('click', exportCurrentCampaign);
-      safe('exportAllCampaigns')?.addEventListener('click', () => downloadJSON('project-build-campaigns.json', {
-        version: '5.1-play-campaign',
-        type: 'project-build-campaign-pack',
-        campaigns: state.campaigns || []
-      }));
+      safe('exportAllCampaigns')?.addEventListener('click', () => {
+        syncCampaignNameForLegacyExport();
+        downloadJSON('project-build-campaigns.json', {
+          version: '5.1-play-campaign',
+          type: 'project-build-campaign-pack',
+          campaigns: state.campaigns || []
+        });
+      });
       safe('importCampaign')?.addEventListener('change', e => {
         const file = e.target.files[0];
         if (!file) return;
@@ -18300,6 +18343,51 @@ Click me again to advance.</textarea>
       }, 250);
       toast70('Project: BUILD 7.0 loaded: campaign polish, custom intros, loading screens, and base templates');
     })();
+
+    /* Project: BUILD 7.0.1 campaign-name import/export fix
+       Keeps campaignName and builderCampaignName synced into state immediately,
+       so exports no longer fall back to the default Great Britain campaign name. */
+    (function installProjectBuild701CampaignNameFix() {
+      const by = id => document.getElementById(id);
+      const hasState = () => typeof state !== 'undefined' && state && typeof state === 'object';
+      const activeCampaign = () => {
+        if (!hasState()) return null;
+        state.campaigns ||= [];
+        if (!state.campaigns.length) {
+          state.campaigns.push({
+            id: (crypto?.randomUUID ? crypto.randomUUID() : String(Date.now())),
+            name: by('campaignName')?.value?.trim() || by('builderCampaignName')?.value?.trim() || 'Custom Campaign',
+            levels: []
+          });
+          state.activeCampaignIndex = 0;
+        }
+        return state.campaigns[state.activeCampaignIndex || 0] || state.campaigns[0] || null;
+      };
+      const syncFromInput = sourceId => {
+        const source = by(sourceId);
+        const typed = source?.value?.trim() || '';
+        if (!typed) return;
+        const campaign = activeCampaign();
+        if (!campaign) return;
+        campaign.name = typed;
+        if (sourceId !== 'campaignName' && by('campaignName')) by('campaignName').value = typed;
+        if (sourceId !== 'builderCampaignName' && by('builderCampaignName')) by('builderCampaignName').value = typed;
+        try { if (by('pbCampaignTitle')) by('pbCampaignTitle').textContent = typed; } catch {}
+      };
+      const wire = () => {
+        ['campaignName', 'builderCampaignName'].forEach(id => {
+          const el = by(id);
+          if (!el || el.dataset.pb701CampaignNameFix) return;
+          el.dataset.pb701CampaignNameFix = '1';
+          el.addEventListener('input', () => syncFromInput(id));
+          el.addEventListener('change', () => syncFromInput(id));
+        });
+      };
+      wire();
+      setTimeout(wire, 300);
+      window.ProjectBuild701CampaignNameFix = { syncFromInput };
+    })();
+
   </script>
 
 </body>
