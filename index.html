@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 7.0 - Campaign Polish Update</title>
+  <title>Project: BUILD 7.0.4 - Buildmod Export Fix</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1875,7 +1875,7 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0</span></h1>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.4</span></h1>
       <p>Project: BUILD 7.0 sandbox. This update adds custom difficulty text, custom level intros, campaign map backgrounds, loading screens, and new base templates while keeping the 6.0 creator systems intact.</p>
 
       <h2>Tool</h2>
@@ -10681,7 +10681,7 @@ Click me again to advance.</textarea>
       function makeModPackage(selectedOnly = false) {
         const selectedIndex = Number(by('templateSelect')?.value) || 0;
         const selectedTemplate = state.templates[selectedIndex];
-        return {
+        const pkg = {
           type: 'project-build-mod-package',
           packageVersion: 1,
           engine: 'Project: BUILD',
@@ -18627,8 +18627,12 @@ Click me again to advance.</textarea>
         reader.onerror = () => resolve('');
         reader.readAsDataURL(file);
       });
+      const stringifyDownload703 = data => typeof data === 'string' ? data : JSON.stringify(data);
       const download703 = (filename, data, type = 'application/json') => {
-        const blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], { type });
+        // Compact JSON matters for big .buildmod files. Pretty printing duplicated base64 assets
+        // can push Chrome/Firefox into "Invalid string length" before the download even starts.
+        const text = stringifyDownload703(data);
+        const blob = new Blob([text], { type });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = filename;
@@ -18891,11 +18895,11 @@ Click me again to advance.</textarea>
       }
 
       function makeWorldSnapshot703(lawnAssets) {
-        const snap = typeof serializableState === 'function' ? clone703(serializableState()) : {};
-        delete snap.campaigns;
+        const base = typeof serializableState === 'function' ? serializableState() : {};
+        const snap = slimWorldSnapshot703(base);
         snap.entities = (state.entities || []).map(e => {
-          try { return typeof serializableEntity === 'function' ? serializableEntity(e) : clone703(e); }
-          catch { return clone703(e); }
+          try { return typeof serializableEntity === 'function' ? serializableEntity(e) : stripRuntimeEntity703(e); }
+          catch { return stripRuntimeEntity703(e); }
         });
         snap.projectiles = [];
         snap.collectibles = [];
@@ -18912,7 +18916,7 @@ Click me again to advance.</textarea>
         const l = clone703(level || {});
         l.id ||= uid703('level');
         l.name ||= 'Level';
-        l.world ||= {};
+        l.world = slimWorldSnapshot703(l.world || {});
         l.world.lawn ||= {};
         const useFallback = fallbackLawn && (by703('campaignLevelName')?.value === l.name || by703('builderLevelName')?.value === l.name || state.currentCampaignLevel?.id === l.id);
         const imageSrc = firstDurable703(l.lawnSrc, l.world.lawn.imageSrc, l.world.lawn.src, l.world.lawn.url, useFallback ? fallbackLawn.imageSrc : '');
@@ -19127,6 +19131,143 @@ Click me again to advance.</textarea>
         }
       }
 
+      function stripRuntimeEntity703(e) {
+        const {
+          image, gifEl, idleImage, actionImage, deathImage,
+          idleGifEl, actionGifEl, deathGifEl, dataTimers,
+          dead, ...rest
+        } = e || {};
+        return clone703(rest);
+      }
+
+      function slimWorldSnapshot703(world) {
+        const w = clone703(world || {});
+        // Level worlds should contain level/runtime data only. The package already exports
+        // templates, campaigns, graphics, PB60 data, etc. once at the top level.
+        [
+          'campaigns', 'templates', 'boostTemplates', 'pb55Graphics', 'pb55BossBlueprints',
+          'timelineEvents', 'pb60', 'spriteAssets', 'almanac', 'weather', 'state', 'project', 'pack'
+        ].forEach(key => { try { delete w[key]; } catch {} });
+        if (Array.isArray(w.entities)) w.entities = w.entities.map(stripRuntimeEntity703);
+        w.projectiles = [];
+        w.collectibles = [];
+        w.particles = [];
+        w.lawn ||= {};
+        return w;
+      }
+
+      function isBuildmodAssetString703(value) {
+        return typeof value === 'string' && value.length > 768 && /^data:/i.test(value);
+      }
+
+      function compactBuildmodPackage703(pkg) {
+        if (!pkg || typeof pkg !== 'object') return pkg;
+        // First, remove repeated global asset collections from level snapshots.
+        if (pkg.currentWorld) pkg.currentWorld = slimWorldSnapshot703(pkg.currentWorld);
+        (pkg.campaigns || []).forEach(c => {
+          (c.levels || []).forEach(level => {
+            if (level?.world) {
+              level.world = slimWorldSnapshot703(level.world);
+              level.world.lawn ||= {};
+              if (level.lawnSrc && !level.world.lawn.imageSrc) level.world.lawn.imageSrc = level.lawnSrc;
+              if (level.musicSrc && !level.world.lawn.musicSrc) level.world.lawn.musicSrc = level.musicSrc;
+              if (level.fitMode && !level.world.lawn.fitMode) level.world.lawn.fitMode = level.fitMode;
+            }
+          });
+        });
+
+        // Then collapse repeated data URLs into a small ref table. This keeps buildmods readable by
+        // this fixed version while avoiding repeated megabytes of the same image/audio string.
+        const counts = new Map();
+        const collectSeen = new WeakSet();
+        const collect = value => {
+          if (isBuildmodAssetString703(value)) {
+            counts.set(value, (counts.get(value) || 0) + 1);
+            return;
+          }
+          if (!value || typeof value !== 'object') return;
+          if (collectSeen.has(value)) return;
+          collectSeen.add(value);
+          if (Array.isArray(value)) value.forEach(collect);
+          else Object.keys(value).forEach(k => collect(value[k]));
+        };
+        collect(pkg);
+
+        const repeated = [...counts.entries()].filter(([, count]) => count > 1);
+        if (!repeated.length) {
+          pkg.compatibility ||= {};
+          pkg.compatibility.compactBuildmodExport = true;
+          return pkg;
+        }
+
+        const idByValue = new Map();
+        const assets = {};
+        let next = 1;
+        let approxBytesSaved = 0;
+        const replaceSeen = new WeakSet();
+        const replace = value => {
+          if (isBuildmodAssetString703(value) && (counts.get(value) || 0) > 1) {
+            let id = idByValue.get(value);
+            if (!id) {
+              id = `asset${next++}`;
+              idByValue.set(value, id);
+              assets[id] = value;
+            }
+            const token = `pbasset://${id}`;
+            approxBytesSaved += Math.max(0, value.length - token.length);
+            return token;
+          }
+          if (!value || typeof value !== 'object') return value;
+          if (replaceSeen.has(value)) return value;
+          replaceSeen.add(value);
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) value[i] = replace(value[i]);
+          } else {
+            Object.keys(value).forEach(k => { value[k] = replace(value[k]); });
+          }
+          return value;
+        };
+        replace(pkg);
+        pkg.pbAssetRefs = {
+          version: 1,
+          prefix: 'pbasset://',
+          assets,
+          repeatedAssetCount: Object.keys(assets).length,
+          approxBytesSaved
+        };
+        pkg.compatibility ||= {};
+        pkg.compatibility.compactBuildmodExport = true;
+        pkg.compatibility.usesAssetRefs = true;
+        return pkg;
+      }
+
+      function inflateBuildmodAssetRefs703(data) {
+        const table = data?.pbAssetRefs?.assets || data?.assetRefs?.assets || null;
+        if (!table || typeof table !== 'object') return data;
+        const seen = new WeakSet();
+        const revive = value => {
+          if (typeof value === 'string' && value.startsWith('pbasset://')) {
+            const id = value.slice('pbasset://'.length);
+            return table[id] || value;
+          }
+          if (!value || typeof value !== 'object') return value;
+          if (seen.has(value)) return value;
+          seen.add(value);
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) value[i] = revive(value[i]);
+          } else {
+            Object.keys(value).forEach(k => {
+              if (k !== 'pbAssetRefs' && k !== 'assetRefs') value[k] = revive(value[k]);
+            });
+          }
+          return value;
+        };
+        const restored = revive(data);
+        try { delete restored.pbAssetRefs; } catch {}
+        try { delete restored.assetRefs; } catch {}
+        return restored;
+      }
+
       async function makeBuildmod703(selectedOnly = false) {
         const lawnAssets = await currentAssetBundle703();
         const currentWorld = makeWorldSnapshot703(lawnAssets);
@@ -19166,6 +19307,7 @@ Click me again to advance.</textarea>
             notes: '7.0.3 buildmods include current backgrounds, campaigns, per-level lawn/music, and template seed packet backgrounds.'
           }
         };
+        return compactBuildmodPackage703(pkg);
       }
 
       async function exportBuildmod703(selectedOnly, e) {
@@ -19192,7 +19334,7 @@ Click me again to advance.</textarea>
         e.stopPropagation?.();
         e.stopImmediatePropagation?.();
         try {
-          const data = JSON.parse(await file.text());
+          const data = inflateBuildmodAssetRefs703(JSON.parse(await file.text()));
           if (Array.isArray(data.templates)) {
             state.templates ||= [];
             data.templates.forEach(t => {
@@ -19252,11 +19394,13 @@ Click me again to advance.</textarea>
       setTimeout(boot703, 900);
 
       window.ProjectBuild703CampaignBuildmodSeedPacketFix = {
-        version: '7.0.3-campaign-buildmod-seed-packet-fix',
+        version: '7.0.4-buildmod-invalid-string-fix',
         refreshCampaignDropdown: refreshCampaignDropdown703,
         renderCampaignMap: renderCampaignMap703,
         upsertCurrentLevel: upsertCurrentLevel703,
         exportBuildmod: exportBuildmod703,
+        compactBuildmod: compactBuildmodPackage703,
+        inflateBuildmodAssets: inflateBuildmodAssetRefs703,
         decoratePackets: decoratePacketBars703
       };
     })();
