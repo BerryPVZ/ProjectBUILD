@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 7.0.6 - Buildmod Import Lawn Fix</title>
+  <title>Project: BUILD 7.0.7 - JSON Template Export Fix</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1875,8 +1875,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.6</span></h1>
-      <p>Project: BUILD 7.0.6 sandbox. This update adds custom difficulty text, custom level intros, campaign map backgrounds, loading screens, and new base templates while keeping the 6.0 creator systems intact.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.7</span></h1>
+      <p>Project: BUILD 7.0.7 sandbox. This update fixes JSON/template exporting so new saved templates stay in plain JSON exports and are not wiped by stale campaign level snapshots.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -14906,6 +14906,311 @@ Click me again to advance.</textarea>
       }
       init();
     })();
+
+    // Project: BUILD 7.0.7 - plain JSON template export/restore hard fix.
+    // Fixes the bug where newly saved templates could vanish from Export JSON after
+    // campaign/level restore paths reloaded an older world snapshot.
+    (function installProjectBuild7_0_7_JsonTemplateExportFix() {
+      if (window.ProjectBuild7_0_7_JsonTemplateExportFix) return;
+      window.ProjectBuild7_0_7_JsonTemplateExportFix = true;
+
+      const by707 = id => document.getElementById(id);
+      const toast707 = text => { try { showToast(text); } catch { console.log(text); } };
+      const clone707 = value => {
+        try { return structuredClone(value); }
+        catch {
+          try { return JSON.parse(JSON.stringify(value)); }
+          catch { return value; }
+        }
+      };
+      const key707 = t => String(t?.name || '').trim().toLowerCase();
+      const runtimeTemplateKeys707 = [
+        'image','gifEl','idleImage','actionImage','deathImage','idleGifEl','actionGifEl','deathGifEl',
+        'model3d','model3dObject','model3dScene','model3dMixer','dataTimers','dead','_runtime','_cache'
+      ];
+
+      function cleanTemplate707(template) {
+        if (!template || typeof template !== 'object') return null;
+        const t = clone707(template);
+        runtimeTemplateKeys707.forEach(k => { try { delete t[k]; } catch {} });
+        t.name = String(t.name || '').trim();
+        if (!t.name) return null;
+        t.side = t.side || (t.type === 'zombie' ? 'zombie' : t.type === 'boss' ? 'boss' : t.type === 'npc' ? 'npc' : 'plant');
+        t.role = t.role || t.type || (t.side === 'zombie' ? 'fighter' : t.side === 'npc' ? 'npc' : 'fighter');
+        t.type = t.type || t.side || 'plant';
+        const hp = Number(t.maxHp ?? t.hp ?? 100) || 100;
+        t.maxHp = hp;
+        t.hp = Number(t.hp ?? hp) || hp;
+        t.damage = Number(t.damage ?? 0) || 0;
+        t.speed = Number(t.speed ?? t.vx ?? 0) || 0;
+        t.w = Number(t.w ?? t.width ?? 80) || 80;
+        t.h = Number(t.h ?? t.height ?? 80) || 80;
+        t.cooldown = Number(t.cooldown ?? 1.5) || 1.5;
+        t.abilities = Array.isArray(t.abilities) ? [...new Set(t.abilities.filter(Boolean))] : [];
+        if (t.side === 'npc' || t.role === 'npc' || t.type === 'npc') {
+          t.side = 'npc';
+          t.role = 'npc';
+          t.type = 'npc';
+          t.abilities = [];
+          t.script = '';
+          t.spawnScript = '';
+        }
+        if (t.seedPacketBgSrc && !t.packetBackgroundSrc) t.packetBackgroundSrc = t.seedPacketBgSrc;
+        if (t.packetBackgroundSrc && !t.seedPacketBgSrc) t.seedPacketBgSrc = t.packetBackgroundSrc;
+        return t;
+      }
+
+      function mergeTemplates707(incoming) {
+        if (!Array.isArray(incoming) || !window.state) return 0;
+        state.templates ||= [];
+        let changed = 0;
+        incoming.map(cleanTemplate707).filter(Boolean).forEach(t => {
+          const key = key707(t);
+          const idx = state.templates.findIndex(existing => key707(existing) === key);
+          if (idx >= 0) state.templates[idx] = { ...state.templates[idx], ...t };
+          else state.templates.push(t);
+          changed++;
+        });
+        return changed;
+      }
+
+      function captureTemplateLibrary707() {
+        if (!window.state) return [];
+        state.templates ||= [];
+        const clean = state.templates.map(cleanTemplate707).filter(Boolean);
+        state.templates = clean;
+        state._pb707TemplateLibrary = clean.map(clone707);
+        return clean;
+      }
+
+      function restoreTemplateLibrary707(saved) {
+        const library = Array.isArray(saved) ? saved : state?._pb707TemplateLibrary;
+        if (!library?.length) return 0;
+        const count = mergeTemplates707(library);
+        captureTemplateLibrary707();
+        return count;
+      }
+
+      function maybeAddUnsavedNewTemplate707() {
+        if (typeof getTemplateForm !== 'function' || !window.state) return null;
+        let t = null;
+        try { t = cleanTemplate707(getTemplateForm()); } catch { return null; }
+        if (!t?.name) return null;
+        state.templates ||= [];
+        const exists = state.templates.some(existing => key707(existing) === key707(t));
+        // Export should not silently overwrite an existing saved template, but if the user typed
+        // a brand new name and forgot to press Save, include it instead of losing it.
+        if (!exists) {
+          state.templates.push(t);
+          captureTemplateLibrary707();
+          try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+          return t;
+        }
+        captureTemplateLibrary707();
+        return null;
+      }
+
+      function stripWorldGlobals707(world) {
+        const w = clone707(world || {});
+        [
+          'templates','campaigns','boostTemplates','pb55Graphics','pb55BossBlueprints','timelineEvents',
+          'pb60','spriteAssets','almanac','weather','state','project','pack','currentTemplateLibrary'
+        ].forEach(k => { try { delete w[k]; } catch {} });
+        if (Array.isArray(w.entities) && typeof serializableEntity === 'function') {
+          w.entities = w.entities.map(e => {
+            try { return serializableEntity(e); } catch { return clone707(e); }
+          });
+        }
+        w.projectiles = [];
+        w.collectibles = [];
+        w.particles = [];
+        return w;
+      }
+
+      function cleanCampaigns707(campaigns) {
+        return (Array.isArray(campaigns) ? campaigns : []).map((campaign, ci) => {
+          const c = clone707(campaign || {});
+          c.name = String(c.name || c.title || c.campaignName || `Campaign ${ci + 1}`).trim() || `Campaign ${ci + 1}`;
+          c.levels = (Array.isArray(c.levels) ? c.levels : []).map((level, li) => {
+            const l = clone707(level || {});
+            l.name = String(l.name || `Level ${li + 1}`).trim() || `Level ${li + 1}`;
+            if (l.world) l.world = stripWorldGlobals707(l.world);
+            return l;
+          });
+          return c;
+        });
+      }
+
+      function buildJsonExport707() {
+        maybeAddUnsavedNewTemplate707();
+        const templates = captureTemplateLibrary707().map(clone707);
+        const data = typeof serializableState === 'function' ? (serializableState() || {}) : {};
+        data.version = '7.0.7-json-template-export-fix';
+        data.templates = templates;
+        data.currentTemplateLibrary = templates.map(t => ({ name: t.name, side: t.side, role: t.role, type: t.type }));
+        data.campaigns = cleanCampaigns707(state.campaigns || data.campaigns || []);
+        if (data.currentWorld) data.currentWorld = stripWorldGlobals707(data.currentWorld);
+        if (data.world) data.world = stripWorldGlobals707(data.world);
+        data.lawn = { ...(state.lawn || {}), ...(data.lawn || {}) };
+        return data;
+      }
+
+      function downloadJson707(filename, data) {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
+      }
+
+      function extractTemplates707(data) {
+        const found = [];
+        const add = arr => { if (Array.isArray(arr)) found.push(...arr); };
+        add(data?.templates);
+        add(data?.state?.templates);
+        add(data?.project?.templates);
+        add(data?.pack?.templates);
+        add(data?.currentWorld?.templates);
+        add(data?.world?.templates);
+        (Array.isArray(data?.campaigns) ? data.campaigns : []).forEach(c => {
+          add(c?.templates);
+          (Array.isArray(c?.levels) ? c.levels : []).forEach(l => add(l?.world?.templates));
+        });
+        return found;
+      }
+
+      function wireJsonExport707() {
+        const exportBtn = by707('exportWorld');
+        if (exportBtn && !exportBtn.dataset.pb707JsonExportFixed) {
+          exportBtn.dataset.pb707JsonExportFixed = '1';
+          exportBtn.onclick = e => {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            const data = buildJsonExport707();
+            downloadJson707('project-build-7-0-7-world.json', data);
+            toast707(`JSON exported with ${data.templates?.length || 0} templates`);
+            return false;
+          };
+        }
+      }
+
+      function wireJsonImport707() {
+        const input = by707('importWorld');
+        if (input && !input.dataset.pb707JsonImportFixed) {
+          input.dataset.pb707JsonImportFixed = '1';
+          input.addEventListener('change', e => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+              try {
+                const data = JSON.parse(reader.result);
+                const templates = extractTemplates707(data);
+                setTimeout(() => {
+                  if (templates.length) mergeTemplates707(templates);
+                  captureTemplateLibrary707();
+                  try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+                  try { if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets(); } catch {}
+                }, 160);
+              } catch {}
+            };
+            reader.readAsText(file);
+          }, true);
+        }
+      }
+
+      function patchSerializers707() {
+        if (typeof serializableState === 'function' && !serializableState.pb707TemplatesFixed) {
+          const oldSerializable707 = serializableState;
+          serializableState = function(...args) {
+            const data = oldSerializable707.apply(this, args) || {};
+            const templates = captureTemplateLibrary707().map(clone707);
+            data.version = '7.0.7-json-template-export-fix';
+            data.templates = templates;
+            if (Array.isArray(data.campaigns)) data.campaigns = cleanCampaigns707(data.campaigns);
+            return data;
+          };
+          serializableState.pb707TemplatesFixed = true;
+        }
+
+        if (typeof makeWorldSnapshotForLevel === 'function' && !makeWorldSnapshotForLevel.pb707NoStaleTemplates) {
+          const oldMakeSnapshot707 = makeWorldSnapshotForLevel;
+          makeWorldSnapshotForLevel = function(...args) {
+            const snap = oldMakeSnapshot707.apply(this, args) || {};
+            return stripWorldGlobals707(snap);
+          };
+          makeWorldSnapshotForLevel.pb707NoStaleTemplates = true;
+        }
+
+        if (typeof restoreWorldSnapshotForLevel === 'function' && !restoreWorldSnapshotForLevel.pb707MergeTemplates) {
+          const oldRestore707 = restoreWorldSnapshotForLevel;
+          restoreWorldSnapshotForLevel = function(data, ...args) {
+            const savedTemplates = captureTemplateLibrary707().map(clone707);
+            const incomingTemplates = extractTemplates707(data || {});
+            const cleanData = clone707(data || {});
+            if (cleanData && typeof cleanData === 'object') delete cleanData.templates;
+            const result = oldRestore707.call(this, cleanData, ...args);
+            mergeTemplates707(savedTemplates);
+            mergeTemplates707(incomingTemplates);
+            captureTemplateLibrary707();
+            try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+            try { if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets(); } catch {}
+            return result;
+          };
+          restoreWorldSnapshotForLevel.pb707MergeTemplates = true;
+          try {
+            if (window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel === oldRestore707) {
+              window.ProjectBuildCampaigns.restoreWorldSnapshotForLevel = restoreWorldSnapshotForLevel;
+            }
+          } catch {}
+        }
+      }
+
+      function wireTemplateCapture707() {
+        const saveBtn = by707('saveTemplate');
+        if (saveBtn && !saveBtn.dataset.pb707CaptureFixed) {
+          saveBtn.dataset.pb707CaptureFixed = '1';
+          saveBtn.addEventListener('click', () => {
+            setTimeout(() => {
+              captureTemplateLibrary707();
+              try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+              try { if (typeof window.renderProjectBuildPackets === 'function') window.renderProjectBuildPackets(); } catch {}
+            }, 0);
+          });
+        }
+
+        const addAllBtn = by707('pb70AddAllBaseTemplates');
+        if (addAllBtn && !addAllBtn.dataset.pb707CaptureFixed) {
+          addAllBtn.dataset.pb707CaptureFixed = '1';
+          addAllBtn.addEventListener('click', () => setTimeout(() => {
+            captureTemplateLibrary707();
+            try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+          }, 0));
+        }
+      }
+
+      function boot707() {
+        patchSerializers707();
+        wireJsonExport707();
+        wireJsonImport707();
+        wireTemplateCapture707();
+        captureTemplateLibrary707();
+      }
+
+      boot707();
+      setTimeout(boot707, 250);
+      setTimeout(boot707, 900);
+
+      window.ProjectBuild7_0_7_JsonTemplateExportFix = {
+        version: '7.0.7-json-template-export-fix',
+        exportJson: () => buildJsonExport707(),
+        captureTemplates: captureTemplateLibrary707,
+        mergeTemplates: mergeTemplates707
+      };
+    })();
+
 
   </script>
 
