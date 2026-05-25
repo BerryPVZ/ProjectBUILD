@@ -18599,6 +18599,668 @@ Click me again to advance.</textarea>
       };
     })();
 
+
+    /* Project: BUILD 7.0.3 campaign dropdown, buildmod asset, and seed-packet background fix.
+       Final compatibility layer: keeps every campaign selectable, embeds current lawns/music in buildmods,
+       and lets each template draw a custom image behind its seed/zombie packet icon. */
+    (function installProjectBuild703CampaignBuildmodSeedPacketFix() {
+      if (window.ProjectBuild703CampaignBuildmodSeedPacketFix) return;
+
+      const by703 = id => document.getElementById(id);
+      const toast703 = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const clone703 = value => {
+        try { return structuredClone(value); }
+        catch {
+          try { return JSON.parse(JSON.stringify(value)); }
+          catch { return value; }
+        }
+      };
+      const uid703 = prefix => `${prefix || 'id'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+      const esc703 = text => String(text ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
+      const safeFile703 = (name, fallback = 'project-build') => String(name || fallback).trim().replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '') || fallback;
+      const isDurableSrc703 = src => typeof src === 'string' && !!src.trim() && !/^blob:/i.test(src.trim()) && !/^about:/i.test(src.trim());
+      const firstDurable703 = (...values) => values.find(isDurableSrc703) || '';
+      const dataURL703 = file => new Promise(resolve => {
+        if (!file) return resolve('');
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result || ''));
+        reader.onerror = () => resolve('');
+        reader.readAsDataURL(file);
+      });
+      const download703 = (filename, data, type = 'application/json') => {
+        const blob = new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], { type });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 900);
+      };
+
+      function ensureStyle703() {
+        if (by703('pb703SeedPacketStyle')) return;
+        const style = document.createElement('style');
+        style.id = 'pb703SeedPacketStyle';
+        style.textContent = `
+          .pbPacket.pb703HasSeedBg { background: rgba(255,255,255,.72); }
+          .pbPacket .pb703PacketBg {
+            position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+            z-index:0; pointer-events:none; user-select:none; image-rendering:auto;
+          }
+          .pbPacket > img:not(.pb703PacketBg), .pbPacket .pb703PacketIcon {
+            position:relative; z-index:1; filter: drop-shadow(0 2px 2px rgba(0,0,0,.45));
+          }
+          .pbPacket > span:not(.pbPacketName) { position:relative; z-index:1; }
+          #pb703SeedPacketStatus { margin-top:4px; color:#94a3b8; font-size:11px; }
+        `;
+        document.head.appendChild(style);
+      }
+
+      function templateSeedBg703(t) {
+        return firstDurable703(
+          t?.seedPacketBgSrc,
+          t?.seedPacketBackgroundSrc,
+          t?.packetBackgroundSrc,
+          t?.packetBgSrc,
+          t?.seedBgSrc
+        );
+      }
+
+      function installSeedPacketForm703() {
+        ensureStyle703();
+        if (typeof currentAssetCache !== 'undefined' && !('seedPacketBgSrc' in currentAssetCache)) currentAssetCache.seedPacketBgSrc = null;
+        const baseInput = by703('entityImage');
+        if (baseInput && !by703('seedPacketBgImage')) {
+          baseInput.insertAdjacentHTML('afterend', `
+            <label>Seed Packet Background PNG/GIF</label>
+            <input id="seedPacketBgImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng" />
+            <div id="pb703SeedPacketStatus">No custom packet background loaded.</div>
+          `);
+        }
+        const bgInput = by703('seedPacketBgImage');
+        if (bgInput && !bgInput.dataset.pb703SeedBg) {
+          bgInput.dataset.pb703SeedBg = '1';
+          bgInput.addEventListener('change', async e => {
+            const src = await dataURL703(e.target.files?.[0]);
+            if (typeof currentAssetCache !== 'undefined') currentAssetCache.seedPacketBgSrc = src || null;
+            const status = by703('pb703SeedPacketStatus');
+            if (status) status.textContent = src ? 'Packet background loaded for the current template form.' : 'No custom packet background loaded.';
+            toast703(src ? 'Seed packet background loaded' : 'No seed packet background selected');
+          });
+        }
+      }
+
+      function patchTemplateSaveLoad703() {
+        if (typeof getTemplateForm === 'function' && !getTemplateForm.pb703SeedPacketBg) {
+          const oldGetTemplateForm703 = getTemplateForm;
+          getTemplateForm = function(...args) {
+            const t = oldGetTemplateForm703.apply(this, args) || {};
+            const src = (typeof currentAssetCache !== 'undefined' && currentAssetCache.seedPacketBgSrc) || templateSeedBg703(t);
+            if (src) {
+              t.seedPacketBgSrc = src;
+              t.packetBackgroundSrc = src;
+            } else {
+              delete t.seedPacketBgSrc;
+              delete t.seedPacketBackgroundSrc;
+              delete t.packetBackgroundSrc;
+              delete t.packetBgSrc;
+              delete t.seedBgSrc;
+            }
+            return t;
+          };
+          getTemplateForm.pb703SeedPacketBg = true;
+        }
+
+        if (typeof loadTemplateToForm === 'function' && !loadTemplateToForm.pb703SeedPacketBg) {
+          const oldLoadTemplateToForm703 = loadTemplateToForm;
+          loadTemplateToForm = function(t, ...args) {
+            const result = oldLoadTemplateToForm703.call(this, t, ...args);
+            const src = templateSeedBg703(t || {});
+            if (typeof currentAssetCache !== 'undefined') currentAssetCache.seedPacketBgSrc = src || null;
+            const status = by703('pb703SeedPacketStatus');
+            if (status) status.textContent = src ? 'Packet background loaded from this template.' : 'No custom packet background loaded.';
+            return result;
+          };
+          loadTemplateToForm.pb703SeedPacketBg = true;
+        }
+      }
+
+      function decoratePacketBars703() {
+        const templates = Array.isArray(state?.templates) ? state.templates : [];
+        document.querySelectorAll('.pbPacket').forEach(packet => {
+          const t = templates[Number(packet.dataset.index) || 0];
+          if (!t) return;
+          const bg = templateSeedBg703(t);
+          let bgEl = packet.querySelector(':scope > .pb703PacketBg');
+          if (bg) {
+            if (!bgEl) {
+              bgEl = document.createElement('img');
+              bgEl.className = 'pb703PacketBg';
+              bgEl.alt = '';
+              packet.prepend(bgEl);
+            }
+            bgEl.src = bg;
+            packet.classList.add('pb703HasSeedBg');
+          } else {
+            bgEl?.remove();
+            packet.classList.remove('pb703HasSeedBg');
+          }
+          const icon = [...packet.children].find(el => el.tagName === 'IMG' && !el.classList.contains('pb703PacketBg'));
+          if (icon) icon.classList.add('pb703PacketIcon');
+        });
+      }
+
+      function patchPacketRenderer703() {
+        if (window.renderProjectBuildPackets && !window.renderProjectBuildPackets.pb703SeedPacketBg) {
+          const oldRenderPackets703 = window.renderProjectBuildPackets;
+          window.renderProjectBuildPackets = function(...args) {
+            const result = oldRenderPackets703.apply(this, args);
+            decoratePacketBars703();
+            return result;
+          };
+          window.renderProjectBuildPackets.pb703SeedPacketBg = true;
+        }
+        decoratePacketBars703();
+      }
+
+      function normalizeCampaign703(c, index = 0) {
+        const campaign = clone703(c || {});
+        campaign.id ||= uid703('campaign');
+        campaign.name = String(campaign.name || campaign.title || campaign.campaignName || `Campaign ${index + 1}`).trim() || `Campaign ${index + 1}`;
+        campaign.levels = Array.isArray(campaign.levels) ? campaign.levels : [];
+        return campaign;
+      }
+
+      function ensureCampaigns703() {
+        if (!Array.isArray(state.campaigns)) state.campaigns = [];
+        if (!state.campaigns.length) {
+          state.campaigns.push(normalizeCampaign703({
+            name: by703('campaignName')?.value?.trim() || by703('builderCampaignName')?.value?.trim() || 'Custom Campaign',
+            levels: []
+          }));
+          state.activeCampaignIndex = 0;
+        }
+        state.campaigns = state.campaigns.map(normalizeCampaign703);
+        const idx = Math.max(0, Math.min(state.campaigns.length - 1, Number(state.activeCampaignIndex) || 0));
+        state.activeCampaignIndex = idx;
+        return state.campaigns;
+      }
+
+      function activeCampaign703() {
+        const campaigns = ensureCampaigns703();
+        return campaigns[state.activeCampaignIndex || 0] || campaigns[0] || null;
+      }
+
+      function selectedNames703(selectId, chipBoxId, side) {
+        const chipNames = chipBoxId ? [...document.querySelectorAll(`#${chipBoxId} .pbBuilderChip.active`)].map(x => x.dataset.name).filter(Boolean) : [];
+        if (chipNames.length) return chipNames;
+        const sel = by703(selectId);
+        const names = sel ? [...sel.selectedOptions].map(o => o.value).filter(Boolean) : [];
+        if (names.length) return names;
+        return (state.templates || []).filter(t => !side || t.side === side || (side === 'zombie' && t.side === 'boss')).map(t => t.name).filter(Boolean);
+      }
+
+      function syncCampaignFields703(c = activeCampaign703()) {
+        if (!c) return;
+        if (by703('campaignName')) by703('campaignName').value = c.name || '';
+        if (by703('builderCampaignName')) by703('builderCampaignName').value = c.name || '';
+        if (by703('pbCampaignTitle')) by703('pbCampaignTitle').textContent = c.name || 'custom campaign';
+      }
+
+      function refreshCampaignDropdown703() {
+        const campaigns = ensureCampaigns703();
+        const select = by703('campaignSelect');
+        if (select) {
+          const active = String(Math.max(0, Math.min(campaigns.length - 1, Number(state.activeCampaignIndex) || 0)));
+          select.innerHTML = campaigns.map((c, i) => `<option value="${i}">${esc703(c.name || `Campaign ${i + 1}`)}</option>`).join('');
+          select.value = active;
+        }
+        const cutsceneSelect = by703('pb602CutsceneTargetCampaign');
+        if (cutsceneSelect) {
+          const old = cutsceneSelect.value;
+          cutsceneSelect.innerHTML = campaigns.length ? campaigns.map((c, i) => `<option value="${i}">${esc703(c.name || `Campaign ${i + 1}`)}</option>`).join('') : '<option value="-1">No campaigns yet</option>';
+          cutsceneSelect.value = [...cutsceneSelect.options].some(o => o.value === old) ? old : String(state.activeCampaignIndex || 0);
+        }
+        syncCampaignFields703();
+      }
+
+      function renderCampaignMap703() {
+        const campaign = activeCampaign703();
+        const grid = by703('pbCampaignLevelGrid');
+        const title = by703('pbCampaignTitle');
+        if (title) title.textContent = campaign?.name || 'custom campaign';
+        if (!grid || !campaign) return;
+        grid.innerHTML = '';
+        (campaign.levels || []).forEach((level, i) => {
+          const card = document.createElement('div');
+          card.className = 'pbCampaignLevelCard';
+          card.title = `${level.name || `Level ${i + 1}`}\n${level.gimmick || ''}`;
+          card.innerHTML = `
+            <div class="pbCampaignLevelIcon">${level.iconSrc ? `<img src="${esc703(level.iconSrc)}" alt="">` : '<div class="pbCampaignQuestion">?</div>'}</div>
+            <div class="pbCampaignLevelName">${esc703(level.name || `Level ${i + 1}`)}</div>
+          `;
+          card.onclick = e => {
+            e?.preventDefault?.();
+            e?.stopPropagation?.();
+            state.currentCampaignLevel = level;
+            if (window.ProjectBuild5_2MapStart?.startCampaignLevel) window.ProjectBuild5_2MapStart.startCampaignLevel(level);
+            else {
+              try { window.ProjectBuildCampaigns?.restoreWorldSnapshotForLevel?.(level.world); } catch {}
+              by703('pbCampaignModal')?.classList.remove('open');
+              const startBtn = by703('startLevel');
+              if (startBtn) startBtn.click();
+              else if (typeof startLevel === 'function') startLevel();
+            }
+          };
+          grid.appendChild(card);
+        });
+        const add = document.createElement('div');
+        add.className = 'pbCampaignLevelCard';
+        add.innerHTML = '<div class="pbCampaignLevelIcon"><div class="pbCampaignQuestion">+</div></div><div class="pbCampaignLevelName">Add Current</div>';
+        add.onclick = e => { e?.preventDefault?.(); upsertCurrentLevel703({ silent:false }); };
+        grid.appendChild(add);
+      }
+
+      async function currentAssetBundle703() {
+        const lawnFile = by703('lawnImage')?.files?.[0] || null;
+        const musicFile = by703('lawnMusic')?.files?.[0] || null;
+        const builderLawnFile = by703('builderLevelLawn')?.files?.[0] || null;
+        const builderMusicFile = by703('builderLevelMusic')?.files?.[0] || null;
+        const imageSrc = firstDurable703(
+          await dataURL703(builderLawnFile),
+          await dataURL703(lawnFile),
+          state.pendingLevelLawnSrc,
+          state.currentCampaignLevel?.lawnSrc,
+          state.currentCampaignLevel?.world?.lawn?.imageSrc,
+          state.lawn?.imageSrc
+        );
+        const musicSrc = firstDurable703(
+          await dataURL703(builderMusicFile),
+          await dataURL703(musicFile),
+          state.pendingLevelMusicSrc,
+          state.currentCampaignLevel?.musicSrc,
+          state.currentCampaignLevel?.world?.lawn?.musicSrc,
+          state.lawn?.musicSrc
+        );
+        return {
+          name: by703('lawnName')?.value || state.lawn?.name || 'Main Lawn',
+          imageSrc,
+          musicSrc,
+          fitMode: by703('lawnFitMode')?.value || state.lawn?.fitMode || 'fitAll'
+        };
+      }
+
+      function makeWorldSnapshot703(lawnAssets) {
+        const snap = typeof serializableState === 'function' ? clone703(serializableState()) : {};
+        delete snap.campaigns;
+        snap.entities = (state.entities || []).map(e => {
+          try { return typeof serializableEntity === 'function' ? serializableEntity(e) : clone703(e); }
+          catch { return clone703(e); }
+        });
+        snap.projectiles = [];
+        snap.collectibles = [];
+        snap.particles = [];
+        snap.lawn ||= {};
+        snap.lawn.name = lawnAssets?.name || snap.lawn.name || 'Main Lawn';
+        if (lawnAssets?.imageSrc) snap.lawn.imageSrc = lawnAssets.imageSrc;
+        if (lawnAssets?.musicSrc) snap.lawn.musicSrc = lawnAssets.musicSrc;
+        snap.lawn.fitMode = lawnAssets?.fitMode || snap.lawn.fitMode || 'fitAll';
+        return snap;
+      }
+
+      function normalizeLevelAssets703(level, fallbackLawn = null) {
+        const l = clone703(level || {});
+        l.id ||= uid703('level');
+        l.name ||= 'Level';
+        l.world ||= {};
+        l.world.lawn ||= {};
+        const useFallback = fallbackLawn && (by703('campaignLevelName')?.value === l.name || by703('builderLevelName')?.value === l.name || state.currentCampaignLevel?.id === l.id);
+        const imageSrc = firstDurable703(l.lawnSrc, l.world.lawn.imageSrc, l.world.lawn.src, l.world.lawn.url, useFallback ? fallbackLawn.imageSrc : '');
+        const musicSrc = firstDurable703(l.musicSrc, l.world.lawn.musicSrc, l.world.lawn.bgmSrc, l.world.lawn.audioSrc, useFallback ? fallbackLawn.musicSrc : '');
+        if (imageSrc) { l.lawnSrc = imageSrc; l.world.lawn.imageSrc = imageSrc; }
+        if (musicSrc) { l.musicSrc = musicSrc; l.world.lawn.musicSrc = musicSrc; }
+        l.fitMode = l.fitMode || l.world.lawn.fitMode || fallbackLawn?.fitMode || 'fitAll';
+        l.world.lawn.fitMode = l.fitMode;
+        return l;
+      }
+
+      async function upsertCurrentLevel703({ silent = true } = {}) {
+        const campaign = activeCampaign703();
+        if (!campaign) return null;
+        const typedName = by703('campaignName')?.value?.trim() || by703('builderCampaignName')?.value?.trim();
+        if (typedName) campaign.name = typedName;
+        const levelName = by703('campaignLevelName')?.value?.trim() || by703('builderLevelName')?.value?.trim() || `Level ${(campaign.levels?.length || 0) + 1}`;
+        const existingIndex = (campaign.levels || []).findIndex(l => l.name === levelName || (state.currentCampaignLevel?.id && l.id === state.currentCampaignLevel.id));
+        const existing = existingIndex >= 0 ? campaign.levels[existingIndex] : null;
+        const iconSrc = firstDurable703(
+          await dataURL703(by703('builderLevelIcon')?.files?.[0]),
+          await dataURL703(by703('campaignLevelIcon')?.files?.[0]),
+          state.pendingCampaignIconSrc,
+          existing?.iconSrc
+        );
+        const lawnAssets = await currentAssetBundle703();
+        const world = makeWorldSnapshot703(lawnAssets);
+        const level = normalizeLevelAssets703({
+          ...(existing || {}),
+          id: existing?.id || uid703('level'),
+          name: levelName,
+          iconSrc: iconSrc || existing?.iconSrc || null,
+          gimmick: by703('campaignLevelGimmick')?.value || by703('builderLevelGimmick')?.value || existing?.gimmick || '',
+          allowedPlants: selectedNames703('campaignPlantSelect', 'builderPlantChips', 'plant'),
+          allowedZombies: selectedNames703('campaignZombieSelect', 'builderZombieChips', 'zombie'),
+          lawnSrc: lawnAssets.imageSrc || existing?.lawnSrc || '',
+          musicSrc: lawnAssets.musicSrc || existing?.musicSrc || '',
+          fitMode: lawnAssets.fitMode,
+          world,
+          createdAt: existing?.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }, lawnAssets);
+        campaign.levels ||= [];
+        if (existingIndex >= 0) campaign.levels[existingIndex] = level;
+        else campaign.levels.push(level);
+        state.currentCampaignLevel = level;
+        state.pendingCampaignIconSrc = null;
+        refreshCampaignDropdown703();
+        renderCampaignMap703();
+        if (!silent) toast703(`Saved campaign level: ${levelName}`);
+        return level;
+      }
+
+      function extractCampaigns703(data) {
+        const sources = [];
+        if (data?.campaign) sources.push(data.campaign);
+        if (Array.isArray(data?.campaigns)) sources.push(...data.campaigns);
+        if (Array.isArray(data?.state?.campaigns)) sources.push(...data.state.campaigns);
+        if (Array.isArray(data?.pack?.campaigns)) sources.push(...data.pack.campaigns);
+        if (Array.isArray(data?.project?.campaigns)) sources.push(...data.project.campaigns);
+        return sources.map(normalizeCampaign703);
+      }
+
+      function mergeCampaigns703(incoming) {
+        if (!incoming?.length) return 0;
+        ensureCampaigns703();
+        let added = 0;
+        incoming.forEach((raw, index) => {
+          const campaign = normalizeCampaign703(raw, index);
+          campaign.levels = (campaign.levels || []).map(l => normalizeLevelAssets703(l));
+          const sameId = campaign.id ? state.campaigns.findIndex(c => c.id === campaign.id) : -1;
+          const sameNameWithLevels = sameId < 0 && campaign.name ? state.campaigns.findIndex(c => c.name === campaign.name && (campaign.levels?.length || 0)) : -1;
+          const idx = sameId >= 0 ? sameId : sameNameWithLevels;
+          if (idx >= 0) {
+            const current = state.campaigns[idx];
+            current.name = campaign.name || current.name;
+            current.levels ||= [];
+            (campaign.levels || []).forEach(level => {
+              const li = current.levels.findIndex(l => (level.id && l.id === level.id) || (level.name && l.name === level.name));
+              if (li >= 0) current.levels[li] = level;
+              else current.levels.push(level);
+            });
+          } else {
+            state.campaigns.push(campaign);
+            added++;
+          }
+        });
+        state.activeCampaignIndex = Math.max(0, state.campaigns.length - 1);
+        refreshCampaignDropdown703();
+        renderCampaignMap703();
+        return added;
+      }
+
+      async function applyImportedProjectAssets703(data) {
+        const lawn = data?.lawn || data?.currentWorld?.lawn || data?.world?.lawn || data?.state?.lawn || null;
+        if (lawn && typeof lawn === 'object') {
+          state.lawn = { ...(state.lawn || {}), ...clone703(lawn) };
+          try { if (by703('lawnName')) by703('lawnName').value = state.lawn.name || 'Main Lawn'; } catch {}
+          try { if (by703('lawnFitMode')) by703('lawnFitMode').value = state.lawn.fitMode || 'fitAll'; } catch {}
+          try { state.lawn.image = typeof makeImage === 'function' ? makeImage(state.lawn.imageSrc) : state.lawn.image; } catch {}
+          try { if (typeof setGifLawn === 'function') setGifLawn(state.lawn.imageSrc); } catch {}
+          try { if (typeof applyGifLawnFit === 'function') applyGifLawnFit(); } catch {}
+          try { if (state.lawn.musicSrc && typeof music !== 'undefined') music.src = state.lawn.musicSrc; } catch {}
+        }
+      }
+
+      function wireCampaignControls703() {
+        const select = by703('campaignSelect');
+        if (select && !select.dataset.pb703CampaignFixed) {
+          select.dataset.pb703CampaignFixed = '1';
+          ['focus', 'pointerdown', 'mousedown'].forEach(type => select.addEventListener(type, () => refreshCampaignDropdown703(), true));
+          select.addEventListener('change', e => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            e.stopImmediatePropagation?.();
+            const idx = Number(e.target.value);
+            state.activeCampaignIndex = Number.isFinite(idx) ? Math.max(0, Math.min(ensureCampaigns703().length - 1, idx)) : 0;
+            refreshCampaignDropdown703();
+            renderCampaignMap703();
+            toast703(`Selected campaign: ${activeCampaign703()?.name || 'Campaign'}`);
+          }, true);
+        }
+
+        const newBtn = by703('newCampaign');
+        if (newBtn && !newBtn.dataset.pb703CampaignFixed) {
+          newBtn.dataset.pb703CampaignFixed = '1';
+          newBtn.addEventListener('click', e => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            e.stopImmediatePropagation?.();
+            const name = prompt('New campaign name?', by703('campaignName')?.value || 'New Campaign');
+            if (!name) return;
+            ensureCampaigns703();
+            state.campaigns.push(normalizeCampaign703({ name, levels: [] }, state.campaigns.length));
+            state.activeCampaignIndex = state.campaigns.length - 1;
+            refreshCampaignDropdown703();
+            renderCampaignMap703();
+            toast703(`Created campaign: ${name}`);
+          }, true);
+        }
+
+        ['campaignName', 'builderCampaignName'].forEach(id => {
+          const input = by703(id);
+          if (!input || input.dataset.pb703CampaignFixed) return;
+          input.dataset.pb703CampaignFixed = '1';
+          input.addEventListener('input', () => {
+            const c = activeCampaign703();
+            const value = input.value.trim();
+            if (c && value) c.name = value;
+            refreshCampaignDropdown703();
+          });
+        });
+
+        ['saveCampaignMeta', 'builderSaveCampaignMeta'].forEach(id => {
+          const btn = by703(id);
+          if (!btn || btn.dataset.pb703CampaignFixed) return;
+          btn.dataset.pb703CampaignFixed = '1';
+          btn.addEventListener('click', e => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            e.stopImmediatePropagation?.();
+            const c = activeCampaign703();
+            const value = by703('campaignName')?.value?.trim() || by703('builderCampaignName')?.value?.trim();
+            if (c && value) c.name = value;
+            refreshCampaignDropdown703();
+            renderCampaignMap703();
+            toast703('Campaign name saved');
+          }, true);
+        });
+
+        ['addCampaignLevel', 'builderSaveCampaign', 'levelSaveToCampaign', 'sidebarSaveLevelToCampaign'].forEach(id => {
+          const btn = by703(id);
+          if (!btn || btn.dataset.pb703SaveLevelFixed) return;
+          btn.dataset.pb703SaveLevelFixed = '1';
+          btn.addEventListener('click', e => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            e.stopImmediatePropagation?.();
+            upsertCurrentLevel703({ silent:false });
+          }, true);
+        });
+
+        ['openCampaignMap', 'builderOpenMap'].forEach(id => {
+          const btn = by703(id);
+          if (!btn || btn.dataset.pb703MapFixed) return;
+          btn.dataset.pb703MapFixed = '1';
+          btn.addEventListener('click', () => setTimeout(() => { refreshCampaignDropdown703(); renderCampaignMap703(); by703('pbCampaignModal')?.classList.add('open'); }, 0));
+        });
+
+        const importCampaign = by703('importCampaign');
+        if (importCampaign && !importCampaign.dataset.pb703ImportFixed) {
+          importCampaign.dataset.pb703ImportFixed = '1';
+          importCampaign.addEventListener('change', async e => {
+            e.preventDefault?.();
+            e.stopPropagation?.();
+            e.stopImmediatePropagation?.();
+            const file = e.target.files?.[0];
+            if (!file) return;
+            try {
+              const data = JSON.parse(await file.text());
+              const count = mergeCampaigns703(extractCampaigns703(data));
+              await applyImportedProjectAssets703(data);
+              refreshCampaignDropdown703();
+              renderCampaignMap703();
+              toast703(count || extractCampaigns703(data).length ? 'Campaign imported and added to dropdown' : 'No campaign data found');
+            } catch (err) {
+              toast703('Campaign import failed: ' + err.message);
+            } finally {
+              try { e.target.value = ''; } catch {}
+            }
+          }, true);
+        }
+      }
+
+      async function makeBuildmod703(selectedOnly = false) {
+        const lawnAssets = await currentAssetBundle703();
+        const currentWorld = makeWorldSnapshot703(lawnAssets);
+        if (!selectedOnly) await upsertCurrentLevel703({ silent:true });
+        const selectedIndex = Number(by703('templateSelect')?.value) || 0;
+        const selectedTemplate = state.templates?.[selectedIndex];
+        const campaigns = (state.campaigns || []).map(c => {
+          const copy = normalizeCampaign703(c);
+          copy.levels = (copy.levels || []).map(level => normalizeLevelAssets703(level, lawnAssets));
+          return copy;
+        });
+        return {
+          type: 'project-build-mod-package',
+          packageVersion: 3,
+          engine: 'Project: BUILD',
+          engineVersion: '7.0.3',
+          name: by703('pb55ModName')?.value || by703('pb60PackName')?.value || by703('campaignName')?.value || 'Project BUILD Mod',
+          exportedAt: new Date().toISOString(),
+          templates: selectedOnly && selectedTemplate ? [clone703(selectedTemplate)] : clone703(state.templates || []),
+          campaigns: selectedOnly ? [] : campaigns,
+          lawn: clone703(currentWorld.lawn || state.lawn || {}),
+          currentWorld,
+          currentBackground: clone703(currentWorld.lawn || {}),
+          boostTemplates: selectedOnly ? [] : clone703(state.boostTemplates || []),
+          graphics: selectedOnly ? [] : clone703(state.pb55Graphics || []),
+          bossBlueprints: selectedOnly ? [] : clone703(state.pb55BossBlueprints || []),
+          timelineEvents: selectedOnly ? [] : clone703(state.timelineEvents || []),
+          pb556LevelRules: clone703(state.pb556?.rules || {}),
+          pb556BoardItems: clone703(state.pb556?.boardItems || []),
+          pb60: selectedOnly ? undefined : clone703(state.pb60 || {}),
+          compatibility: {
+            legacyJsonStillSupported: true,
+            savesCampaignLevels: true,
+            embedsCurrentBackground: true,
+            embedsLevelLawnAndMusic: true,
+            savesSeedPacketBackgrounds: true,
+            notes: '7.0.3 buildmods include current backgrounds, campaigns, per-level lawn/music, and template seed packet backgrounds.'
+          }
+        };
+      }
+
+      async function exportBuildmod703(selectedOnly, e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+        try {
+          const pkg = await makeBuildmod703(selectedOnly);
+          const filenameBase = selectedOnly ? `${pkg.templates?.[0]?.name || pkg.name}.template` : pkg.name;
+          download703(`${safeFile703(filenameBase, selectedOnly ? 'template' : 'project-build-mod')}.buildmod`, pkg, 'application/x-project-build-mod');
+          const status = by703('pb55ModStatus') || by703('pb60PackStatus');
+          if (status) status.textContent = selectedOnly ? 'Exported selected template .buildmod with packet background data.' : 'Exported full .buildmod with current backgrounds and campaigns.';
+          toast703(selectedOnly ? 'Template buildmod exported' : 'Buildmod exported with backgrounds and campaigns');
+        } catch (err) {
+          toast703('Buildmod export failed: ' + err.message);
+        }
+        return false;
+      }
+
+      async function importBuildmod703(e) {
+        const file = e?.target?.files?.[0];
+        if (!file) return;
+        e.preventDefault?.();
+        e.stopPropagation?.();
+        e.stopImmediatePropagation?.();
+        try {
+          const data = JSON.parse(await file.text());
+          if (Array.isArray(data.templates)) {
+            state.templates ||= [];
+            data.templates.forEach(t => {
+              const idx = state.templates.findIndex(x => x?.name && t?.name && x.name === t.name);
+              if (idx >= 0) state.templates[idx] = { ...state.templates[idx], ...t };
+              else state.templates.push(t);
+            });
+          }
+          mergeCampaigns703(extractCampaigns703(data));
+          await applyImportedProjectAssets703(data);
+          try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+          try { if (window.renderProjectBuildPackets) window.renderProjectBuildPackets(); } catch {}
+          refreshCampaignDropdown703();
+          renderCampaignMap703();
+          const status = by703('pb55ModStatus') || by703('pb60PackStatus');
+          if (status) status.textContent = `Imported .buildmod: ${data.name || file.name}`;
+          toast703('Buildmod imported with campaigns/backgrounds');
+        } catch (err) {
+          toast703('Buildmod import failed: ' + err.message);
+        } finally {
+          try { e.target.value = ''; } catch {}
+        }
+      }
+
+      function wireBuildmodControls703() {
+        [['pb55ExportMod', false], ['pb60ExportPack', false]].forEach(([id, selected]) => {
+          const btn = by703(id);
+          if (!btn || btn.dataset.pb703BuildmodFixed) return;
+          btn.dataset.pb703BuildmodFixed = '1';
+          btn.addEventListener('click', e => exportBuildmod703(selected, e), true);
+        });
+        const selected = by703('pb55ExportSelectedTemplate');
+        if (selected && !selected.dataset.pb703BuildmodFixed) {
+          selected.dataset.pb703BuildmodFixed = '1';
+          selected.addEventListener('click', e => exportBuildmod703(true, e), true);
+        }
+        ['pb55ImportMod', 'pb60ImportPack'].forEach(id => {
+          const input = by703(id);
+          if (!input || input.dataset.pb703BuildmodFixed) return;
+          input.dataset.pb703BuildmodFixed = '1';
+          input.addEventListener('change', importBuildmod703, true);
+        });
+      }
+
+      function boot703() {
+        installSeedPacketForm703();
+        patchTemplateSaveLoad703();
+        patchPacketRenderer703();
+        wireCampaignControls703();
+        wireBuildmodControls703();
+        refreshCampaignDropdown703();
+        renderCampaignMap703();
+      }
+
+      boot703();
+      setTimeout(boot703, 250);
+      setTimeout(boot703, 900);
+
+      window.ProjectBuild703CampaignBuildmodSeedPacketFix = {
+        version: '7.0.3-campaign-buildmod-seed-packet-fix',
+        refreshCampaignDropdown: refreshCampaignDropdown703,
+        renderCampaignMap: renderCampaignMap703,
+        upsertCurrentLevel: upsertCurrentLevel703,
+        exportBuildmod: exportBuildmod703,
+        decoratePackets: decoratePacketBars703
+      };
+    })();
+
   </script>
 
 </body>
