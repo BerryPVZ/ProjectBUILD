@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 7.0.4 - Buildmod Export Fix</title>
+  <title>Project: BUILD 7.0.6 - Buildmod Import Lawn Fix</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1875,8 +1875,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.4</span></h1>
-      <p>Project: BUILD 7.0 sandbox. This update adds custom difficulty text, custom level intros, campaign map backgrounds, loading screens, and new base templates while keeping the 6.0 creator systems intact.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.6</span></h1>
+      <p>Project: BUILD 7.0.6 sandbox. This update adds custom difficulty text, custom level intros, campaign map backgrounds, loading screens, and new base templates while keeping the 6.0 creator systems intact.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -19070,7 +19070,79 @@ Click me again to advance.</textarea>
         return added;
       }
 
+      function importedLevelLawnFallback703(data) {
+        const candidates = [];
+        const pushLevel = level => {
+          if (level && typeof level === 'object') candidates.push(level);
+        };
+        const pushCampaign = campaign => {
+          if (!campaign || typeof campaign !== 'object') return;
+          (Array.isArray(campaign.levels) ? campaign.levels : []).forEach(pushLevel);
+        };
+
+        pushLevel(data?.currentCampaignLevel);
+        pushLevel(data?.level);
+        pushLevel(data?.currentLevel);
+        pushLevel(data?.project?.currentLevel);
+        pushLevel(data?.pack?.currentLevel);
+        pushCampaign(data?.campaign);
+        (Array.isArray(data?.campaigns) ? data.campaigns : []).forEach(pushCampaign);
+        (Array.isArray(data?.state?.campaigns) ? data.state.campaigns : []).forEach(pushCampaign);
+        (Array.isArray(data?.project?.campaigns) ? data.project.campaigns : []).forEach(pushCampaign);
+        (Array.isArray(data?.pack?.campaigns) ? data.pack.campaigns : []).forEach(pushCampaign);
+
+        for (const level of candidates) {
+          const worldLawn = level?.world?.lawn || {};
+          const directLawn = level?.lawn || {};
+          const imageSrc = firstData703(
+            level?.lawnSrc,
+            directLawn.imageSrc,
+            directLawn.src,
+            directLawn.url,
+            worldLawn.imageSrc,
+            worldLawn.src,
+            worldLawn.url
+          ) || firstDurable703(
+            level?.lawnSrc,
+            directLawn.imageSrc,
+            directLawn.src,
+            directLawn.url,
+            worldLawn.imageSrc,
+            worldLawn.src,
+            worldLawn.url
+          );
+          const musicSrc = firstData703(
+            level?.musicSrc,
+            directLawn.musicSrc,
+            directLawn.bgmSrc,
+            directLawn.audioSrc,
+            worldLawn.musicSrc,
+            worldLawn.bgmSrc,
+            worldLawn.audioSrc
+          ) || firstDurable703(
+            level?.musicSrc,
+            directLawn.musicSrc,
+            directLawn.bgmSrc,
+            directLawn.audioSrc,
+            worldLawn.musicSrc,
+            worldLawn.bgmSrc,
+            worldLawn.audioSrc
+          );
+          if (imageSrc || musicSrc) {
+            return {
+              name: directLawn.name || worldLawn.name || level?.name || 'Imported Level Lawn',
+              imageSrc,
+              musicSrc,
+              fitMode: level?.fitMode || directLawn.fitMode || worldLawn.fitMode || 'fitAll',
+              _fromImportedLevel: true
+            };
+          }
+        }
+        return {};
+      }
+
       async function applyImportedProjectAssets703(data) {
+        const levelLawnFallback = importedLevelLawnFallback703(data);
         const sourceLawn = [
           data?.lawn,
           data?.currentBackground,
@@ -19078,8 +19150,9 @@ Click me again to advance.</textarea>
           data?.world?.lawn,
           data?.state?.lawn,
           data?.project?.lawn,
-          data?.pack?.lawn
-        ].find(x => x && typeof x === 'object') || {};
+          data?.pack?.lawn,
+          levelLawnFallback
+        ].find(x => x && typeof x === 'object' && (Object.keys(x).length || x.imageSrc || x.musicSrc)) || {};
 
         const imageSrc = firstData703(
           data?.currentBase64Lawn,
@@ -19131,11 +19204,24 @@ Click me again to advance.</textarea>
           try {
             if (state.lawn.imageSrc) {
               const gif = typeof isGifSrc === 'function' ? isGifSrc(state.lawn.imageSrc) : /^data:image\/gif/i.test(state.lawn.imageSrc);
-              state.lawn.image = gif ? null : (typeof makeImage === 'function' ? makeImage(state.lawn.imageSrc) : state.lawn.image);
-              if (typeof setGifLawn === 'function') setGifLawn(gif ? state.lawn.imageSrc : null);
+              if (gif) {
+                state.lawn.image = null;
+                if (typeof setGifLawn === 'function') setGifLawn(state.lawn.imageSrc);
+              } else {
+                if (typeof setGifLawn === 'function') setGifLawn(null);
+                state.lawn.image = typeof makeImage === 'function' ? makeImage(state.lawn.imageSrc) : state.lawn.image;
+                if (state.lawn.image) {
+                  state.lawn.image.onload = () => {
+                    try { if (typeof resizeCanvas === 'function') resizeCanvas(); } catch {}
+                    try { if (typeof draw === 'function') draw(); } catch {}
+                  };
+                }
+              }
             }
           } catch {}
           try { if (typeof applyGifLawnFit === 'function') applyGifLawnFit(); } catch {}
+          try { if (typeof resizeCanvas === 'function') resizeCanvas(); } catch {}
+          try { if (typeof draw === 'function') draw(); } catch {}
           try { if (state.lawn.musicSrc && typeof music !== 'undefined') music.src = state.lawn.musicSrc; } catch {}
         }
       }
@@ -19405,7 +19491,7 @@ Click me again to advance.</textarea>
           type: 'project-build-mod-package',
           packageVersion: 4,
           engine: 'Project: BUILD',
-          engineVersion: '7.0.5',
+          engineVersion: '7.0.6',
           name: by703('pb55ModName')?.value || by703('pb60PackName')?.value || by703('campaignName')?.value || 'Project BUILD Mod',
           exportedAt: new Date().toISOString(),
           templates: selectedOnly && selectedTemplate ? [clone703(selectedTemplate)] : clone703(state.templates || []),
@@ -19433,7 +19519,7 @@ Click me again to advance.</textarea>
             embedsCurrentBase64LawnAndMusic: true,
             embedsLevelLawnAndMusic: true,
             savesSeedPacketBackgrounds: true,
-            notes: '7.0.5 buildmods include the active base64 lawn/music, current backgrounds, campaigns, per-level lawn/music, and template seed packet backgrounds.'
+            notes: '7.0.6 buildmods include the active base64 lawn/music, current backgrounds, campaigns, per-level lawn/music, and template seed packet backgrounds.'
           }
         };
         return compactBuildmodPackage703(pkg);
@@ -19472,7 +19558,13 @@ Click me again to advance.</textarea>
               else state.templates.push(t);
             });
           }
-          mergeCampaigns703(extractCampaigns703(data));
+          const importedCampaigns703 = extractCampaigns703(data);
+          mergeCampaigns703(importedCampaigns703);
+          if (importedCampaigns703[0]?.levels?.[0]) {
+            const importedLevelName703 = importedCampaigns703[0].levels[0].name;
+            const activeImportedCampaign703 = state.campaigns?.[state.activeCampaignIndex || 0];
+            state.currentCampaignLevel = activeImportedCampaign703?.levels?.find(l => l?.name === importedLevelName703) || activeImportedCampaign703?.levels?.[0] || importedCampaigns703[0].levels[0];
+          }
           await applyImportedProjectAssets703(data);
           try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
           try { if (window.renderProjectBuildPackets) window.renderProjectBuildPackets(); } catch {}
@@ -19523,7 +19615,7 @@ Click me again to advance.</textarea>
       setTimeout(boot703, 900);
 
       window.ProjectBuild703CampaignBuildmodSeedPacketFix = {
-        version: '7.0.5-buildmod-base64-lawn-music-fix',
+        version: '7.0.6-buildmod-imported-level-lawn-fix',
         refreshCampaignDropdown: refreshCampaignDropdown703,
         renderCampaignMap: renderCampaignMap703,
         upsertCurrentLevel: upsertCurrentLevel703,
