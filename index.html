@@ -18388,6 +18388,217 @@ Click me again to advance.</textarea>
       window.ProjectBuild701CampaignNameFix = { syncFromInput };
     })();
 
+
+    /* Project: BUILD 7.0.2 HP-dependent image runtime fix
+       Makes HP sprite stages work for newly spawned, already placed, imported, and campaign-restored entities. */
+    (function installProjectBuild702HpDependentImageFix() {
+      if (window.ProjectBuild702HpDependentImageFix) return;
+
+      const by702 = id => document.getElementById(id);
+      const toast702 = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const clone702 = obj => {
+        try { return structuredClone(obj); }
+        catch {
+          try { return JSON.parse(JSON.stringify(obj)); }
+          catch { return obj; }
+        }
+      };
+
+      function normalizeHpStages702(source) {
+        const raw = source?.hpSprites
+          || source?.hpSpriteStages
+          || source?.hpDependentImages
+          || source?.damageSprites
+          || source?.degradeSprites
+          || [];
+        const list = Array.isArray(raw)
+          ? raw
+          : (raw && typeof raw === 'object'
+            ? Object.entries(raw).map(([pct, value]) => ({ pct, src: typeof value === 'string' ? value : (value?.src || value?.imageSrc || value?.url) }))
+            : []);
+        const seen = new Set();
+        return list.map((stage, index) => {
+          const pct = Math.max(1, Math.min(100, Number(stage?.pct ?? stage?.hpPct ?? stage?.threshold ?? stage?.percent ?? stage?.at ?? [66, 33, 15][index]) || 0));
+          const src = String(stage?.src || stage?.imageSrc || stage?.image || stage?.url || stage?.data || '').trim();
+          return src ? { pct, src } : null;
+        }).filter(Boolean).filter(stage => {
+          const key = `${stage.pct}|${stage.src}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        }).sort((a, b) => b.pct - a.pct);
+      }
+
+      function hpStageKey702(stages) {
+        return JSON.stringify((stages || []).map(s => ({ pct: Number(s.pct) || 0, src: s.src || '' })));
+      }
+
+      function templateForEntity702(e) {
+        if (!e || !Array.isArray(state?.templates)) return null;
+        return state.templates.find(t => t && t.name === e.name && (t.side === e.side || t.type === e.type || t.role === e.role))
+          || state.templates.find(t => t && t.name === e.name)
+          || null;
+      }
+
+      function ensureHpSpriteRuntime702(e, force = false) {
+        if (!e) return null;
+        const ownStages = normalizeHpStages702(e);
+        const templateStages = normalizeHpStages702(templateForEntity702(e));
+        const stages = ownStages.length ? ownStages : templateStages;
+        if (!stages.length) {
+          e.hpSprites = [];
+          e.hpSpriteImages = [];
+          e._pb702HpSpriteKey = '';
+          return null;
+        }
+
+        e.hpSprites = clone702(stages);
+        const key = hpStageKey702(stages);
+        if (force || e._pb702HpSpriteKey !== key || !Array.isArray(e.hpSpriteImages)) {
+          e.hpSpriteImages = stages.map(stage => ({
+            pct: stage.pct,
+            src: stage.src,
+            image: typeof makeImage === 'function' ? makeImage(stage.src) : null,
+            gifEl: typeof makeGifElement === 'function' ? makeGifElement(stage.src) : null
+          })).sort((a, b) => a.pct - b.pct);
+          e._pb702HpSpriteKey = key;
+        }
+        return e.hpSpriteImages;
+      }
+
+      function currentHpStage702(e) {
+        if (!e || e.dead) return null;
+        const stages = ensureHpSpriteRuntime702(e);
+        if (!stages?.length) return null;
+        const maxHp = Math.max(1, Number(e.maxHp ?? e.hp ?? 1) || 1);
+        const hp = Math.max(0, Number(e.hp ?? maxHp) || 0);
+        const pct = (hp / maxHp) * 100;
+        return stages.find(stage => pct <= stage.pct) || null;
+      }
+
+      function hasRealActionOrDeathSprite702(e) {
+        if (!e) return false;
+        if (e.visualState === 'death') return !!(e.deathImage || e.deathGifEl || e.deathSrc);
+        if (e.visualState === 'action') return !!(e.actionImage || e.actionGifEl || e.actionSrc);
+        return false;
+      }
+
+      if (typeof getVisualImage === 'function' && !getVisualImage.pb702HpSpritesWrapped) {
+        const oldGetVisualImage702 = getVisualImage;
+        getVisualImage = function(e) {
+          if (!e || hasRealActionOrDeathSprite702(e)) return oldGetVisualImage702.apply(this, arguments);
+          const stage = currentHpStage702(e);
+          if (stage?.image) return stage.image;
+          if (stage?.gifEl) return null;
+          return oldGetVisualImage702.apply(this, arguments);
+        };
+        getVisualImage.pb702HpSpritesWrapped = true;
+      }
+
+      if (typeof getVisualGif === 'function' && !getVisualGif.pb702HpSpritesWrapped) {
+        const oldGetVisualGif702 = getVisualGif;
+        getVisualGif = function(e) {
+          if (!e || hasRealActionOrDeathSprite702(e)) return oldGetVisualGif702.apply(this, arguments);
+          const stage = currentHpStage702(e);
+          if (stage?.gifEl) return stage.gifEl;
+          if (stage?.image) return null;
+          return oldGetVisualGif702.apply(this, arguments);
+        };
+        getVisualGif.pb702HpSpritesWrapped = true;
+      }
+
+      if (typeof entityFromTemplate === 'function' && !entityFromTemplate.pb702HpSpritesWrapped) {
+        const oldEntityFromTemplate702 = entityFromTemplate;
+        entityFromTemplate = function(template, x, y, override = {}) {
+          const ent = oldEntityFromTemplate702.apply(this, arguments);
+          const merged = { ...(template || {}), ...(override || {}) };
+          const stages = normalizeHpStages702(merged);
+          if (stages.length) ent.hpSprites = clone702(stages);
+          ensureHpSpriteRuntime702(ent, true);
+          return ent;
+        };
+        entityFromTemplate.pb702HpSpritesWrapped = true;
+      }
+
+      if (typeof serializableEntity === 'function' && !serializableEntity.pb702HpSpritesWrapped) {
+        const oldSerializableEntity702 = serializableEntity;
+        serializableEntity = function(e) {
+          const out = oldSerializableEntity702.apply(this, arguments) || {};
+          const stages = normalizeHpStages702(e);
+          if (stages.length) out.hpSprites = clone702(stages);
+          delete out.hpSpriteImages;
+          delete out._pb702HpSpriteKey;
+          delete out._pb701HpSpriteKey;
+          return out;
+        };
+        serializableEntity.pb702HpSpritesWrapped = true;
+      }
+
+      function readHpStagesTextarea702() {
+        const raw = by702('pb601HpStagesJson')?.value?.trim();
+        if (!raw) return [];
+        try { return normalizeHpStages702({ hpSprites: JSON.parse(raw) }); }
+        catch { return []; }
+      }
+
+      function syncHpStageForm702(stages) {
+        const normalized = normalizeHpStages702({ hpSprites: stages });
+        if (typeof currentAssetCache !== 'undefined') currentAssetCache.hpStageSrcs = [null, null, null];
+        normalized.slice(0, 3).forEach((stage, index) => {
+          const pctInput = by702(`pb601HpStage${index + 1}Pct`);
+          if (pctInput) pctInput.value = stage.pct;
+          if (typeof currentAssetCache !== 'undefined') currentAssetCache.hpStageSrcs[index] = stage.src;
+        });
+        const json = by702('pb601HpStagesJson');
+        if (json) json.value = normalized.length ? JSON.stringify(normalized, null, 2) : '';
+      }
+
+      function patchHpSpriteBuilder702() {
+        const btn = by702('pb601BuildHpStages');
+        const json = by702('pb601HpStagesJson');
+        if (!btn || !json || btn.pb702HpSpritesWrapped) return false;
+        btn.onclick = () => {
+          const existing = readHpStagesTextarea702();
+          const stages = [1, 2, 3].map((n, index) => {
+            const pct = Math.max(1, Math.min(100, Number(by702(`pb601HpStage${n}Pct`)?.value) || [66, 33, 15][index]));
+            const src = (typeof currentAssetCache !== 'undefined' && currentAssetCache.hpStageSrcs?.[index]) || existing[index]?.src || '';
+            return src ? { pct, src } : null;
+          }).filter(Boolean).sort((a, b) => b.pct - a.pct);
+          json.value = stages.length ? JSON.stringify(stages, null, 2) : '';
+          if (typeof currentAssetCache !== 'undefined') currentAssetCache.hpStageSrcs = [0, 1, 2].map(i => stages[i]?.src || null);
+          toast702(stages.length ? 'HP sprite stages refreshed and preserved' : 'Load at least one stage sprite first');
+        };
+        btn.pb702HpSpritesWrapped = true;
+        return true;
+      }
+
+      if (typeof loadTemplateToForm === 'function' && !loadTemplateToForm.pb702HpSpritesWrapped) {
+        const oldLoadTemplateToForm702 = loadTemplateToForm;
+        loadTemplateToForm = function(t) {
+          const result = oldLoadTemplateToForm702.apply(this, arguments);
+          const stages = normalizeHpStages702(t || {});
+          if (stages.length) syncHpStageForm702(stages);
+          patchHpSpriteBuilder702();
+          return result;
+        };
+        loadTemplateToForm.pb702HpSpritesWrapped = true;
+      }
+
+      patchHpSpriteBuilder702();
+      setTimeout(() => {
+        patchHpSpriteBuilder702();
+        try { (state.entities || []).forEach(e => ensureHpSpriteRuntime702(e, true)); } catch {}
+      }, 250);
+
+      window.ProjectBuild702HpDependentImageFix = {
+        version: '7.0.2-hp-dependent-image-fix',
+        normalizeHpStages: normalizeHpStages702,
+        hydrateEntity: ensureHpSpriteRuntime702,
+        currentStage: currentHpStage702,
+        syncHpStageForm: syncHpStageForm702
+      };
+    })();
+
   </script>
 
 </body>
