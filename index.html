@@ -18618,8 +18618,14 @@ Click me again to advance.</textarea>
       const uid703 = prefix => `${prefix || 'id'}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
       const esc703 = text => String(text ?? '').replace(/[&<>'"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', "'":'&#39;', '"':'&quot;' }[c]));
       const safeFile703 = (name, fallback = 'project-build') => String(name || fallback).trim().replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '') || fallback;
-      const isDurableSrc703 = src => typeof src === 'string' && !!src.trim() && !/^blob:/i.test(src.trim()) && !/^about:/i.test(src.trim());
-      const firstDurable703 = (...values) => values.find(isDurableSrc703) || '';
+      const cleanSrc703 = src => typeof src === 'string' ? src.trim() : '';
+      const isDurableSrc703 = src => {
+        const value = cleanSrc703(src);
+        return !!value && !/^blob:/i.test(value) && !/^about:/i.test(value);
+      };
+      const isDataSrc703 = src => /^data:/i.test(cleanSrc703(src));
+      const firstDurable703 = (...values) => values.map(cleanSrc703).find(isDurableSrc703) || '';
+      const firstData703 = (...values) => values.map(cleanSrc703).find(isDataSrc703) || '';
       const dataURL703 = file => new Promise(resolve => {
         if (!file) return resolve('');
         const reader = new FileReader();
@@ -18870,28 +18876,82 @@ Click me again to advance.</textarea>
         const musicFile = by703('lawnMusic')?.files?.[0] || null;
         const builderLawnFile = by703('builderLevelLawn')?.files?.[0] || null;
         const builderMusicFile = by703('builderLevelMusic')?.files?.[0] || null;
-        const imageSrc = firstDurable703(
-          await dataURL703(builderLawnFile),
-          await dataURL703(lawnFile),
+
+        // Read the file inputs every time export/save runs. File inputs themselves are not
+        // serializable, so this is the only reliable way to embed the currently chosen lawn/music.
+        const builderLawnData = await dataURL703(builderLawnFile);
+        const mainLawnData = await dataURL703(lawnFile);
+        const builderMusicData = await dataURL703(builderMusicFile);
+        const mainMusicData = await dataURL703(musicFile);
+
+        const level = state.currentCampaignLevel || null;
+        const worldLawn = level?.world?.lawn || {};
+        const liveGifSrc = by703('gifLawn')?.getAttribute('src') || by703('gifLawn')?.src || '';
+        const liveMusicSrc = (typeof music !== 'undefined' && music) ? (music.currentSrc || music.src || '') : '';
+
+        // Prefer actual base64/data URLs. Fall back to durable non-blob strings only if no
+        // base64 value exists, so .buildmod files keep the real embedded assets when available.
+        const imageSrc = firstData703(
+          builderLawnData,
+          mainLawnData,
           state.pendingLevelLawnSrc,
-          state.currentCampaignLevel?.lawnSrc,
-          state.currentCampaignLevel?.world?.lawn?.imageSrc,
-          state.lawn?.imageSrc
+          level?.lawnSrc,
+          worldLawn.imageSrc,
+          worldLawn.src,
+          worldLawn.url,
+          state.lawn?.imageSrc,
+          liveGifSrc
+        ) || firstDurable703(
+          builderLawnData,
+          mainLawnData,
+          state.pendingLevelLawnSrc,
+          level?.lawnSrc,
+          worldLawn.imageSrc,
+          worldLawn.src,
+          worldLawn.url,
+          state.lawn?.imageSrc,
+          liveGifSrc
         );
-        const musicSrc = firstDurable703(
-          await dataURL703(builderMusicFile),
-          await dataURL703(musicFile),
+
+        const musicSrc = firstData703(
+          builderMusicData,
+          mainMusicData,
           state.pendingLevelMusicSrc,
-          state.currentCampaignLevel?.musicSrc,
-          state.currentCampaignLevel?.world?.lawn?.musicSrc,
-          state.lawn?.musicSrc
+          level?.musicSrc,
+          worldLawn.musicSrc,
+          worldLawn.bgmSrc,
+          worldLawn.audioSrc,
+          state.lawn?.musicSrc,
+          liveMusicSrc
+        ) || firstDurable703(
+          builderMusicData,
+          mainMusicData,
+          state.pendingLevelMusicSrc,
+          level?.musicSrc,
+          worldLawn.musicSrc,
+          worldLawn.bgmSrc,
+          worldLawn.audioSrc,
+          state.lawn?.musicSrc,
+          liveMusicSrc
         );
-        return {
-          name: by703('lawnName')?.value || state.lawn?.name || 'Main Lawn',
+
+        const bundle = {
+          name: by703('lawnName')?.value || state.lawn?.name || worldLawn.name || 'Main Lawn',
           imageSrc,
           musicSrc,
-          fitMode: by703('lawnFitMode')?.value || state.lawn?.fitMode || 'fitAll'
+          fitMode: by703('lawnFitMode')?.value || state.lawn?.fitMode || worldLawn.fitMode || 'fitAll'
         };
+
+        // Keep state in sync before serializableState()/world snapshots are captured.
+        state.lawn ||= {};
+        state.lawn.name = bundle.name;
+        state.lawn.fitMode = bundle.fitMode;
+        if (bundle.imageSrc) state.lawn.imageSrc = bundle.imageSrc;
+        if (bundle.musicSrc) state.lawn.musicSrc = bundle.musicSrc;
+        if (builderLawnData || mainLawnData) state.pendingLevelLawnSrc = bundle.imageSrc;
+        if (builderMusicData || mainMusicData) state.pendingLevelMusicSrc = bundle.musicSrc;
+
+        return bundle;
       }
 
       function makeWorldSnapshot703(lawnAssets) {
@@ -19011,13 +19071,70 @@ Click me again to advance.</textarea>
       }
 
       async function applyImportedProjectAssets703(data) {
-        const lawn = data?.lawn || data?.currentWorld?.lawn || data?.world?.lawn || data?.state?.lawn || null;
-        if (lawn && typeof lawn === 'object') {
-          state.lawn = { ...(state.lawn || {}), ...clone703(lawn) };
+        const sourceLawn = [
+          data?.lawn,
+          data?.currentBackground,
+          data?.currentWorld?.lawn,
+          data?.world?.lawn,
+          data?.state?.lawn,
+          data?.project?.lawn,
+          data?.pack?.lawn
+        ].find(x => x && typeof x === 'object') || {};
+
+        const imageSrc = firstData703(
+          data?.currentBase64Lawn,
+          data?.currentLawnSrc,
+          data?.mainLawnSrc,
+          data?.lawnImageSrc,
+          sourceLawn.imageSrc,
+          sourceLawn.src,
+          sourceLawn.url
+        ) || firstDurable703(
+          data?.currentBase64Lawn,
+          data?.currentLawnSrc,
+          data?.mainLawnSrc,
+          data?.lawnImageSrc,
+          sourceLawn.imageSrc,
+          sourceLawn.src,
+          sourceLawn.url
+        );
+
+        const musicSrc = firstData703(
+          data?.currentBase64Music,
+          data?.currentMusicSrc,
+          data?.mainMusicSrc,
+          data?.lawnMusicSrc,
+          sourceLawn.musicSrc,
+          sourceLawn.bgmSrc,
+          sourceLawn.audioSrc
+        ) || firstDurable703(
+          data?.currentBase64Music,
+          data?.currentMusicSrc,
+          data?.mainMusicSrc,
+          data?.lawnMusicSrc,
+          sourceLawn.musicSrc,
+          sourceLawn.bgmSrc,
+          sourceLawn.audioSrc
+        );
+
+        if (Object.keys(sourceLawn).length || imageSrc || musicSrc) {
+          state.lawn = { ...(state.lawn || {}), ...clone703(sourceLawn) };
+          state.lawn.name = sourceLawn.name || state.lawn.name || 'Main Lawn';
+          state.lawn.fitMode = sourceLawn.fitMode || state.lawn.fitMode || 'fitAll';
+          if (imageSrc) state.lawn.imageSrc = imageSrc;
+          if (musicSrc) state.lawn.musicSrc = musicSrc;
+          state.pendingLevelLawnSrc = state.lawn.imageSrc || state.pendingLevelLawnSrc || '';
+          state.pendingLevelMusicSrc = state.lawn.musicSrc || state.pendingLevelMusicSrc || '';
+
           try { if (by703('lawnName')) by703('lawnName').value = state.lawn.name || 'Main Lawn'; } catch {}
           try { if (by703('lawnFitMode')) by703('lawnFitMode').value = state.lawn.fitMode || 'fitAll'; } catch {}
-          try { state.lawn.image = typeof makeImage === 'function' ? makeImage(state.lawn.imageSrc) : state.lawn.image; } catch {}
-          try { if (typeof setGifLawn === 'function') setGifLawn(state.lawn.imageSrc); } catch {}
+          try {
+            if (state.lawn.imageSrc) {
+              const gif = typeof isGifSrc === 'function' ? isGifSrc(state.lawn.imageSrc) : /^data:image\/gif/i.test(state.lawn.imageSrc);
+              state.lawn.image = gif ? null : (typeof makeImage === 'function' ? makeImage(state.lawn.imageSrc) : state.lawn.image);
+              if (typeof setGifLawn === 'function') setGifLawn(gif ? state.lawn.imageSrc : null);
+            }
+          } catch {}
           try { if (typeof applyGifLawnFit === 'function') applyGifLawnFit(); } catch {}
           try { if (state.lawn.musicSrc && typeof music !== 'undefined') music.src = state.lawn.musicSrc; } catch {}
         }
@@ -19279,18 +19396,29 @@ Click me again to advance.</textarea>
           copy.levels = (copy.levels || []).map(level => normalizeLevelAssets703(level, lawnAssets));
           return copy;
         });
-        return {
+        const currentLawn = clone703(currentWorld.lawn || state.lawn || {});
+        if (lawnAssets.imageSrc) currentLawn.imageSrc = lawnAssets.imageSrc;
+        if (lawnAssets.musicSrc) currentLawn.musicSrc = lawnAssets.musicSrc;
+        currentLawn.fitMode = lawnAssets.fitMode || currentLawn.fitMode || 'fitAll';
+
+        const pkg = {
           type: 'project-build-mod-package',
-          packageVersion: 3,
+          packageVersion: 4,
           engine: 'Project: BUILD',
-          engineVersion: '7.0.3',
+          engineVersion: '7.0.5',
           name: by703('pb55ModName')?.value || by703('pb60PackName')?.value || by703('campaignName')?.value || 'Project BUILD Mod',
           exportedAt: new Date().toISOString(),
           templates: selectedOnly && selectedTemplate ? [clone703(selectedTemplate)] : clone703(state.templates || []),
           campaigns: selectedOnly ? [] : campaigns,
-          lawn: clone703(currentWorld.lawn || state.lawn || {}),
+          lawn: currentLawn,
           currentWorld,
-          currentBackground: clone703(currentWorld.lawn || {}),
+          currentBackground: currentLawn,
+          currentLawnSrc: currentLawn.imageSrc || '',
+          currentMusicSrc: currentLawn.musicSrc || '',
+          currentBase64Lawn: currentLawn.imageSrc || '',
+          currentBase64Music: currentLawn.musicSrc || '',
+          mainLawnSrc: currentLawn.imageSrc || '',
+          mainMusicSrc: currentLawn.musicSrc || '',
           boostTemplates: selectedOnly ? [] : clone703(state.boostTemplates || []),
           graphics: selectedOnly ? [] : clone703(state.pb55Graphics || []),
           bossBlueprints: selectedOnly ? [] : clone703(state.pb55BossBlueprints || []),
@@ -19302,9 +19430,10 @@ Click me again to advance.</textarea>
             legacyJsonStillSupported: true,
             savesCampaignLevels: true,
             embedsCurrentBackground: true,
+            embedsCurrentBase64LawnAndMusic: true,
             embedsLevelLawnAndMusic: true,
             savesSeedPacketBackgrounds: true,
-            notes: '7.0.3 buildmods include current backgrounds, campaigns, per-level lawn/music, and template seed packet backgrounds.'
+            notes: '7.0.5 buildmods include the active base64 lawn/music, current backgrounds, campaigns, per-level lawn/music, and template seed packet backgrounds.'
           }
         };
         return compactBuildmodPackage703(pkg);
@@ -19319,8 +19448,8 @@ Click me again to advance.</textarea>
           const filenameBase = selectedOnly ? `${pkg.templates?.[0]?.name || pkg.name}.template` : pkg.name;
           download703(`${safeFile703(filenameBase, selectedOnly ? 'template' : 'project-build-mod')}.buildmod`, pkg, 'application/x-project-build-mod');
           const status = by703('pb55ModStatus') || by703('pb60PackStatus');
-          if (status) status.textContent = selectedOnly ? 'Exported selected template .buildmod with packet background data.' : 'Exported full .buildmod with current backgrounds and campaigns.';
-          toast703(selectedOnly ? 'Template buildmod exported' : 'Buildmod exported with backgrounds and campaigns');
+          if (status) status.textContent = selectedOnly ? 'Exported selected template .buildmod with packet background data.' : 'Exported full .buildmod with current base64 lawn/music, backgrounds, and campaigns.';
+          toast703(selectedOnly ? 'Template buildmod exported' : 'Buildmod exported with current base64 lawn/music');
         } catch (err) {
           toast703('Buildmod export failed: ' + err.message);
         }
@@ -19351,7 +19480,7 @@ Click me again to advance.</textarea>
           renderCampaignMap703();
           const status = by703('pb55ModStatus') || by703('pb60PackStatus');
           if (status) status.textContent = `Imported .buildmod: ${data.name || file.name}`;
-          toast703('Buildmod imported with campaigns/backgrounds');
+          toast703('Buildmod imported with current base64 lawn/music');
         } catch (err) {
           toast703('Buildmod import failed: ' + err.message);
         } finally {
@@ -19394,7 +19523,7 @@ Click me again to advance.</textarea>
       setTimeout(boot703, 900);
 
       window.ProjectBuild703CampaignBuildmodSeedPacketFix = {
-        version: '7.0.4-buildmod-invalid-string-fix',
+        version: '7.0.5-buildmod-base64-lawn-music-fix',
         refreshCampaignDropdown: refreshCampaignDropdown703,
         renderCampaignMap: renderCampaignMap703,
         upsertCurrentLevel: upsertCurrentLevel703,
