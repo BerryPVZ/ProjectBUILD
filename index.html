@@ -12633,7 +12633,7 @@ Click me again to advance.</textarea>
           const row = document.createElement('div');
           row.className = 'pb556CutsceneRow';
           const hasSfx = !!(s.pb81ClickSfxSrc || s.soundSrc || s.clickSoundSrc || s.sfxSrc || s.clickSfxSrc);
-          const actorSrc = s.pb81ActorSrc || s.pb81ImageSrc || s.actorSrc || s.image || s.imageSrc || s.actorImage || s.portraitSrc || s.portrait || '';
+          const actorSrc = s.pb81LineImageSrc || s.pb81ActorSrc || s.pb81ImageSrc || s.actorSrc || s.image || s.imageSrc || s.actorImage || s.portraitSrc || s.portrait || '';
           row.innerHTML = `<div class="pb556CutsceneThumb">${actorSrc ? `<img src="${actorSrc}" alt="">` : (s.position === 'right' ? '→' : s.position === 'center' ? '●' : '←')}</div><div><b>${i + 1}. ${s.speaker || 'Speaker'} ${s.position ? '(' + s.position + ')' : ''}</b><span>${String(s.text || '').slice(0, 90)}${hasSfx ? '<br>Click SFX: yes' : ''}</span></div><button type="button" class="danger" data-pb556-del-line="${i}">×</button>`;
           box.appendChild(row);
         });
@@ -12646,7 +12646,7 @@ Click me again to advance.</textarea>
       }
       function delay556(ms) { return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0))); }
       async function showEnhancedSlide556(slide = {}) {
-        const actorSrc = slide.pb81ActorSrc || slide.pb81ImageSrc || slide.actorSrc || slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
+        const actorSrc = slide.pb81LineImageSrc || slide.pb81ActorSrc || slide.pb81ImageSrc || slide.actorSrc || slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
         if (!slide.layout && !slide.position && !actorSrc) {
           if (window.ProjectBuildUniversal?.run) {
             await window.ProjectBuildUniversal.run('dialog', slide);
@@ -22344,7 +22344,9 @@ Click me again to advance.</textarea>
   const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
   const clone = obj => { try { return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj)); } catch { return obj; } };
   const IMAGE_FIELDS = ['pb81LineImageSrc','pb81FrozenActorSrc','pb81ActorSrc','pb81ImageSrc','actorSrc','image','imageSrc','actorImage','portraitSrc','portrait','leftImage','rightImage'];
+  const CANONICAL_IMAGE_FIELDS = ['pb81LineImageSrc','image'];
   const SFX_FIELDS = ['pb81LineSfxSrc','pb81ClickSfxSrc','clickSoundSrc','soundSrc','clickSfxSrc','sfxSrc'];
+  const CANONICAL_SFX_FIELDS = ['pb81LineSfxSrc','soundSrc'];
 
   function fileToDataURL(file) {
     return new Promise(resolve => {
@@ -22417,16 +22419,30 @@ Click me again to advance.</textarea>
     return unique([...SFX_FIELDS.map(k => slide?.[k]), fallback]).find(Boolean) || '';
   }
 
+  function compactMediaFields(out, fields, canonicalFields, src) {
+    fields.forEach(k => {
+      if (!Object.prototype.hasOwnProperty.call(out, k)) return;
+      const v = decodeSrc(out[k]);
+      if (!v) { delete out[k]; return; }
+      if (src && v === src && !canonicalFields.includes(k)) delete out[k];
+      else out[k] = v;
+    });
+    if (src) canonicalFields.forEach(k => { out[k] = src; });
+  }
+
   function normalizeSlide(slide = {}) {
     const raw = (slide && typeof slide === 'object') ? slide : {};
     const src = pickImage(raw);
     const sfx = pickSfx(raw);
     const out = { ...raw };
     if (!out.pb81LineId) out.pb81LineId = `pb81-line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-    if (src) IMAGE_FIELDS.forEach(k => { out[k] = src; });
-    else IMAGE_FIELDS.forEach(k => { if (out[k] == null) out[k] = ''; });
-    if (sfx) SFX_FIELDS.forEach(k => { out[k] = sfx; });
-    else SFX_FIELDS.forEach(k => { if (out[k] == null) out[k] = ''; });
+
+    // Keep each line's actor/image private to that line, but do not copy one huge base64
+    // image into every old compatibility field. Two fields are enough:
+    // pb81LineImageSrc for the new renderer and image for old renderers/lists.
+    compactMediaFields(out, IMAGE_FIELDS, CANONICAL_IMAGE_FIELDS, src);
+    compactMediaFields(out, SFX_FIELDS, CANONICAL_SFX_FIELDS, sfx);
+
     out.layout = out.layout || 'visualDialogue';
     out.position = out.position || out.side || 'right';
     out._pb81ForceLocal = true;
@@ -22632,15 +22648,8 @@ Click me again to advance.</textarea>
       position: by('pb81CutsceneSide')?.value || 'right',
       slot,
       pb81LineImageSrc: actor,
-      pb81FrozenActorSrc: actor,
-      pb81ActorSrc: actor,
-      pb81ImageSrc: actor,
       image: actor,
-      imageSrc: actor,
-      actorImage: actor,
       pb81LineSfxSrc: sfx,
-      pb81ClickSfxSrc: sfx,
-      clickSoundSrc: sfx,
       soundSrc: sfx
     });
   }
@@ -22682,21 +22691,9 @@ Click me again to advance.</textarea>
       position: by('pb81CutsceneSide')?.value || 'right',
       layout: 'visualDialogue',
       pb81LineImageSrc: actor,
-      pb81FrozenActorSrc: actor,
-      pb81ActorSrc: actor,
-      pb81ImageSrc: actor,
-      actorSrc: actor,
       image: actor,
-      imageSrc: actor,
-      actorImage: actor,
-      portraitSrc: actor,
-      portrait: actor,
       pb81LineSfxSrc: sfx,
-      pb81ClickSfxSrc: sfx,
-      soundSrc: sfx,
-      clickSoundSrc: sfx,
-      clickSfxSrc: sfx,
-      sfxSrc: sfx
+      soundSrc: sfx
     });
     pack[slot] ||= [];
     pack[slot].push(line);
@@ -22722,13 +22719,8 @@ Click me again to advance.</textarea>
       position: side,
       layout: 'visualDialogue',
       pb81LineImageSrc: actor,
-      pb81FrozenActorSrc: actor,
       image: actor,
-      imageSrc: actor,
-      actorImage: actor,
       pb81LineSfxSrc: sfx,
-      pb81ClickSfxSrc: sfx,
-      clickSoundSrc: sfx,
       soundSrc: sfx,
       leftName: by('pb556LeftName')?.value || '',
       rightName: by('pb556RightName')?.value || ''
@@ -22754,6 +22746,28 @@ Click me again to advance.</textarea>
     return await playSlot(by('pb556CutSlot')?.value || 'pre');
   }
 
+  let delegatedClickWired = false;
+  function wireDelegatedClicks() {
+    if (delegatedClickWired) return;
+    delegatedClickWired = true;
+    document.addEventListener('click', ev => {
+      const btn = ev.target?.closest?.('#pb81AddCutsceneLine,#pb81PreviewCutsceneSlot,#pb556PreviewVisualCutscene,#pb556AddLeftLine,#pb556AddRightLine,#pb556AddDialoguePair');
+      if (!btn) return;
+      const id = btn.id;
+      ev.preventDefault?.();
+      ev.stopPropagation?.();
+      ev.stopImmediatePropagation?.();
+      (async () => {
+        if (id === 'pb81AddCutsceneLine') await add81Line(ev);
+        else if (id === 'pb81PreviewCutsceneSlot') await preview81(ev);
+        else if (id === 'pb556PreviewVisualCutscene') await preview556(ev);
+        else if (id === 'pb556AddLeftLine') await add556Line('left', ev);
+        else if (id === 'pb556AddRightLine') await add556Line('right', ev);
+        else if (id === 'pb556AddDialoguePair') { await add556Line('left', ev); await add556Line('right', ev); }
+      })().catch(err => toast('Cutscene action failed: ' + (err?.message || err)));
+    }, true);
+  }
+
   function wireOnce(id, type, handler, capture = true) {
     const el = by(id);
     if (!el || el.dataset.pb81BugproofWired) return;
@@ -22762,6 +22776,7 @@ Click me again to advance.</textarea>
   }
 
   function wire() {
+    wireDelegatedClicks();
     wireOnce('pb81AddCutsceneLine', 'click', add81Line, true);
     wireOnce('pb81PreviewCutsceneSlot', 'click', preview81, true);
     wireOnce('pb556PreviewVisualCutscene', 'click', preview556, true);
@@ -22809,6 +22824,8 @@ Click me again to advance.</textarea>
 
   api.decodeSrc = decodeSrc;
   api.pickImage = pickImage;
+  api.compactSlide = normalizeSlide;
+  api.compactPack = normalizePack;
   api.readCutscenes = readCutscenes;
   api.writeCutscenes = writeCutscenes;
   api.playSlot = playSlot;
