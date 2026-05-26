@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 7.0.7 - JSON Template Export Fix + seen.has Hotfix</title>
+  <title>Project: BUILD</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -185,7 +185,7 @@
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .triple { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
 
-    .versionBadge {
+    .versionBadge { display: none !important;
       display: inline-block;
       margin-left: 6px;
       padding: 2px 7px;
@@ -1875,8 +1875,8 @@
   <div id="app">
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
-      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.7</span></h1>
-      <p>Project: BUILD 7.0.7 sandbox. This hotfix fixes seen.has export crashes and JSON/template exporting so new saved templates stay in plain JSON exports and are not wiped by stale campaign level snapshots.</p>
+      <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD</h1>
+      <p>Project: BUILD sandbox. Build custom plants, zombies, campaigns, levels, cutscenes, waves, and mod packages without dated update text.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -2978,6 +2978,33 @@ Click me again to advance.</textarea>
       showToast('Lawn display mode changed');
     };
 
+
+    function pbProjectileAbilityList(owner) {
+      return Array.isArray(owner?.abilities) ? owner.abilities : [];
+    }
+
+    function pbShouldArcProjectile(owner, angle = 0, speed = 420) {
+      const ab = pbProjectileAbilityList(owner);
+      const arcAbilities = [
+        'lobShot', 'meteorShot', 'mineShot', 'bossMeteorRain', 'bossFinalRain', 'zombieThrowRock',
+        'plantCabbagePult', 'plantKernelPult', 'plantMelonPult', 'plantWinterMelon', 'plantCobCannon',
+        'zombieCatapult', 'plantBananaLauncher', 'plantDuskLobber', 'plantAppleMortar', 'pvz2TurkeyPultSwarm'
+      ];
+      if (arcAbilities.some(name => ab.includes(name))) return true;
+      if (owner?.projectileArc === true || owner?.lob === true || owner?.arcShot === true) return true;
+      const realSpeed = Number(speed ?? owner?.projectileSpeed ?? 420) || 420;
+      const realAngle = Number(angle) || 0;
+      if (realAngle < -0.38 && realSpeed >= 240 && !ab.includes('homingShot') && !ab.includes('boomerangShot')) return true;
+      return false;
+    }
+
+    function pbProjectileGravity(owner, speed = 420) {
+      const custom = Number(owner?.projectileGravity ?? owner?.gravity ?? owner?.lobGravity);
+      if (Number.isFinite(custom) && custom > 0) return custom;
+      const realSpeed = Math.max(180, Number(speed ?? owner?.projectileSpeed ?? 420) || 420);
+      return Math.max(520, Math.min(980, realSpeed * 1.75));
+    }
+
     function makeProjectile(owner, angle = 0, speed = 420, damageMult = 1) {
       const p = {
         x: owner.x + owner.facing * owner.w * owner.scale * 0.45,
@@ -2991,6 +3018,7 @@ Click me again to advance.</textarea>
         pierce: owner.abilities.includes('pierceShot') ? 3 : 0,
         slow: owner.abilities.includes('slowProjectile'), homing: owner.abilities.includes('homingShot'),
         splash: owner.abilities.includes('splashShot'), boomerang: owner.abilities.includes('boomerangShot'),
+        arc: pbShouldArcProjectile(owner, angle, speed), gravity: pbShouldArcProjectile(owner, angle, speed) ? pbProjectileGravity(owner, speed) : 0,
         imageSrc: owner.projectileSrc, image: makeImage(owner.projectileSrc), gifEl: makeGifElement(owner.projectileSrc), age: 0, dead: false
       };
       state.projectiles.push(p);
@@ -3202,6 +3230,7 @@ Click me again to advance.</textarea>
           if (target) { const a = Math.atan2(target.y-p.y, target.x-p.x); p.vx += Math.cos(a)*16; p.vy += Math.sin(a)*16; }
         }
         if (p.boomerang && p.age > 0.55) p.vx *= 0.985, p.vy += Math.sin(p.age * 8) * 10;
+        if (p.arc || p.gravity) p.vy += (Number(p.gravity) || 620) * dt;
         p.x += p.vx * dt; p.y += p.vy * dt;
         if (p.age > 8 || p.x < -100 || p.x > canvas.clientWidth + 100 || p.y < -100 || p.y > canvas.clientHeight + 100) p.dead = true;
         for (const e of state.entities) {
@@ -4086,8 +4115,8 @@ Click me again to advance.</textarea>
 
 
     function installProjectBuild4() {
-      document.title = 'Project: BUILD 4.0';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.0');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
 
       const pvzAbilities = [
         'plantPeashooter','plantSunflower','plantCherryBomb','plantWallNut','plantPotatoMine','plantSnowPea','plantChomper','plantRepeater',
@@ -4229,6 +4258,7 @@ Click me again to advance.</textarea>
           homing: owner.abilities.includes('homingShot') || owner.abilities.includes('plantCattail'),
           splash: owner.abilities.includes('splashShot') || owner.abilities.includes('plantMelonPult') || owner.abilities.includes('plantWinterMelon'),
           boomerang: owner.abilities.includes('boomerangShot'),
+          arc: pbShouldArcProjectile(owner, angle, speed), gravity: pbShouldArcProjectile(owner, angle, speed) ? pbProjectileGravity(owner, speed) : 0,
           imageSrc, image: makeImage(imageSrc), gifEl: makeGifElement(imageSrc), age: 0, dead: false
         };
         state.projectiles.push(p);
@@ -4352,8 +4382,8 @@ Click me again to advance.</textarea>
 
 
     function installProjectBuild4_1() {
-      document.title = 'Project: BUILD 4.1';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '4.1');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
 
       const pvz2Abilities = [
         'plantBloomerang','plantBonkChoy','plantSnapdragon','plantColdSnapdragon','plantLightningReed','plantSpringBean','plantCoconutCannon','plantLaserBean','plantCitron','plantMagnifyingGrass',
@@ -4620,8 +4650,8 @@ Click me again to advance.</textarea>
 
 
     function installProjectBuild4_5() {
-      document.title = 'Project: BUILD 5.2';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.2');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
 
       const extra45Abilities = [
         'boostCurrencyProduce','plantFoodProduce','plantFoodBurst','plantFoodMegaShot','plantFoodHealAll','plantFoodSummon',
@@ -4648,11 +4678,11 @@ Click me again to advance.</textarea>
       state.pendingLevelMusicSrc = state.pendingLevelMusicSrc || null;
       state.currentCampaignLevel = state.currentCampaignLevel || null;
 
-      document.title = 'Project: BUILD 5.2';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.2');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
       const intro = document.querySelector('#sidebar p');
       if (intro && /Project:\s*BUILD\s*5\./i.test(intro.textContent)) {
-        intro.textContent = 'Project: BUILD 5.2 sandbox. Friendly level builder GUI, play mode, campaign maps, per-level lawn/music, template-specific SFX, multi-projectiles, PVZ1/PVZ2-style abilities, and the full editor stack.';
+        intro.textContent = 'Project: BUILD sandbox. Friendly level builder GUI, play mode, campaign maps, per-level lawn/music, template-specific SFX, multi-projectiles, PVZ-style abilities, and the full editor stack.';
       }
 
       function safePlayMusic() {
@@ -6643,7 +6673,7 @@ Click me again to advance.</textarea>
       // Tie modal script changes to friendly cards and heavy list.
       ['levelScriptModal','waveScript'].forEach(id => safeGet(id)?.addEventListener('input', renderWaveCards));
       const bottom = safeGet('pbBottomLevel');
-      if (bottom) bottom.textContent = 'LEVEL EDITOR 4.5';
+      if (bottom) bottom.textContent = 'LEVEL EDITOR';
       refreshBoostTemplates();
       refreshHeavySpawnOptions();
       renderWaveCards();
@@ -6661,8 +6691,8 @@ Click me again to advance.</textarea>
 
 
     function installProjectBuild4_5_Rectified() {
-      document.title = 'Project: BUILD 5.2';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.2');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
       const safeGet = id => document.getElementById(id);
       const plantTemplates = () => state.templates.filter(t => (t.side === 'plant' || t.type === 'plant') && t.name);
       const enemyTemplates = () => state.templates.filter(t => ['zombie','boss'].includes(t.side) || ['zombie','boss','gargantuar'].includes(t.role) || /garg|boss|zombie/i.test(t.name || ''));
@@ -9676,10 +9706,10 @@ Click me again to advance.</textarea>
       currentAssetCache.modelTextureName ??= '';
       currentAssetCache.pb55BossSpriteSrc ??= null;
 
-      document.title = 'Project: BUILD 5.5.5';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '5.5.5');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
       const intro = sidebar.querySelector('p');
-      if (intro) intro.textContent = 'Project: BUILD 5.5.5 sandbox. 3D support has been removed; this build focuses on 2D sprites, behavior editing, mod packages, boss blueprints, timeline events, a built-in placeholder paint tool, entity function packs, and level-editor QoL.';
+      if (intro) intro.textContent = 'Project: BUILD sandbox. This build focuses on 2D sprites, behavior editing, mod packages, boss blueprints, timeline events, a built-in placeholder paint tool, entity function packs, and level-editor QoL.';
 
       const style = document.createElement('style');
       style.id = 'pb55AmbitiousStyles';
@@ -9799,12 +9829,12 @@ Click me again to advance.</textarea>
           fill.position.set(-260, 120, 360);
           pb55Three.scene.add(fill);
           pb55Three.ready = true;
-          setPB553DStatus('3D renderer ready. FBX/OBJ/GLB/GLTF entities render with assigned textures.');
+          setPB553DStatus('Sprite renderer ready.');
           requestAnimationFrame(() => renderPB553DLayer());
         } catch (err) {
           pb55Three.failed = true;
           console.error('Project BUILD 3D renderer failed:', err);
-          setPB553DStatus('3D renderer failed to load. Check internet/CDN access; sprite fallback remains available.', true);
+          setPB553DStatus('Advanced renderer failed to load; sprite fallback remains available.', true);
         } finally {
           pb55Three.loading = false;
         }
@@ -10069,7 +10099,7 @@ Click me again to advance.</textarea>
       }
 
       async function pb55LoadModelTemplate(src, name = '', textureSrc = null) {
-        if (!pb55Three.ready || !pb55Three.modules) throw new Error('3D renderer is not ready');
+        if (!pb55Three.ready || !pb55Three.modules) throw new Error('Advanced renderer is not ready');
         const key = pb55ModelKey(src, textureSrc, name);
         if (pb55Three.modelCache.has(key)) return pb55Three.modelCache.get(key).clone(true);
         const { THREE, FBXLoader, OBJLoader, GLTFLoader } = pb55Three.modules;
@@ -10117,7 +10147,7 @@ Click me again to advance.</textarea>
         }
         if (state.display.labels) {
           ctx.fillStyle = '#f8fafc'; ctx.font = '12px system-ui'; ctx.textAlign = 'center'; ctx.fillText(e.labelText || e.name, e.x, e.y + h/2 + 14);
-          ctx.fillStyle = '#bae6fd'; ctx.font = '11px system-ui'; ctx.fillText(e.modelTextureSrc ? 'textured 3D' : '3D model', e.x, e.y - h / 2 - 28);
+          ctx.fillStyle = '#bae6fd'; ctx.font = '11px system-ui'; ctx.fillText(e.modelTextureSrc ? 'textured asset' : 'asset', e.x, e.y - h / 2 - 28);
         }
         if (!e.dead && state.selected && state.selected.id === e.id) {
           ctx.strokeStyle = '#fde68a'; ctx.lineWidth = 3; ctx.strokeRect(e.x - w/2 - 4, e.y - h/2 - 4, w + 8, h + 8);
@@ -10155,7 +10185,7 @@ Click me again to advance.</textarea>
               entry.visibleMeshes = 0;
               group.visible = false;
               pb55Three.failedKeys.add(key);
-              setPB553DStatus(`Could not render ${e.model3dName || e.name || '3D model'}: ${err.message}`, true);
+              setPB553DStatus(`Could not render ${e.model3dName || e.name || 'asset'}: ${err.message}`, true);
             });
           }
           const group = entry.group;
@@ -10181,8 +10211,8 @@ Click me again to advance.</textarea>
 
       function assignCurrentModelToSelectedEntity() {
         const e = state.selected;
-        if (!e) return toast('Select an entity first, then assign the current 3D model');
-        if (!currentAssetCache.model3dSrc) return toast('Load or choose a 3D model first');
+        if (!e) return toast('Select an entity first, then assign the current asset');
+        if (!currentAssetCache.model3dSrc) return toast('Load or choose an asset first');
         e.model3dSrc = currentAssetCache.model3dSrc;
         e.model3dName = currentAssetCache.model3dName || 'model.fbx';
         e.modelTextureSrc = currentAssetCache.modelTextureSrc || null;
@@ -10192,7 +10222,7 @@ Click me again to advance.</textarea>
         if (old?.group && pb55Three.scene) pb55Three.scene.remove(old.group);
         pb55Three.entityObjects.delete(e.id);
         renderPB553DLayer();
-        toast(`Assigned 3D model to ${e.name || 'selected entity'}`);
+        toast(`Assigned asset to ${e.name || 'selected entity'}`);
       }
 
       function makeQuickHub() {
@@ -10227,13 +10257,13 @@ Click me again to advance.</textarea>
         card.className = 'card';
         card.id = 'pb55CreatorSuite';
         card.innerHTML = `
-          <p class="sectionNote">Barely-possible engine tools: behavior rules, mod packages, boss blueprints, a wave/cutscene timeline, placeholder painting, and textured 3D model asset storage.</p>
+          <p class="sectionNote">Barely-possible engine tools: behavior rules, mod packages, boss blueprints, a wave/cutscene timeline, placeholder painting, and sprite asset storage.</p>
           <div class="pb55Tabs">
             <button type="button" data-pb55-tab="behavior" class="blue">Behavior</button>
             <button type="button" data-pb55-tab="mods">Mods</button>
             <button type="button" data-pb55-tab="boss">Boss</button>
             <button type="button" data-pb55-tab="timeline">Timeline</button>
-            <button type="button" data-pb55-tab="graphics">Graphics/3D</button>
+            <button type="button" data-pb55-tab="graphics">Graphics</button>
           </div>
           <div class="pb55SuiteGrid">
             <div id="pb55Tab_behavior" class="pb55ToolCard pb55TabPanel active">
@@ -10259,7 +10289,7 @@ Click me again to advance.</textarea>
 
             <div id="pb55Tab_mods" class="pb55ToolCard pb55TabPanel">
               <h3>Mod Package System</h3>
-              <p class="sectionNote">Exports a .buildmod package with templates, campaigns, painted graphics, timeline events, boss blueprints, boosts, textured models, and compatibility metadata.</p>
+              <p class="sectionNote">Exports a .buildmod package with templates, campaigns, painted graphics, timeline events, boss blueprints, boosts, sprite assets, and compatibility metadata.</p>
               <label>Package Name</label><input id="pb55ModName" value="Project BUILD Expansion">
               <div class="row"><button id="pb55ExportMod" type="button">Export .buildmod</button><button id="pb55ExportSelectedTemplate" type="button" class="blue">Export Selected Template Mod</button></div>
               <label>Import .buildmod</label><input id="pb55ImportMod" type="file" accept=".buildmod,application/json">
@@ -10268,7 +10298,7 @@ Click me again to advance.</textarea>
 
             <div id="pb55Tab_boss" class="pb55ToolCard pb55TabPanel">
               <h3>Boss Creator</h3>
-              <p class="sectionNote">Creates a boss template with phases and built-in behavior rules. It uses normal sprites now, but can carry a 3D model plus texture for future 3D rendering.</p>
+              <p class="sectionNote">Creates a boss template with phases and built-in behavior rules. It uses normal sprites now, but can carry a extra sprite assets for future effects.</p>
               <label>Boss Name</label><input id="pb55BossName" value="Custom Boss">
               <div class="triple"><div><label>HP</label><input id="pb55BossHp" type="number" value="2500"></div><div><label>Damage</label><input id="pb55BossDamage" type="number" value="35"></div><div><label>Speed</label><input id="pb55BossSpeed" type="number" value="0.45" step="0.05"></div></div>
               <div class="row"><div><label>Sprite PNG/GIF</label><input id="pb55BossSprite" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng"></div><div><label>Phase HP % List</label><input id="pb55BossPhases" value="75,50,25"></div></div>
@@ -10289,7 +10319,7 @@ Click me again to advance.</textarea>
             </div>
 
             <div id="pb55Tab_graphics" class="pb55ToolCard pb55TabPanel">
-              <h3>Built-In Placeholder Paint + 3D Assets</h3>
+              <h3>Built-In Placeholder Paint + Sprite Assets</h3>
               <p class="sectionNote">A small Paint-style maker for quick placeholder sprites: pen, eraser, bucket, color picker, resizable pen, and preset stamps. 2D sprite, projectile, and campaign-icon assets can be painted or imported, then saved into templates, worlds, campaigns, and .buildmod packages.</p>
               <canvas id="pb55GraphicsCanvas" width="220" height="220"></canvas>
               <label>Graphic Name</label><input id="pb55GraphicName" value="Paint Placeholder">
@@ -10311,7 +10341,7 @@ Click me again to advance.</textarea>
               <label>Import 2D Graphic Assets</label><input id="pb555SpriteImport" type="file" multiple accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
               <div class="row"><button id="pb555ImportAsBase" type="button" class="blue">Use Import As Base Sprite</button><button id="pb555ImportAsProjectile" type="button" class="blue">Use Import As Projectile</button></div>
               <div class="row"><button id="pb555ImportAsIcon" type="button" class="warn">Use Import As Level Icon</button><button id="pb555Clear2DAsset" type="button" class="danger">Clear Pending 2D Asset</button></div>
-              <div id="pb555SpriteImportStatus" class="pb55Status">No imported 2D asset selected. 3D support has been removed from this build.</div>
+              <div id="pb555SpriteImportStatus" class="pb55Status">No imported 2D asset selected.</div>
               <div id="pb555SpriteImportPreview" class="pb55PaintPreview">No 2D import preview.</div>
               <h3 style="margin-top:10px">Saved Graphics</h3>
               <div id="pb55GraphicsList" class="pb55List"></div>
@@ -10604,7 +10634,7 @@ Click me again to advance.</textarea>
             return;
           }
           oldDraw55.apply(this, arguments);
-          // 3D model labels removed in 5.5.5.
+          // asset labels removed in 5.5.5.
         };
 
         const oldDrawScene55 = draw;
@@ -11156,7 +11186,7 @@ Click me again to advance.</textarea>
         state.pb55Graphics.slice(-8).reverse().forEach(gfx => {
           const row = document.createElement('div');
           row.className = 'pb55ListRow';
-          row.innerHTML = `<b>${gfx.name}</b> (${gfx.width || 220}×${gfx.height || 220})<br><img src="${gfx.src}" alt="" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;background:rgba(255,255,255,.12);border-radius:8px;margin-top:5px"><div class="row"><button type="button" class="blue" data-pb55-graphic-use="${gfx.id}">Base Sprite</button><button type="button" class="blue" data-pb55-graphic-projectile="${gfx.id}">Projectile</button></div><div class="row"><button type="button" class="warn" data-pb55-graphic-icon="${gfx.id}">Level Icon</button><button type="button" class="blue" data-pb55-graphic-texture="${gfx.id}">3D Texture</button></div>`;
+          row.innerHTML = `<b>${gfx.name}</b> (${gfx.width || 220}×${gfx.height || 220})<br><img src="${gfx.src}" alt="" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;background:rgba(255,255,255,.12);border-radius:8px;margin-top:5px"><div class="row"><button type="button" class="blue" data-pb55-graphic-use="${gfx.id}">Base Sprite</button><button type="button" class="blue" data-pb55-graphic-projectile="${gfx.id}">Projectile</button></div><div class="row"><button type="button" class="warn" data-pb55-graphic-icon="${gfx.id}">Level Icon</button></div>`;
           list.appendChild(row);
         });
         list.querySelectorAll('[data-pb55-graphic-use]').forEach(btn => btn.onclick = () => {
@@ -11173,7 +11203,7 @@ Click me again to advance.</textarea>
         });
         list.querySelectorAll('[data-pb55-graphic-texture]').forEach(btn => btn.onclick = () => {
           const gfx = state.pb55Graphics.find(x => x.id === btn.dataset.pb55GraphicTexture);
-          if (gfx) { currentAssetCache.modelTextureSrc = gfx.src; currentAssetCache.modelTextureName = gfx.name + '.png'; attachTextureToCurrentModel(); updateModelAssetStatus(); toast('Painted graphic assigned as 3D texture'); }
+          if (gfx) { currentAssetCache.modelTextureSrc = gfx.src; currentAssetCache.modelTextureName = gfx.name + '.png'; attachTextureToCurrentModel(); updateModelAssetStatus(); toast('Painted graphic assigned as texture'); }
         });
       }
 
@@ -11222,7 +11252,7 @@ Click me again to advance.</textarea>
         const files = Array.from(fileList || []).filter(Boolean);
         if (!files.length) return false;
         const status = by('pb55FbxStatus');
-        if (status) status.textContent = 'Loading 3D asset files...';
+        if (status) status.textContent = 'Loading asset files...';
         const modelFiles = files.filter(isPB553DModelFile);
         const textureFiles = files.filter(isPB55ImageTextureFile);
         const unsupported = files.filter(file => !isPB553DModelFile(file) && !isPB55ImageTextureFile(file));
@@ -11248,14 +11278,14 @@ Click me again to advance.</textarea>
         if (currentAssetCache.modelTextureSrc) attachTextureToCurrentModel();
 
         if (!modelFiles.length && !textureFiles.length) {
-          if (status) status.textContent = 'That file was not a supported 3D model or image texture. Use FBX/OBJ/GLB/GLTF for the model and PNG/JPG/WebP/GIF for texture.';
-          toast('Unsupported 3D asset file');
+          if (status) status.textContent = 'That file was not a supported asset or image texture. Use FBX/OBJ/GLB/GLTF for the model and PNG/JPG/WebP/GIF for texture.';
+          toast('Unsupported asset file');
           return false;
         }
         if (unsupported.length && status) {
           status.textContent += ` Ignored unsupported file${unsupported.length === 1 ? '' : 's'}: ${unsupported.map(f => f.name || 'unnamed').join(', ')}.`;
         }
-        toast(loadedModel ? '3D model stored' : '3D texture stored');
+        toast(loadedModel ? 'Asset stored' : 'Texture stored');
         return true;
       }
 
@@ -11263,13 +11293,13 @@ Click me again to advance.</textarea>
         const list = by('pb55ModelList');
         if (!list) return;
         list.innerHTML = '';
-        if (!state.pb55ModelLibrary.length) { list.innerHTML = '<div class="pb55ListRow">No 3D models stored yet.</div>'; return; }
+        if (!state.pb55ModelLibrary.length) { list.innerHTML = '<div class="pb55ListRow">No advanced assets stored yet.</div>'; return; }
         state.pb55ModelLibrary.slice(-8).reverse().forEach((model, reverseIndex) => {
           const row = document.createElement('div');
           row.className = 'pb55ListRow';
           const id = String(state.pb55ModelLibrary.length - 1 - reverseIndex);
           const tex = model.textureSrc ? `<br><img src="${model.textureSrc}" alt="" style="width:44px;height:44px;object-fit:contain;image-rendering:pixelated;background:rgba(255,255,255,.12);border-radius:8px;margin-top:5px">` : '<br>No texture assigned.';
-          row.innerHTML = `<b>${model.name || '3D model'}</b><br>${model.textureName ? 'Texture: ' + model.textureName : 'Texture: none'}${tex}<div class="row"><button type="button" class="blue" data-pb55-model-use="${id}">Assign To Template Form</button><button type="button" class="warn" data-pb55-model-entity="${id}">Assign To Selected Entity</button></div>`;
+          row.innerHTML = `<b>${model.name || 'asset'}</b><br>${model.textureName ? 'Texture: ' + model.textureName : 'Texture: none'}${tex}<div class="row"><button type="button" class="blue" data-pb55-model-use="${id}">Assign To Template Form</button><button type="button" class="warn" data-pb55-model-entity="${id}">Assign To Selected Entity</button></div>`;
           list.appendChild(row);
         });
         list.querySelectorAll('[data-pb55-model-use]').forEach(btn => btn.onclick = () => {
@@ -11280,7 +11310,7 @@ Click me again to advance.</textarea>
           currentAssetCache.modelTextureSrc = model.textureSrc || null;
           currentAssetCache.modelTextureName = model.textureName || '';
           updateModelAssetStatus();
-          toast('3D model assigned to template form');
+          toast('Asset assigned to template form');
         });
         list.querySelectorAll('[data-pb55-model-entity]').forEach(btn => btn.onclick = () => {
           const model = state.pb55ModelLibrary[Number(btn.dataset.pb55ModelEntity)];
@@ -11314,12 +11344,12 @@ Click me again to advance.</textarea>
         const storedCount = state.pb55ModelLibrary?.length || 0;
         if (st) {
           const modelText = currentAssetCache.model3dSrc
-            ? `3D model assigned: ${currentAssetCache.model3dName || 'model'}.`
+            ? `asset assigned: ${currentAssetCache.model3dName || 'model'}.`
             : storedCount
-              ? `${storedCount} 3D model${storedCount === 1 ? '' : 's'} stored in the library. Click Assign Model if you want one on the current template form.`
-              : 'No 3D model loaded.';
+              ? `${storedCount} asset${storedCount === 1 ? '' : 's'} stored in the library. Click Assign Model if you want one on the current template form.`
+              : 'No asset loaded.';
           const texText = currentAssetCache.modelTextureSrc ? `Texture assigned: ${currentAssetCache.modelTextureName || 'texture image'}.` : 'No texture assigned.';
-          st.textContent = `${modelText} ${texText} Saved templates, selected entities, worlds, and .buildmod packages retain both. Textured models now render in-game when the 3D renderer is available.`;
+          st.textContent = `${modelText} ${texText} Saved templates, selected entities, worlds, and .buildmod packages retain both. Sprite assets now render in-game when the 3D renderer is available.`;
         }
         const preview = by('pb55ModelTexturePreview');
         if (preview) preview.innerHTML = currentAssetCache.modelTextureSrc ? `<img src="${currentAssetCache.modelTextureSrc}" alt=""><span>${currentAssetCache.modelTextureName || 'Texture preview'}</span>` : 'No texture preview.';
@@ -11398,7 +11428,7 @@ Click me again to advance.</textarea>
         by('pb55UseGraphicAsBase')?.addEventListener('click', () => { currentAssetCache.entityImageSrc = drawGeneratedGraphic(); toast('Canvas assigned as base sprite'); });
         by('pb55UseGraphicAsProjectile')?.addEventListener('click', () => { currentAssetCache.projectileSrc = drawGeneratedGraphic(); toast('Canvas assigned as projectile sprite'); });
         by('pb55UseGraphicAsCampaignIcon')?.addEventListener('click', () => { state.pendingCampaignIconSrc = drawGeneratedGraphic(); toast('Canvas assigned as campaign level icon'); });
-        // 3D model/texture controls removed in 5.5.5. 2D asset import is installed by the 5.5.5 QoL patch below.
+        // asset/texture controls removed in 5.5.5. 2D asset import is installed by the 5.5.5 QoL patch below.
         clearPaintCanvas();
         stampPresetGraphic(false);
       }
@@ -11492,7 +11522,7 @@ Click me again to advance.</textarea>
         entityFromTemplate.pb555No3DWrapped = true;
       }
 
-      // 2D asset importer replacing the removed 3D model controls.
+      // 2D asset importer replacing the removed asset controls.
       let pb555Last2DAsset = null;
       function fileToDataURL555(file) {
         return new Promise((resolve, reject) => {
@@ -11541,7 +11571,7 @@ Click me again to advance.</textarea>
           pb555Last2DAsset = null;
           const st = by('pb555SpriteImportStatus');
           const preview = by('pb555SpriteImportPreview');
-          if (st) st.textContent = 'No imported 2D asset selected. 3D support has been removed from this build.';
+          if (st) st.textContent = 'No imported 2D asset selected.';
           if (preview) preview.textContent = 'No 2D import preview.';
           toast('Pending 2D asset cleared');
         });
@@ -11576,13 +11606,13 @@ Click me again to advance.</textarea>
         panel.id = 'pb555EntityFunctionTools';
         panel.className = 'pb45Panel';
         panel.innerHTML = `
-          <h2>5.5.5 Extra Entity Functions</h2>
+          <h2>Extra Entity Functions</h2>
           <p class="sectionNote">More generic 2D functions for plants, zombies, bosses, props, traps, and gimmick entities. These are real runtime abilities, not just labels.</p>
           <div class="row">
             <button id="pb555AddArenaPack" type="button" class="blue">Add Arena Pack</button>
             <button id="pb555AddTrapPack" type="button" class="warn">Add Trap/Gimmick Pack</button>
           </div>
-          <button id="pb555ClearEntityFunctions" type="button" class="danger">Clear 5.5.5 Functions</button>
+          <button id="pb555ClearEntityFunctions" type="button" class="danger">Clear Extra Functions</button>
           <div class="pb54FunctionList">${extraEntityFunctions.map(n => `<span class="pb54FunctionChip" data-pb555-ability="${n}">${n}</span>`).join('')}</div>
         `;
         templateCard.insertBefore(panel, saveBtn);
@@ -13664,9 +13694,9 @@ Click me again to advance.</textarea>
       const featureHTML = document.createElement('div');
       featureHTML.id = 'pb60FeatureStack';
       featureHTML.innerHTML = `
-        <div class="pb60FeatureBanner"><b>6.0 Creator Systems</b><br>Cutscenes, buildmods, sprite animation, almanac entries, weather/lawn effects, autosave, validation, and undo/redo are now stored in the project data.</div>
+        <div class="pb60FeatureBanner"><b>Creator Systems</b><br>Cutscenes, buildmods, sprite animation, almanac entries, weather/lawn effects, autosave, validation, and undo/redo are now stored in the project data.</div>
 
-        <h2>Cutscene Editor 2.0</h2>
+        <h2>Cutscene Editor</h2>
         <div class="card" id="pb60CutscenePanel">
           <p class="sectionNote">Timeline-style cutscenes with dialogue, spawned NPCs, camera shake, weather changes, music cues, unlock notes, and click-to-continue beats.</p>
           <div class="pb60MiniGrid">
@@ -13677,7 +13707,7 @@ Click me again to advance.</textarea>
             <div><label>Speaker</label><input id="pb60BeatSpeaker" value="Crazy Dave"></div>
             <div><label>Action</label><select id="pb60BeatAction"><option value="dialogue">Dialogue Bubble</option><option value="spawnNPC">Spawn Onscreen NPC</option><option value="cameraShake">Camera Shake</option><option value="weather">Change Weather</option><option value="music">Music Cue URL/Data</option><option value="unlock">Unlock/Reward Note</option><option value="choice">Dialogue Choice Note</option></select></div>
           </div>
-          <label>Beat Text / Cue Data</label><textarea id="pb60BeatText">Welcome to Project BUILD 6.0.</textarea>
+          <label>Beat Text / Cue Data</label><textarea id="pb60BeatText">Welcome to Project BUILD.</textarea>
           <div class="pb60TinyGrid">
             <div><label>X</label><input id="pb60BeatX" type="number" value="180"></div>
             <div><label>Y</label><input id="pb60BeatY" type="number" value="180"></div>
@@ -13702,10 +13732,10 @@ Click me again to advance.</textarea>
         <div class="card" id="pb60PackPanel">
           <p class="sectionNote">Create clean buildmod packs with templates, campaigns, cutscenes, sprite assets, almanac entries, weather presets, and compatibility metadata.</p>
           <div class="pb60MiniGrid">
-            <div><label>Pack Name</label><input id="pb60PackName" value="My BUILD 6.0 Pack"></div>
+            <div><label>Pack Name</label><input id="pb60PackName" value="My BUILD Pack"></div>
             <div><label>Version</label><input id="pb60PackVersion" value="1.0.0"></div>
           </div>
-          <label>Description</label><textarea id="pb60PackDescription">A Project BUILD 6.0 content pack.</textarea>
+          <label>Description</label><textarea id="pb60PackDescription">A Project BUILD content pack.</textarea>
           <div class="pb60ButtonRow3">
             <button id="pb60CreatePack" type="button" class="warn">Snapshot Pack</button>
             <button id="pb60ExportPack" type="button">Export Selected</button>
@@ -14403,7 +14433,7 @@ Click me again to advance.</textarea>
       ['saveTemplate','deleteTemplate','loadTemplate'].forEach(id => $(id)?.addEventListener('click', () => setTimeout(() => { refreshSpriteTemplates60(); renderAlmanac60(); }, 120)));
 
       blankSpriteCanvas(); sprite.frames = [spriteCanvas.toDataURL('image/png')]; sprite.current = 0; renderFrames(); previewLoop60();
-      if (!state.pb60.cutscenes.length) state.pb60.cutscenes.push({ id:uid('cutscene'), name:'Opening Cutscene', trigger:'manual', beats:[{ id:uid('beat'), speaker:'Crazy Dave', action:'dialogue', text:'Project BUILD 6.0 creator tools are online.', x:180, y:180, duration:1.4, waitClick:true }] });
+      if (!state.pb60.cutscenes.length) state.pb60.cutscenes.push({ id:uid('cutscene'), name:'Opening Cutscene', trigger:'manual', beats:[{ id:uid('beat'), speaker:'Crazy Dave', action:'dialogue', text:'Project BUILD creator tools are online.', x:180, y:180, duration:1.4, waitClick:true }] });
       installExportImportHooks60(); refreshSpriteTemplates60(); renderCutscenes60(); renderPacks60(); renderSpriteAssets60(); renderAlmanac60(); renderWeatherSummary60(); renderWeatherLayer60(); validateProject60(); snapshot60('Initial 6.0 snapshot'); autosave60();
 
       window.ProjectBuild6_0_CreatorSystems = {
@@ -18170,11 +18200,11 @@ Click me again to advance.</textarea>
       }
 
       function installUI70() {
-        document.title = 'Project: BUILD 7.0 - Campaign Polish Update';
+        document.title = 'Project: BUILD';
         const badge = document.querySelector('.versionBadge');
         if (badge) badge.textContent = '7.0';
         const intro = document.querySelector('#sidebar p:first-of-type');
-        if (intro) intro.textContent = 'Project: BUILD 7.0 sandbox. Custom difficulty text, level intros, campaign map backgrounds, loading screens, and starter base templates are now layered onto the 6.0 creator systems.';
+        if (intro) intro.textContent = 'Project: BUILD sandbox. Custom difficulty text, level intros, campaign map backgrounds, loading screens, and starter base templates are available in the creator systems.';
 
         const campaignMaker = by('pbCampaignMaker');
         if (campaignMaker && !by('pb70CampaignPanel')) {
@@ -19966,10 +19996,10 @@ Click me again to advance.</textarea>
       state.cutscenes ??= { pre: [], post: [], mid: [] };
       state.cutscenes.mid ??= [];
 
-      document.title = 'Project: BUILD 8.1';
-      document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '8.1');
+      document.title = 'Project: BUILD';
+      document.querySelectorAll('.versionBadge').forEach(b => b.remove());
       const intro = document.querySelector('#sidebar p');
-      if (intro) intro.textContent = 'Project: BUILD 8.1 sandbox. Adds advanced level-builder tools: timed background/music transitions, visual cutscenes, preplaced plants, and a PVZ-style wave matrix with 30-second minimum wave spacing.';
+      if (intro) intro.textContent = 'Project: BUILD sandbox. Advanced level-builder tools include timed background/music transitions, visual cutscenes, preplaced plants, and a PVZ-style wave matrix with 30-second minimum wave spacing.';
 
       function installStyles81() {
         if (by('pb81AdvancedStyles')) return;
@@ -21325,8 +21355,8 @@ Click me again to advance.</textarea>
       }
 
       try {
-        document.title = 'Project: BUILD 8.1.1 - Export Fix';
-        document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '8.1.1');
+        document.title = 'Project: BUILD';
+        document.querySelectorAll('.versionBadge').forEach(b => b.remove());
       } catch {}
 
       wireExports();
@@ -21344,6 +21374,117 @@ Click me again to advance.</textarea>
       };
 
       toast('8.1.1 export fix loaded: JSON templates and huge buildmods fixed');
+    })();
+  </script>
+
+
+  <script>
+    (function installVisibleCleanupAndLobCompatibility() {
+      if (window.ProjectBuildVisibleCleanupAndLobCompatibility) return;
+
+      function cleanVisibleText(value) {
+        return String(value ?? '')
+          .replace(/Project:\s*BUILD\s*\d+(?:\.\d+)*(?:\s*-\s*[^.!?\n<]*)?/gi, 'Project: BUILD')
+          .replace(/Project\s+BUILD\s*\d+(?:\.\d+)*/gi, 'Project BUILD')
+          .replace(/\bBUILD\s+\d+(?:\.\d+)*(?:\.\d+)?\b/gi, 'BUILD')
+          .replace(/\bCutscene Editor\s+\d+(?:\.\d+)*\b/gi, 'Cutscene Editor')
+          .replace(/\b\d+(?:\.\d+)+(?:-[a-z0-9-]+)?\s*(?:installed|loaded|fix loaded|base loaded)/gi, 'Update loaded')
+          .replace(/\b(?:v|version)\s*\d+(?:\.\d+)*(?:-[a-z0-9-]+)?\b/gi, '')
+          .replace(/\s+v\d+(?:\.\d+)*\b/gi, '')
+          .replace(/\bLevel Editor\s+\d+(?:\.\d+)*\b/gi, 'Level Editor')
+          .replace(/\b\d+(?:\.\d+)*\s+Extra Entity Functions\b/gi, 'Extra Entity Functions')
+          .replace(/Clear\s+\d+(?:\.\d+)*\s+Functions/gi, 'Clear Extra Functions')
+          .replace(/\bGraphics\s*\/\s*3D\b/gi, 'Graphics')
+          .replace(/\b3D\s+models?\b/gi, 'assets')
+          .replace(/\b3D\s+renderer\b/gi, 'renderer')
+          .replace(/\b3D\s+support[^.!?\n<]*/gi, 'sprite assets')
+          .replace(/\bFBX\/OBJ\/GLB\/GLTF\b/gi, 'sprite assets')
+          .replace(/\bFBX\b|\bThree\.js\b/gi, 'asset')
+          .replace(/\b3D\b/gi, '')
+          .replace(/\s{2,}/g, ' ')
+          .trim();
+      }
+
+      function scrubElementText(root = document.body) {
+        if (!root) return;
+        document.title = 'Project: BUILD';
+        document.querySelectorAll('.versionBadge').forEach(el => el.remove());
+        document.querySelectorAll('[data-pb55-graphic-texture],[data-pb55-model-use],[data-pb55-model-entity],#pb55FbxInput,#pb55ModelTextureInput,#pb55ModelTexturePreview,#pb55ModelList,#pb55ThreeRenderStatus,#pb55FbxStatus').forEach(el => el.remove());
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+          acceptNode(node) {
+            const p = node.parentElement;
+            if (!p || ['SCRIPT','STYLE'].includes(p.tagName)) return NodeFilter.FILTER_REJECT;
+            return NodeFilter.FILTER_ACCEPT;
+          }
+        });
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+        nodes.forEach(node => {
+          const next = cleanVisibleText(node.nodeValue);
+          if (next !== node.nodeValue) node.nodeValue = next;
+        });
+        document.querySelectorAll('input,textarea,option,button').forEach(el => {
+          if (typeof el.value === 'string' && /Project\s*:?[\s\S]*BUILD|\bversion\b|\bv\d|\b3D\b/i.test(el.value)) {
+            const next = cleanVisibleText(el.value);
+            if (next && next !== el.value) el.value = next;
+          }
+          if (typeof el.textContent === 'string' && /\bversion\b|\bv\d|\b3D\b|Project\s*:?[\s\S]*BUILD\s*\d/i.test(el.textContent)) {
+            const next = cleanVisibleText(el.textContent);
+            if (next && next !== el.textContent) el.textContent = next;
+          }
+        });
+        const packVersion = document.getElementById('pb60PackVersion');
+        if (packVersion) packVersion.closest('div')?.remove();
+      }
+
+      try {
+        if (typeof showToast === 'function' && !showToast.pbVisibleCleanupWrapped) {
+          const previousShowToast = showToast;
+          showToast = function(text) {
+            return previousShowToast.call(this, cleanVisibleText(text));
+          };
+          showToast.pbVisibleCleanupWrapped = true;
+        }
+      } catch {}
+
+      // Safety net for old or imported projectiles that do not have arc/gravity fields yet.
+      try {
+        if (typeof makeProjectile === 'function' && !makeProjectile.pbArcSafetyWrapped) {
+          const previousMakeProjectile = makeProjectile;
+          makeProjectile = function(owner, angle = 0, speed = null, damageMult = 1) {
+            const before = Array.isArray(state?.projectiles) ? state.projectiles.length : 0;
+            const result = previousMakeProjectile.apply(this, arguments);
+            const realSpeed = speed ?? owner?.projectileSpeed ?? 420;
+            if (Array.isArray(state?.projectiles)) {
+              for (let i = before; i < state.projectiles.length; i++) {
+                const p = state.projectiles[i];
+                if (!p) continue;
+                if (!p.arc && typeof pbShouldArcProjectile === 'function' && pbShouldArcProjectile(owner, angle, realSpeed)) {
+                  p.arc = true;
+                  p.gravity = typeof pbProjectileGravity === 'function' ? pbProjectileGravity(owner, realSpeed) : 620;
+                }
+              }
+            }
+            return result;
+          };
+          makeProjectile.pbArcSafetyWrapped = true;
+        }
+      } catch {}
+
+      scrubElementText();
+      setTimeout(scrubElementText, 0);
+      setTimeout(scrubElementText, 350);
+      setTimeout(scrubElementText, 1200);
+      try {
+        const observer = new MutationObserver(() => {
+          if (observer._queued) return;
+          observer._queued = true;
+          requestAnimationFrame(() => { observer._queued = false; scrubElementText(); });
+        });
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+      } catch {}
+
+      window.ProjectBuildVisibleCleanupAndLobCompatibility = { installed: true, cleanVisibleText };
     })();
   </script>
 
