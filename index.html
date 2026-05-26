@@ -22014,6 +22014,72 @@ Click me again to advance.</textarea>
         return value;
       };
 
+
+      const pbActorImageKeepAlivePatchMarker = true;
+      const actorImageCache = new Map();
+
+      function cacheableImageSrc(src) {
+        const safe = usableSrc(src);
+        if (!safe) return '';
+        if (/^data:audio\//i.test(safe) || /\.(mp3|wav|ogg|m4a)(\?.*)?$/i.test(safe)) return '';
+        return safe;
+      }
+
+      function rememberActorImage(src) {
+        const safe = cacheableImageSrc(src);
+        if (!safe) return null;
+        let entry = actorImageCache.get(safe);
+        if (entry) return entry;
+
+        const img = new Image();
+        img.decoding = 'async';
+        img.loading = 'eager';
+        img.draggable = false;
+        entry = { src: safe, img, loaded: false, error: false, promise: null };
+        entry.promise = new Promise(resolve => {
+          img.onload = () => {
+            entry.loaded = true;
+            entry.error = false;
+            resolve(entry);
+          };
+          img.onerror = () => {
+            entry.loaded = false;
+            entry.error = true;
+            resolve(entry);
+          };
+        });
+        actorImageCache.set(safe, entry);
+        img.src = safe;
+        if (img.complete && img.naturalWidth > 0) {
+          entry.loaded = true;
+          entry.error = false;
+        }
+        return entry;
+      }
+
+      function keepActorImagesLoaded(data = null) {
+        try {
+          const actor = ensurePbState?.();
+          rememberActorImage(actor?.pendingImageSrc || '');
+        } catch {}
+        const sources = [];
+        try { sources.push(data || state?.cutscenes); } catch {}
+        try { sources.push(...campaignCutsceneSources()); } catch {}
+        for (const source of sources) {
+          const normalized = normalizeCutsceneData(source || {});
+          ['pre','mid','post'].forEach(slot => (normalized[slot] || []).forEach(line => rememberActorImage(rawLineImage(line))));
+        }
+      }
+
+      async function waitForActorImages(slides = [], maxWaitMs = 1800) {
+        const entries = slides.map(slide => rememberActorImage(slideImage(slide))).filter(Boolean).filter(entry => !entry.loaded && !entry.error);
+        if (!entries.length) return;
+        await Promise.race([
+          Promise.all(entries.map(entry => entry.promise.catch(() => entry))),
+          new Promise(resolve => setTimeout(resolve, maxWaitMs))
+        ]);
+      }
+
       function ensurePbState() {
         window.state ||= {};
         state.pb8 ||= {};
@@ -22028,7 +22094,11 @@ Click me again to advance.</textarea>
         return new Promise(resolve => {
           if (!file) return resolve('');
           const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onload = () => {
+            const result = String(reader.result || '');
+            rememberActorImage(result);
+            resolve(result);
+          };
           reader.onerror = () => resolve('');
           reader.readAsDataURL(file);
         });
@@ -22301,44 +22371,58 @@ Click me again to advance.</textarea>
       }
 
       function appendSafeImage(host, src, alt, fallbackName) {
+        if (!host) return;
         host.textContent = '';
-        const safe = usableSrc(src);
+        const safe = cacheableImageSrc(src);
         if (!safe) {
           host.appendChild(createInitial(fallbackName));
           return;
         }
+
+        const entry = rememberActorImage(safe);
         const img = new Image();
         img.alt = alt || '';
         img.decoding = 'async';
         img.loading = 'eager';
         img.draggable = false;
         img.style.visibility = 'hidden';
-        let done = false;
+        img.style.display = 'block';
+
+        let revealed = false;
         const reveal = () => {
-          if (done) return;
-          done = true;
+          if (revealed) return;
+          revealed = true;
+          host.querySelectorAll?.('.pbActorImageStatus').forEach(el => el.remove());
           img.style.visibility = 'visible';
         };
-        const fail = () => {
-          if (done) return;
-          done = true;
-          try { img.remove(); } catch {}
-          host.appendChild(createInitial(fallbackName));
+        const markStillLoading = () => {
+          if (revealed || host.querySelector('.pbActorImageStatus')) return;
+          const note = document.createElement('div');
+          note.className = 'pbActorImageStatus';
+          note.textContent = 'loading image...';
+          note.style.cssText = 'position:absolute;inset:auto 8px 8px 8px;text-align:center;font-size:11px;color:#d9ff9f;text-shadow:0 2px 2px #000;pointer-events:none;';
+          if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
+          host.appendChild(note);
         };
+        const failSoft = () => {
+          // Do not replace real uploaded/base64 actor images with initials. Leave the host ready
+          // for cached reloads instead of visually lying that the line has no image.
+          if (revealed) return;
+          markStillLoading();
+        };
+
         img.onload = reveal;
-        img.onerror = fail;
+        img.onerror = failSoft;
         host.appendChild(img);
         img.src = safe;
-        if (img.complete) {
-          if (img.naturalWidth > 0) reveal();
-          else fail();
-        } else {
-          setTimeout(() => {
-            if (!done && img.complete) {
-              if (img.naturalWidth > 0) reveal();
-              else fail();
-            }
-          }, 80);
+
+        if (entry?.loaded || (img.complete && img.naturalWidth > 0)) reveal();
+        else {
+          markStillLoading();
+          entry?.promise?.then(cached => {
+            if (cached?.loaded) reveal();
+            else failSoft();
+          });
         }
       }
 
@@ -22390,6 +22474,8 @@ Click me again to advance.</textarea>
 
       async function showSlide(slideInput = {}, options = {}) {
         const slide = normalizeSlide(slideInput);
+        rememberActorImage(slideImage(slide));
+        await waitForActorImages([slide], 1800);
         const token = ++activeSlideToken;
         const layer = ensureLayer();
         const position = slide.position || 'right';
@@ -22438,23 +22524,27 @@ Click me again to advance.</textarea>
 
       async function playSlot(slot = 'mid') {
         const data = readCutscenes();
+        keepActorImagesLoaded(data);
         const slides = Array.isArray(data[slot]) ? data[slot].map(normalizeSlide) : [];
         if (!slides.length) {
           toast('No cutscene lines in this slot');
           return;
         }
+        await waitForActorImages(slides, 2200);
         for (const slide of slides) await showSlide(slide);
         closeActorLayer();
       }
 
       async function playAllLines() {
         const data = readCutscenes();
+        keepActorImagesLoaded(data);
         const slides = [];
         ['pre','mid','post'].forEach(slot => (data[slot] || []).forEach(line => slides.push(normalizeSlide({ ...line, _previewSlot: slot }))));
         if (!slides.length) {
           toast('No cutscene lines to preview');
           return;
         }
+        await waitForActorImages(slides, 2600);
         for (const slide of slides) await showSlide(slide);
         closeActorLayer();
       }
@@ -22527,17 +22617,23 @@ Click me again to advance.</textarea>
         if (sfxBox) sfxBox.innerHTML = actor.pendingSfxSrc ? `<span class="pb81SfxLoaded">Loaded:</span> ${esc(actor.pendingSfxName || 'line click sound')}` : 'No line click sound selected';
       }
 
-      function thumbnailHtml(slide, speaker) {
+      function thumbnailHtml(slide, speaker, slot = '', index = -1) {
         const src = slideImage(slide);
         if (!src) return `<div class="pb81ActorThumb">${esc(String(speaker || '?').slice(0,1).toUpperCase())}</div>`;
-        return `<div class="pb81ActorThumb" data-pb81-thumb="${esc(src)}" data-pb81-thumb-name="${esc(speaker || 'Actor')}"></div>`;
+        rememberActorImage(src);
+        return `<div class="pb81ActorThumb" data-pb81-thumb-slot="${esc(slot)}" data-pb81-thumb-index="${Number(index)}" data-pb81-thumb-name="${esc(speaker || 'Actor')}"></div>`;
       }
 
       function hydrateThumbnails(root = document) {
-        root.querySelectorAll?.('[data-pb81-thumb]').forEach(box => {
+        root.querySelectorAll?.('[data-pb81-thumb-slot]').forEach(box => {
           if (box.dataset.ready === '1') return;
           box.dataset.ready = '1';
-          appendSafeImage(box, box.dataset.pb81Thumb || '', box.dataset.pb81ThumbName || 'Actor', box.dataset.pb81ThumbName || 'Actor');
+          const slot = box.dataset.pb81ThumbSlot || '';
+          const idx = Number(box.dataset.pb81ThumbIndex);
+          let slide = null;
+          try { slide = state?.cutscenes?.[slot]?.[idx] || null; } catch {}
+          const src = slideImage(slide || {});
+          appendSafeImage(box, src, box.dataset.pb81ThumbName || 'Actor', box.dataset.pb81ThumbName || 'Actor');
         });
       }
 
@@ -22545,6 +22641,7 @@ Click me again to advance.</textarea>
         const box = $('pb81CutsceneList');
         if (!box) return;
         const data = readCutscenes();
+        keepActorImagesLoaded(data);
         const rows = [];
         ['pre','mid','post'].forEach(slot => (data[slot] || []).forEach((line, index) => rows.push({ slot, index, line: normalizeSlide(line) })));
         box.innerHTML = rows.length ? rows.map(r => {
@@ -22552,7 +22649,7 @@ Click me again to advance.</textarea>
           const soundLabel = slideSound(r.line) ? ' • SFX' : '';
           const imageLabel = slideImage(r.line) ? ' • image' : ' • no image';
           return `<div class="pb81ListItem">
-            ${thumbnailHtml(r.line, speaker)}
+            ${thumbnailHtml(r.line, speaker, r.slot, r.index)}
             <span><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(speaker)}: ${esc((r.line.text || '').slice(0, 110))}<br><small>${esc(r.line.position || 'right')}${imageLabel}${soundLabel}</small></span>
             <button type="button" class="danger" data-pb81-del-cutscene="${esc(r.slot)}:${r.index}">×</button>
           </div>`;
@@ -22565,8 +22662,10 @@ Click me again to advance.</textarea>
         const slot = $('pb81CutsceneSlot')?.value || 'mid';
         data[slot] ||= [];
         const slide = currentSlideFromForm();
+        rememberActorImage(slideImage(slide));
         data[slot].push(clone(slide));
         state.cutscenes = data;
+        keepActorImagesLoaded(data);
         writeCutscenes();
         toast('Cutscene line added');
       }
@@ -22610,6 +22709,7 @@ Click me again to advance.</textarea>
             const file = ev.target.files?.[0];
             actor.pendingImageSrc = await readFileAsDataURL(file);
             actor.pendingImageName = file?.name || '';
+            rememberActorImage(actor.pendingImageSrc);
             syncPendingPreviews();
             toast(actor.pendingImageSrc ? 'Actor image loaded for new lines' : 'No actor image selected');
           }
@@ -22652,6 +22752,7 @@ Click me again to advance.</textarea>
             const actor = ensurePbState();
             actor.pendingImageSrc = src;
             actor.pendingImageName = state.selected?.name || 'Selected NPC image';
+            rememberActorImage(actor.pendingImageSrc);
             syncPendingPreviews();
             toast('Selected NPC image loaded for new lines');
             return;
@@ -22743,6 +22844,7 @@ Click me again to advance.</textarea>
         ]);
         if (cutsceneStats(merged).lines) {
           state.cutscenes = merged;
+          keepActorImagesLoaded(state.cutscenes);
           const box = $('pbCutsceneScript');
           if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
           renderCutsceneList();
@@ -22859,6 +22961,7 @@ Click me again to advance.</textarea>
       function init() {
         ensurePbState();
         installStyles();
+        keepActorImagesLoaded();
         installPanel();
         installEventGuards();
         patchRuntimeAndUniversal();
