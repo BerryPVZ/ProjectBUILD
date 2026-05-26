@@ -20741,32 +20741,46 @@ Click me again to advance.</textarea>
         if (actorSrc) {
           const img = document.createElement('img');
           img.alt = '';
-          img.decoding = 'auto';
+          img.decoding = 'async';
           img.loading = 'eager';
-          img.style.display = 'none';
+          img.className = 'pb81ActorReady pb81BugproofActorImage';
           let candidateIndex = 0;
+          let lastSrc = actorSrc;
+          const reveal = () => {
+            actor.classList.add('pb81ActorLoaded', 'pb81BugproofLoaded');
+            actor.classList.remove('pb81ActorBroken');
+            img.style.display = 'block';
+            img.style.visibility = 'visible';
+            img.style.opacity = '1';
+          };
           const tryNextActorSrc = () => {
             const nextSrc = actorCandidates[candidateIndex++];
             if (!nextSrc) {
-              actor.classList.add('pb81ActorBroken');
-              showFallback();
-              try { toast('Cutscene actor image failed to load'); } catch {}
+              // Do not swap a real selected source to the letter placeholder just because the
+              // preload check failed. Keep the user's source on-screen and let the browser load it.
+              img.onerror = null;
+              try { if (img.src !== (lastSrc || actorSrc)) img.src = lastSrc || actorSrc; } catch {}
+              reveal();
               return;
             }
-            img.src = nextSrc;
+            lastSrc = nextSrc;
+            try { img.src = nextSrc; }
+            catch { tryNextActorSrc(); }
           };
-          img.onload = () => {
-            actor.classList.add('pb81ActorLoaded');
-            actor.classList.remove('pb81ActorBroken');
-            img.classList.add('pb81ActorReady');
-            img.style.display = 'block';
-          };
+          img.onload = reveal;
           img.onerror = () => {
-            img.style.display = 'none';
-            tryNextActorSrc();
+            if (candidateIndex < actorCandidates.length) tryNextActorSrc();
+            else {
+              img.onerror = null;
+              try { if (img.src !== (lastSrc || actorSrc)) img.src = lastSrc || actorSrc; } catch {}
+              reveal();
+            }
           };
           actor.appendChild(img);
           tryNextActorSrc();
+          setTimeout(() => {
+            if (!actor.classList.contains('pb81ActorLoaded') && img.src) reveal();
+          }, 450);
         } else {
           showFallback();
         }
@@ -22482,30 +22496,46 @@ Click me again to advance.</textarea>
   function preloadImage(candidates, timeoutMs = 7000) {
     const list = unique(candidates).filter(looksLikeImage);
     return new Promise(resolve => {
+      if (!list.length) return resolve('');
       let index = 0;
-      let settled = false;
-      let timer = null;
-      const img = new Image();
-      img.decoding = 'async';
-      img.loading = 'eager';
-      const done = src => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve(src || '');
+      let finished = false;
+      let lastTried = list[0] || '';
+      const finish = src => {
+        if (finished) return;
+        finished = true;
+        resolve(src || lastTried || '');
       };
-      const next = () => {
-        clearTimeout(timer);
+      const tryNext = () => {
         const src = list[index++];
-        if (!src) return done('');
-        timer = setTimeout(next, timeoutMs);
-        img.onload = () => done(src);
-        img.onerror = () => next();
+        if (!src) return finish(lastTried || list[0] || '');
+        lastTried = src;
+        const img = new Image();
+        img.decoding = 'async';
+        img.loading = 'eager';
+        let done = false;
+        let timer = null;
+        const accept = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          finish(src);
+        };
+        const fail = () => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          tryNext();
+        };
+        img.onload = accept;
+        img.onerror = fail;
+        // Some file://, blob, and large data URLs can be valid but report too slowly or oddly.
+        // Do not punish them by dropping straight to the letter placeholder.
+        timer = setTimeout(() => accept(), Math.min(Math.max(350, Number(timeoutMs) || 7000), 1200));
         try { img.src = src; }
-        catch { next(); }
-        if (img.complete && img.naturalWidth > 0) done(src);
+        catch { fail(); }
+        if (img.complete && (img.naturalWidth > 0 || /^data:image\//i.test(src) || /^blob:/i.test(src) || /^file:/i.test(src))) accept();
       };
-      next();
+      tryNext();
     });
   }
 
@@ -22514,7 +22544,9 @@ Click me again to advance.</textarea>
     const stage = by('stageWrap');
     if (!stage) return;
     const srcs = imageCandidates(slide);
-    const loadedSrc = srcs.length ? await preloadImage(srcs) : '';
+    // Pick a source optimistically. The old path treated a slow/odd browser image decode as
+    // failure and immediately swapped to the placeholder. This keeps the selected actor source.
+    const loadedSrc = srcs.length ? (await preloadImage(srcs) || srcs[0] || '') : '';
     const rawPos = String(slide.position || slide.side || 'left').toLowerCase();
     const pos = rawPos.includes('right') ? 'right' : (rawPos.includes('center') || rawPos.includes('middle')) ? 'center' : 'left';
     const speaker = slide.speaker || slide.name || 'Cutscene';
@@ -22532,12 +22564,27 @@ Click me again to advance.</textarea>
       img.className = 'pb81ActorReady pb81BugproofActorImage';
       img.decoding = 'async';
       img.loading = 'eager';
-      img.src = loadedSrc;
+      let candidateIndex = Math.max(0, srcs.indexOf(loadedSrc));
+      const tryActorSrc = () => {
+        const nextSrc = srcs[candidateIndex++] || srcs[0] || loadedSrc;
+        if (!nextSrc) return;
+        try { img.src = nextSrc; }
+        catch { if (candidateIndex < srcs.length) tryActorSrc(); }
+      };
+      img.onerror = () => {
+        if (candidateIndex < srcs.length) tryActorSrc();
+        else {
+          // Keep the selected source instead of replacing it with the placeholder.
+          // A browser may still finish it later, especially with local/data/blob assets.
+          img.onerror = null;
+          try { if (img.src !== loadedSrc) img.src = loadedSrc; } catch {}
+        }
+      };
+      tryActorSrc();
       actor.appendChild(img);
     } else {
       actor.classList.add('pb81ActorBroken');
       actor.innerHTML = `<div class="pb556ActorFallback pb81ActorFallback">${esc(initial)}</div>`;
-      if (srcs.length) toast('Cutscene actor image failed to load');
     }
     const bubble = document.createElement('div');
     bubble.className = 'pb556DialogueBubble';
@@ -22773,5 +22820,17 @@ Click me again to advance.</textarea>
   setTimeout(wire, 1000);
 })();
 </script>
+
+
+<style id="pb81FinalNoPlaceholderGuard">
+  .pb81VisualCutsceneOverlay .pb81Actor.pb81ActorLoaded > img,
+  .pb81VisualCutsceneOverlay .pb81Actor.pb81BugproofLoaded > img,
+  .pb81VisualCutsceneOverlay .pb556Actor.pb81ActorLoaded > img,
+  .pb81VisualCutsceneOverlay .pb556Actor.pb81BugproofLoaded > img {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+</style>
 </body>
 </html>
