@@ -2436,7 +2436,23 @@ Click me again to advance.</textarea>
     }
 
     function showToast(text) {
-      toastEl.textContent = text;
+      const cleanVisibleToastText = value => String(value ?? '')
+        .replace(/Project:\s*BUILD\s*\d+(?:\.\d+)*(?:\s*-\s*[^.!?\n<]*)?/gi, 'Project: BUILD')
+        .replace(/Project\s+BUILD\s*\d+(?:\.\d+)*/gi, 'Project BUILD')
+        .replace(/\bBUILD\s+\d+(?:\.\d+)*\b/gi, 'BUILD')
+        .replace(/\bCutscene Editor\s+\d+(?:\.\d+)*\b/gi, 'Cutscene Editor')
+        .replace(/\b\d+(?:\.\d+)+(?:-[a-z0-9-]+)?\s*(?:installed|loaded|fix loaded|base loaded)/gi, 'Update loaded')
+        .replace(/\b(?:v|version)\s*\d+(?:\.\d+)*(?:-[a-z0-9-]+)?\b/gi, '')
+        .replace(/\bGraphics\s*\/\s*3D\b/gi, 'Graphics')
+        .replace(/\b3D\s+models?\b/gi, 'assets')
+        .replace(/\b3D\s+renderer\b/gi, 'renderer')
+        .replace(/\b3D\s+support[^.!?\n<]*/gi, 'sprite assets')
+        .replace(/\bFBX\/OBJ\/GLB\/GLTF\b/gi, 'sprite assets')
+        .replace(/\bFBX\b|\bThree\.js\b/gi, 'asset')
+        .replace(/\b3D\b/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+      toastEl.textContent = cleanVisibleToastText(text);
       toastEl.classList.add('show');
       clearTimeout(showToast.t);
       showToast.t = setTimeout(() => toastEl.classList.remove('show'), 1600);
@@ -5882,49 +5898,26 @@ Click me again to advance.</textarea>
         try { if (typeof renderBuilderTimeline === 'function') renderBuilderTimeline(); } catch {}
       }
 
-      function normalizeCutsceneSlideCompat(slide = {}) {
-        const src = slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
-        const sfx = slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '';
-        return {
-          ...slide,
-          image: src || slide.image,
-          imageSrc: src || slide.imageSrc,
-          actorImage: src || slide.actorImage,
-          clickSoundSrc: sfx || slide.clickSoundSrc,
-          soundSrc: sfx || slide.soundSrc,
-          clickSfxSrc: sfx || slide.clickSfxSrc,
-          sfxSrc: sfx || slide.sfxSrc
-        };
-      }
-
-      function normalizeCutscenePackCompat(parsed = {}) {
-        const pack = (parsed && typeof parsed === 'object') ? parsed : {};
-        return {
-          pre: Array.isArray(pack.pre) ? pack.pre.map(normalizeCutsceneSlideCompat) : [],
-          post: Array.isArray(pack.post) ? pack.post.map(normalizeCutsceneSlideCompat) : [],
-          mid: Array.isArray(pack.mid) ? pack.mid.map(normalizeCutsceneSlideCompat) : []
-        };
-      }
-
       function readCutscenes() {
         const box = by('pbCutsceneScript');
-        const fallback = normalizeCutscenePackCompat(state.cutscenes || { pre: [], post: [], mid: [] });
-        if (!box) {
-          state.cutscenes = fallback;
-          return state.cutscenes;
-        }
+        if (!box) return state.cutscenes || { pre: [], post: [] };
         try {
           const parsed = JSON.parse(box.value || '{}');
-          state.cutscenes = normalizeCutscenePackCompat({ ...fallback, ...parsed });
+          state.cutscenes = {
+            pre: Array.isArray(parsed.pre) ? parsed.pre : [],
+            post: Array.isArray(parsed.post) ? parsed.post : []
+          };
         } catch (err) {
           toast('Cutscene JSON error: ' + err.message);
-          state.cutscenes = fallback;
         }
         return state.cutscenes;
       }
 
       function writeCutscenes(cutscenes = state.cutscenes) {
-        state.cutscenes = normalizeCutscenePackCompat(cutscenes || { pre: [], post: [], mid: [] });
+        state.cutscenes = {
+          pre: Array.isArray(cutscenes?.pre) ? cutscenes.pre : [],
+          post: Array.isArray(cutscenes?.post) ? cutscenes.post : []
+        };
         const box = by('pbCutsceneScript');
         if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
       }
@@ -5932,7 +5925,6 @@ Click me again to advance.</textarea>
       function delay(ms) { return new Promise(resolve => setTimeout(resolve, Math.max(0, ms))); }
 
       async function showCutsceneSlide(slide = {}) {
-        slide = normalizeCutsceneSlideCompat(slide);
         const name = by('dialogName');
         const text = by('dialogText');
         const hint = by('dialogHint');
@@ -5948,17 +5940,15 @@ Click me again to advance.</textarea>
 
         if (stage && slide.backdrop) {
           wash = document.createElement('div');
-          wash.style.cssText = 'position:absolute;inset:0;z-index:90;pointer-events:none;background:' + String(slide.backdrop) + ';opacity:.42;';
+          wash.style.cssText = 'position:absolute;inset:0;z-index:6;pointer-events:none;background:' + String(slide.backdrop) + ';opacity:.42;';
           stage.appendChild(wash);
         }
-        const actorSrc = slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
-        if (stage && actorSrc) {
+        if (stage && slide.image) {
           img = document.createElement('img');
+          img.src = slide.image;
           img.alt = '';
-          img.style.cssText = 'position:absolute;right:6%;bottom:120px;max-width:32%;max-height:55%;object-fit:contain;z-index:91;pointer-events:none;filter:drop-shadow(0 12px 20px rgba(0,0,0,.55));display:block;';
-          img.onerror = () => { img.remove(); img = null; toast('Cutscene actor image failed to load'); };
+          img.style.cssText = 'position:absolute;right:6%;bottom:120px;max-width:32%;max-height:55%;object-fit:contain;z-index:7;pointer-events:none;filter:drop-shadow(0 12px 20px rgba(0,0,0,.55));';
           stage.appendChild(img);
-          img.src = actorSrc;
         }
 
         if (slide.action) runUniversalFunction(slide.action, slide.args || slide);
@@ -12106,18 +12096,15 @@ Click me again to advance.</textarea>
             const parsed = JSON.parse(box.value || '{}');
             state.cutscenes = {
               pre: Array.isArray(parsed.pre) ? parsed.pre : [],
-              mid: Array.isArray(parsed.mid) ? parsed.mid : (Array.isArray(state.cutscenes?.mid) ? state.cutscenes.mid : []),
               post: Array.isArray(parsed.post) ? parsed.post : []
             };
           } catch (err) { toast('Cutscene JSON error: ' + err.message); }
         }
-        state.cutscenes ??= { pre: [], mid: [], post: [] };
-        state.cutscenes.mid ??= [];
+        state.cutscenes ??= { pre: [], post: [] };
         return state.cutscenes;
       }
       function writeCutscenes556() {
-        state.cutscenes ??= { pre: [], mid: [], post: [] };
-        state.cutscenes.mid ??= [];
+        state.cutscenes ??= { pre: [], post: [] };
         const box = by('pbCutsceneScript');
         if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
         renderVisualCutsceneList556();
@@ -12632,9 +12619,8 @@ Click me again to advance.</textarea>
         slides.forEach((s, i) => {
           const row = document.createElement('div');
           row.className = 'pb556CutsceneRow';
-          const hasSfx = !!(s.pb81ClickSfxSrc || s.soundSrc || s.clickSoundSrc || s.sfxSrc || s.clickSfxSrc);
-          const actorSrc = s.pb81LineImageSrc || s.pb81ActorSrc || s.pb81ImageSrc || s.actorSrc || s.image || s.imageSrc || s.actorImage || s.portraitSrc || s.portrait || '';
-          row.innerHTML = `<div class="pb556CutsceneThumb">${actorSrc ? `<img src="${actorSrc}" alt="">` : (s.position === 'right' ? '→' : s.position === 'center' ? '●' : '←')}</div><div><b>${i + 1}. ${s.speaker || 'Speaker'} ${s.position ? '(' + s.position + ')' : ''}</b><span>${String(s.text || '').slice(0, 90)}${hasSfx ? '<br>Click SFX: yes' : ''}</span></div><button type="button" class="danger" data-pb556-del-line="${i}">×</button>`;
+          const hasSfx = !!(s.soundSrc || s.clickSoundSrc || s.sfxSrc || s.clickSfxSrc);
+          row.innerHTML = `<div class="pb556CutsceneThumb">${s.image ? `<img src="${s.image}" alt="">` : (s.position === 'right' ? '→' : s.position === 'center' ? '●' : '←')}</div><div><b>${i + 1}. ${s.speaker || 'Speaker'} ${s.position ? '(' + s.position + ')' : ''}</b><span>${String(s.text || '').slice(0, 90)}${hasSfx ? '<br>Click SFX: yes' : ''}</span></div><button type="button" class="danger" data-pb556-del-line="${i}">×</button>`;
           box.appendChild(row);
         });
         box.querySelectorAll('[data-pb556-del-line]').forEach(btn => btn.addEventListener('click', () => {
@@ -12646,8 +12632,7 @@ Click me again to advance.</textarea>
       }
       function delay556(ms) { return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0))); }
       async function showEnhancedSlide556(slide = {}) {
-        const actorSrc = slide.pb81LineImageSrc || slide.pb81ActorSrc || slide.pb81ImageSrc || slide.actorSrc || slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
-        if (!slide.layout && !slide.position && !actorSrc) {
+        if (!slide.layout && !slide.position && !slide.image) {
           if (window.ProjectBuildUniversal?.run) {
             await window.ProjectBuildUniversal.run('dialog', slide);
             return delay556(Number(slide.duration) || 1500);
@@ -12660,7 +12645,7 @@ Click me again to advance.</textarea>
         const pos = slide.position || 'center';
         const actor = document.createElement('div');
         actor.className = 'pb556Actor ' + pos;
-        if (actorSrc) actor.innerHTML = `<img src="${actorSrc}" alt="">`;
+        if (slide.image) actor.innerHTML = `<img src="${slide.image}" alt="">`;
         else actor.innerHTML = `<div class="pb556ActorFallback">${String(slide.speaker || '?').trim().slice(0,1).toUpperCase()}</div>`;
         const bubble = document.createElement('div');
         bubble.className = 'pb556DialogueBubble';
@@ -12668,7 +12653,7 @@ Click me again to advance.</textarea>
         overlay.appendChild(actor);
         overlay.appendChild(bubble);
         stage.appendChild(overlay);
-        const slideSfx = slide.pb81ClickSfxSrc || slide.soundSrc || slide.clickSoundSrc || slide.sfxSrc || slide.clickSfxSrc || '';
+        const slideSfx = slide.soundSrc || slide.clickSoundSrc || slide.sfxSrc || slide.clickSfxSrc || '';
         if (slideSfx) {
           try {
             if (typeof playSfx === 'function') playSfx(slideSfx, 0.9);
@@ -12785,7 +12770,7 @@ Click me again to advance.</textarea>
             try { readCutscenes556(); } catch {}
             data.pb556LevelRules = clone(state.pb556.rules || {});
             data.pb556BoardItems = clone(state.pb556.boardItems || []);
-            data.cutscenes = clone(state.cutscenes || { pre:[], mid:[], post:[] });
+            data.cutscenes = clone(state.cutscenes || { pre:[], post:[] });
             return data;
           };
           serializableState.pb556RulesWrapped = true;
@@ -20044,106 +20029,11 @@ Click me again to advance.</textarea>
         reader.readAsDataURL(file);
       });
 
-      function decodeCutsceneAssetSrc81(value) {
-        if (value == null) return '';
-        let src = '';
-        if (typeof value === 'string') src = value;
-        else if (typeof value.src === 'string') src = value.src;
-        else if (typeof value.url === 'string') src = value.url;
-        else if (typeof value.data === 'string') src = value.data;
-        src = String(src || '').trim();
-        if (!src || src === 'null' || src === 'undefined' || src === '[object Object]') return '';
-        // Real image URLs/data URLs must be returned untouched. Parsing them as HTML can
-        // corrupt SVG/data strings and make valid per-line actors fall through to fallback.
-        if (/^(data:image\/|blob:|https?:\/\/|file:|pbasset:\/\/)/i.test(src) || /^(?:\.\/|\.\.\/|\/)?[^\s"'<>]+\.(png|gif|jpe?g|webp|apng|svg)([?#].*)?$/i.test(src)) return src;
-        const imgMatch = src.match(/<img[^>]*\ssrc=(['"])(.*?)\1/i) || src.match(/\ssrc=(['"])(.*?)\1/i);
-        if (imgMatch) src = imgMatch[2] || '';
-        const urlMatch = src.match(/^url\((['"]?)(.*?)\1\)$/i);
-        if (urlMatch) src = urlMatch[2] || '';
-        try {
-          const textarea = document.createElement('textarea');
-          textarea.innerHTML = src;
-          src = textarea.value || src;
-        } catch {}
-        src = String(src || '').trim();
-        if (!src || src === 'null' || src === 'undefined' || src === '[object Object]') return '';
-        return src;
-      }
-
-      function cutsceneImageScore81(src) {
-        src = decodeCutsceneAssetSrc81(src);
-        if (!src) return -1;
-        if (/^data:image\//i.test(src)) return 1000000 + src.length;
-        if (/^blob:/i.test(src)) return 900000 + src.length;
-        if (/^https?:\/\//i.test(src) || /^file:/i.test(src)) return 800000 + src.length;
-        if (/^(?:\.\/|\.\.\/|\/)?[^\s"'<>]+\.(png|gif|jpe?g|webp|apng|svg)([?#].*)?$/i.test(src)) return 700000 + src.length;
-        return -1;
-      }
-
-      function pickCutsceneImageSrc81(item = {}, fallbackSrc = '') {
-        const candidates = [
-          item?.pb81LineImageSrc, item?.pb81FrozenActorSrc, item?.pb81ActorSrc, item?.pb81ImageSrc, item?.actorSrc,
-          item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait,
-          fallbackSrc
-        ].map(decodeCutsceneAssetSrc81).filter(Boolean);
-        if (!candidates.length) return '';
-        // Keep the saved per-line image first. Do not pick random long text or a later pending image.
-        return candidates.find(src => cutsceneImageScore81(src) >= 0) || '';
-      }
-
-      function cutsceneImageCandidates81(item = {}, fallbackSrc = '') {
-        const seen = new Set();
-        // Preserve field order. The saved per-line image is tried before compatibility fallbacks,
-        // so line 1 and line 2 can keep different loaded files.
-        return [item?.pb81LineImageSrc, item?.pb81FrozenActorSrc, item?.pb81ActorSrc, item?.pb81ImageSrc, item?.actorSrc, item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait, fallbackSrc]
-          .map(decodeCutsceneAssetSrc81)
-          .filter(src => {
-            if (!src || seen.has(src) || cutsceneImageScore81(src) < 0) return false;
-            seen.add(src);
-            return true;
-          });
-      }
-
-      function normalizeCutsceneSlideCompat(slide = {}) {
-        const item = (slide && typeof slide === 'object') ? slide : {};
-        const src = pickCutsceneImageSrc81(item);
-        const sfx = decodeCutsceneAssetSrc81(item.pb81ClickSfxSrc || item.clickSoundSrc || item.soundSrc || item.clickSfxSrc || item.sfxSrc || '');
-        return {
-          ...item,
-          pb81LineImageSrc: src || item.pb81LineImageSrc || '',
-          pb81FrozenActorSrc: src || item.pb81FrozenActorSrc || '',
-          pb81ActorSrc: src || item.pb81ActorSrc || '',
-          pb81ImageSrc: src || item.pb81ImageSrc || '',
-          actorSrc: src || item.actorSrc || '',
-          image: src || '',
-          imageSrc: src || '',
-          actorImage: src || '',
-          portraitSrc: src || item.portraitSrc || '',
-          portrait: src || item.portrait || '',
-          pb81ClickSfxSrc: sfx || '',
-          clickSoundSrc: sfx || '',
-          soundSrc: sfx || '',
-          clickSfxSrc: sfx || '',
-          sfxSrc: sfx || ''
-        };
-      }
-
-      function normalizeCutscenePackCompat(parsed = {}) {
-        const pack = (parsed && typeof parsed === 'object') ? parsed : {};
-        return {
-          pre: Array.isArray(pack.pre) ? pack.pre.map(normalizeCutsceneSlideCompat) : [],
-          mid: Array.isArray(pack.mid) ? pack.mid.map(normalizeCutsceneSlideCompat) : [],
-          post: Array.isArray(pack.post) ? pack.post.map(normalizeCutsceneSlideCompat) : []
-        };
-      }
-
       state.pb8 ??= {};
       state.pb8.levelEvents ??= [];
       state.pb8.preplacedPlants ??= [];
       state.pb8.waveGap = Math.max(30, Number(state.pb8.waveGap) || 30);
       state.pb8.matrix ??= { waves: 7, lanes: 6, cells: {}, templates: {} };
-      state.pb8.pendingCutsceneImage ??= null;
-      state.pb8.pendingCutsceneSfx ??= null;
       state.cutscenes ??= { pre: [], post: [], mid: [] };
       state.cutscenes.mid ??= [];
 
@@ -20181,11 +20071,6 @@ Click me again to advance.</textarea>
           .pb81Preview { min-height:58px; border:1px dashed rgba(217,255,159,.38); border-radius:12px; display:grid; place-items:center; color:#dbeafe; overflow:hidden; background:rgba(0,0,0,.2); font-size:11px; }
           .pb81Preview img { width:100%; height:76px; object-fit:cover; }
           .pb81ActorPreview img { object-fit:contain; background:rgba(255,255,255,.07); }
-          .pb81CutMeta { display:flex; gap:8px; align-items:center; min-width:0; }
-          .pb81CutThumb { width:46px; height:46px; flex:0 0 46px; border-radius:10px; border:1px solid rgba(217,255,159,.32); display:grid; place-items:center; overflow:hidden; background:rgba(0,0,0,.24); color:#d9ff9f; font-weight:900; }
-          .pb81CutThumb img { width:100%; height:100%; object-fit:contain; }
-          .pb81CutText { min-width:0; }
-          .pb81CutSub { display:block; color:#cbd5e1; font-size:11px; margin-top:2px; line-height:1.25; }
           .pb81TransitionOverlay { position:absolute; inset:0; z-index:95; pointer-events:none; opacity:0; transition:opacity 300ms linear; background:#000; }
           .pb81CrossfadeImage { position:absolute; inset:0; z-index:94; pointer-events:none; opacity:0; transition:opacity 600ms linear; width:100%; height:100%; object-fit:cover; }
           @media (max-width:950px){ #pb81AdvancedLevelBuilder .pb81Tabs{top:66px;} .pb81ListItem{grid-template-columns:1fr;} .pb81WaveMatrix{min-width:760px;} }
@@ -20295,17 +20180,8 @@ Click me again to advance.</textarea>
               </div>
               <label>Speaker</label><input id="pb81CutsceneSpeaker" value="Crazy Dave">
               <label>Line Text</label><textarea id="pb81CutsceneText">More zombies are coming. Watch the waves!</textarea>
-              <div class="row">
-                <div>
-                  <label>Actor Image PNG/GIF For This Line</label><input id="pb81CutsceneImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
-                  <div id="pb81CutscenePreview" class="pb81Preview pb81ActorPreview">No actor selected</div>
-                </div>
-                <div>
-                  <label>Click SFX For This Line</label><input id="pb81CutsceneSfx" type="file" accept="audio/*">
-                  <div id="pb81CutsceneSfxPreview" class="pb81Preview">No click SFX selected</div>
-                </div>
-              </div>
-              <div class="row"><button id="pb81ClearCutsceneImage" type="button" class="danger">Clear Actor Image</button><button id="pb81ClearCutsceneSfx" type="button" class="danger">Clear Click SFX</button></div>
+              <label>Actor Image PNG/GIF</label><input id="pb81CutsceneImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
+              <div id="pb81CutscenePreview" class="pb81Preview pb81ActorPreview">No actor selected</div>
               <div class="row"><button id="pb81AddCutsceneLine" type="button">Add Cutscene Line</button><button id="pb81PreviewCutsceneSlot" type="button" class="blue">Preview Slot</button></div>
               <div class="row">
                 <div><label>Schedule Mid Slot At Sec</label><input id="pb81CutsceneEventTime" type="number" value="45" min="0" step="0.5"></div>
@@ -20558,14 +20434,7 @@ Click me again to advance.</textarea>
         state.cutscenes.mid ??= [];
         const rows = [];
         ['pre', 'mid', 'post'].forEach(slot => (state.cutscenes[slot] || []).forEach((line, index) => rows.push({ slot, index, line })));
-        box.innerHTML = rows.length ? rows.map(r => {
-          const line = r.line || {};
-          const actorSrc = pickCutsceneImageSrc81(line);
-          const sfxSrc = decodeCutsceneAssetSrc81(line.pb81ClickSfxSrc || line.clickSoundSrc || line.soundSrc || line.clickSfxSrc || line.sfxSrc || '');
-          const pos = line.position || line.side || 'center';
-          const thumb = actorSrc ? `<img src="${esc(actorSrc)}" alt="">` : esc(String(pos || '?').slice(0, 1).toUpperCase());
-          return `<div class="pb81ListItem"><span class="pb81CutMeta"><span class="pb81CutThumb">${thumb}</span><span class="pb81CutText"><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(line.speaker || line.name || 'Cutscene')}: ${esc((line.text || '').slice(0, 90))}<span class="pb81CutSub">Actor image: ${actorSrc ? 'yes' : 'none'} • Click SFX: ${sfxSrc ? 'yes' : 'none'} • Side: ${esc(pos)}</span></span></span><button type="button" class="danger" data-pb81-del-cutscene="${r.slot}:${r.index}">×</button></div>`;
-        }).join('') : '<div class="pb81ListItem"><span>No cutscene lines yet.</span></div>';
+        box.innerHTML = rows.length ? rows.map(r => `<div class="pb81ListItem"><span><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(r.line.speaker || r.line.name || 'Cutscene')}: ${esc((r.line.text || '').slice(0, 90))}</span><button type="button" class="danger" data-pb81-del-cutscene="${r.slot}:${r.index}">×</button></div>`).join('') : '<div class="pb81ListItem"><span>No cutscene lines yet.</span></div>';
         box.querySelectorAll('[data-pb81-del-cutscene]').forEach(btn => btn.addEventListener('click', () => {
           const [slot, idx] = btn.dataset.pb81DelCutscene.split(':');
           state.cutscenes[slot]?.splice(Number(idx), 1);
@@ -20575,20 +20444,15 @@ Click me again to advance.</textarea>
       }
 
       function writeCutsceneJson81() {
-        state.cutscenes = normalizeCutscenePackCompat(state.cutscenes || { pre: [], post: [], mid: [] });
         const box = by('pbCutsceneScript');
-        if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
+        if (box) box.value = JSON.stringify(state.cutscenes || { pre: [], post: [], mid: [] }, null, 2);
         try { window.ProjectBuildUniversal?.writeCutscenes?.(state.cutscenes); } catch {}
       }
 
       function readCutsceneJson81() {
-        try {
-          if (window.ProjectBuildUniversal?.readCutscenes) {
-            const fromUniversal = window.ProjectBuildUniversal.readCutscenes();
-            state.cutscenes = normalizeCutscenePackCompat({ ...(state.cutscenes || {}), ...(fromUniversal || {}) });
-          }
-        } catch {}
-        state.cutscenes = normalizeCutscenePackCompat(state.cutscenes || { pre: [], post: [], mid: [] });
+        try { if (window.ProjectBuildUniversal?.readCutscenes) state.cutscenes = window.ProjectBuildUniversal.readCutscenes(); } catch {}
+        state.cutscenes ??= { pre: [], post: [], mid: [] };
+        state.cutscenes.mid ??= [];
         return state.cutscenes;
       }
 
@@ -20704,146 +20568,32 @@ Click me again to advance.</textarea>
       }
 
       async function showCutsceneSlide81(slide = {}) {
-        const rawSlide81 = (slide && typeof slide === 'object') ? slide : {};
-        slide = normalizeCutsceneSlideCompat(rawSlide81);
-        const actorCandidates = cutsceneImageCandidates81(rawSlide81, pickCutsceneImageSrc81(slide, ''));
-        const actorSrc = actorCandidates[0] || '';
-        const slideSfx = decodeCutsceneAssetSrc81(slide.pb81ClickSfxSrc || slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '');
-        const needsLocalVisual = !!(slide._pb81ForceLocal || slide.layout === 'visualDialogue' || actorSrc || slideSfx || slide.position || slide.side);
-        if (window.ProjectBuildUniversal?.run && !needsLocalVisual) {
+        if (window.ProjectBuildUniversal?.run && !slide._pb81ForceLocal) {
           try { return await window.ProjectBuildUniversal.run('dialog', slide); } catch {}
         }
-
-        const stage = by('stageWrap');
-        const oldBox = by('dialogBox');
-        if (oldBox) oldBox.style.display = 'none';
-        if (!stage) return;
-
-        const rawPos = String(slide.position || slide.side || 'left').toLowerCase();
-        const pos = rawPos.includes('right') ? 'right' : (rawPos.includes('center') || rawPos.includes('middle')) ? 'center' : 'left';
-        const speaker = slide.speaker || slide.name || 'Cutscene';
-        const body = slide.text || slide.dialog || slide.message || '';
-        const initial = (String(speaker || '?').trim().slice(0, 1).toUpperCase() || '?');
-        const safeInitial = typeof esc === 'function' ? esc(initial) : initial.replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
-        const safeSpeaker = typeof esc === 'function' ? esc(String(speaker)) : String(speaker).replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
-        const safeBody = typeof esc === 'function' ? esc(String(body)) : String(body).replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
-        const duration = Math.max(200, Number(slide.duration) || 2200);
-
-        const overlay = document.createElement('div');
-        overlay.className = 'pb556CutsceneOverlay pb81VisualCutsceneOverlay';
-        overlay.style.pointerEvents = 'auto';
-
-        const actor = document.createElement('div');
-        actor.className = 'pb556Actor pb81Actor ' + pos;
-        const showFallback = () => {
-          actor.innerHTML = `<div class="pb556ActorFallback pb81ActorFallback">${safeInitial}</div>`;
-        };
-        if (actorSrc) {
-          const img = document.createElement('img');
-          img.alt = '';
-          img.decoding = 'async';
-          img.loading = 'eager';
-          img.className = 'pb81ActorReady pb81BugproofActorImage';
-          let candidateIndex = 0;
-          let lastSrc = actorSrc;
-          const reveal = () => {
-            actor.classList.add('pb81ActorLoaded', 'pb81BugproofLoaded');
-            actor.classList.remove('pb81ActorBroken');
-            img.style.display = 'block';
-            img.style.visibility = 'visible';
-            img.style.opacity = '1';
-          };
-          const tryNextActorSrc = () => {
-            const nextSrc = actorCandidates[candidateIndex++];
-            if (!nextSrc) {
-              // Do not swap a real selected source to the letter placeholder just because the
-              // preload check failed. Keep the user's source on-screen and let the browser load it.
-              img.onerror = null;
-              try { if (img.src !== (lastSrc || actorSrc)) img.src = lastSrc || actorSrc; } catch {}
-              reveal();
-              return;
-            }
-            lastSrc = nextSrc;
-            try { img.src = nextSrc; }
-            catch { tryNextActorSrc(); }
-          };
-          img.onload = reveal;
-          img.onerror = () => {
-            if (candidateIndex < actorCandidates.length) tryNextActorSrc();
-            else {
-              img.onerror = null;
-              try { if (img.src !== (lastSrc || actorSrc)) img.src = lastSrc || actorSrc; } catch {}
-              reveal();
-            }
-          };
-          actor.appendChild(img);
-          tryNextActorSrc();
-          setTimeout(() => {
-            if (!actor.classList.contains('pb81ActorLoaded') && img.src) reveal();
-          }, 450);
-        } else {
-          showFallback();
+        const box = by('dialogBox'), name = by('dialogName'), text = by('dialogText'), hint = by('dialogHint'), stage = by('stageWrap');
+        if (name) name.textContent = slide.speaker || slide.name || 'Cutscene';
+        if (text) text.textContent = slide.text || '';
+        if (hint) hint.textContent = slide.hint || 'Cutscene playing...';
+        if (box) box.style.display = 'block';
+        let img = null;
+        if (slide.image && stage) {
+          img = document.createElement('img');
+          img.src = slide.image; img.alt = '';
+          const pos = slide.position || slide.side || 'right';
+          img.style.cssText = `position:absolute;bottom:112px;${pos === 'left' ? 'left:4%;' : pos === 'center' ? 'left:50%;transform:translateX(-50%);' : 'right:4%;'}max-width:34%;max-height:58%;object-fit:contain;z-index:96;pointer-events:none;filter:drop-shadow(0 14px 24px rgba(0,0,0,.62));`;
+          stage.appendChild(img);
         }
-
-        const bubble = document.createElement('div');
-        bubble.className = 'pb556DialogueBubble';
-        bubble.innerHTML = `<b>${safeSpeaker}</b><span>${safeBody}</span><small class="pb81TapHint">Tap / click to continue</small>`;
-
-        overlay.appendChild(actor);
-        overlay.appendChild(bubble);
-        stage.appendChild(overlay);
-
-        if (slideSfx) {
-          try {
-            if (typeof playSfx === 'function') playSfx(slideSfx, 0.9);
-            else new Audio(slideSfx).play?.().catch(() => {});
-          } catch {}
-        }
-        if (slide.action && window.ProjectBuildUniversal?.run) {
-          try { window.ProjectBuildUniversal.run(slide.action, slide.args || slide); } catch {}
-        }
-
-        await new Promise(resolve => {
-          let done = false;
-          const finish = () => {
-            if (done) return;
-            done = true;
-            overlay.removeEventListener('click', finish, true);
-            resolve();
-          };
-          overlay.addEventListener('click', ev => { ev.preventDefault(); ev.stopPropagation(); finish(); }, true);
-          setTimeout(finish, duration);
-        });
-        overlay.remove();
+        await new Promise(r => setTimeout(r, Number(slide.duration) || 2000));
+        img?.remove();
       }
 
       async function playCutsceneSlot81(slot = 'mid') {
         readCutsceneJson81();
-        const pendingActor = decodeCutsceneAssetSrc81(state.pb8?.pendingCutsceneImage || '');
-        const pendingSfx = decodeCutsceneAssetSrc81(state.pb8?.pendingCutsceneSfx || '');
-        let slides = Array.isArray(state.cutscenes?.[slot]) ? state.cutscenes[slot].map(normalizeCutsceneSlideCompat) : [];
-        // Do not apply the current pending image/SFX to saved slides. Each line keeps
-        // the exact image and sound that were loaded when that line was added.
-        if (!slides.length && (pendingActor || pendingSfx || String(by('pb81CutsceneText')?.value || '').trim())) {
-          slides = [normalizeCutsceneSlideCompat({
-            speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
-            text: by('pb81CutsceneText')?.value || '',
-            duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
-            position: by('pb81CutsceneSide')?.value || 'right',
-            layout: 'visualDialogue',
-            image: pendingActor,
-            imageSrc: pendingActor || undefined,
-            actorImage: pendingActor || undefined,
-            soundSrc: pendingSfx || undefined,
-            clickSoundSrc: pendingSfx || undefined,
-            _pb81ForceLocal: true
-          })];
-        }
-        const needsLocalVisual = slides.some(s => s?._pb81ForceLocal || s?.layout === 'visualDialogue' || pickCutsceneImageSrc81(s) || decodeCutsceneAssetSrc81(s?.clickSoundSrc || s?.soundSrc || s?.clickSfxSrc || s?.sfxSrc || ''));
-        if (window.ProjectBuildUniversal?.playCutscene && slot !== 'mid' && !needsLocalVisual) {
+        const slides = state.cutscenes?.[slot] || [];
+        if (window.ProjectBuildUniversal?.playCutscene && slot !== 'mid') {
           try { return await window.ProjectBuildUniversal.playCutscene(slot); } catch {}
         }
-        if (!slides.length) return toast('No cutscene lines in this slot');
         for (const slide of slides) await showCutsceneSlide81(slide);
         const box = by('dialogBox');
         if (box) box.style.display = 'none';
@@ -20921,25 +20671,6 @@ Click me again to advance.</textarea>
           state.pb8.pendingCutsceneImage = await toDataURL81(e.target.files?.[0]);
           const box = by('pb81CutscenePreview');
           if (box) box.innerHTML = state.pb8.pendingCutsceneImage ? `<img src="${state.pb8.pendingCutsceneImage}" alt="">` : 'No actor selected';
-          toast(state.pb8.pendingCutsceneImage ? 'Actor image loaded; Add Cutscene Line saves it, Preview Slot can now show it' : 'No actor image selected');
-        });
-        by('pb81CutsceneSfx')?.addEventListener('change', async e => {
-          state.pb8.pendingCutsceneSfx = await toDataURL81(e.target.files?.[0]);
-          const box = by('pb81CutsceneSfxPreview');
-          if (box) box.textContent = state.pb8.pendingCutsceneSfx ? (e.target.files?.[0]?.name || 'Click SFX loaded') : 'No click SFX selected';
-          toast(state.pb8.pendingCutsceneSfx ? 'Click SFX loaded for the next cutscene line' : 'No click SFX selected');
-        });
-        by('pb81ClearCutsceneImage')?.addEventListener('click', () => {
-          state.pb8.pendingCutsceneImage = null;
-          if (by('pb81CutsceneImage')) by('pb81CutsceneImage').value = '';
-          if (by('pb81CutscenePreview')) by('pb81CutscenePreview').textContent = 'No actor selected';
-          toast('Actor image cleared for new lines');
-        });
-        by('pb81ClearCutsceneSfx')?.addEventListener('click', () => {
-          state.pb8.pendingCutsceneSfx = null;
-          if (by('pb81CutsceneSfx')) by('pb81CutsceneSfx').value = '';
-          if (by('pb81CutsceneSfxPreview')) by('pb81CutsceneSfxPreview').textContent = 'No click SFX selected';
-          toast('Click SFX cleared for new lines');
         });
         by('pb81AddBgEvent')?.addEventListener('click', () => {
           if (!state.pb8.pendingBgSrc) return toast('Pick a background image first');
@@ -20963,17 +20694,9 @@ Click me again to advance.</textarea>
         });
         by('pb81ClearEvents')?.addEventListener('click', () => { state.pb8.levelEvents = []; resetRuntimeLevelEvents81(); renderEventList81(); toast('Timed events cleared'); });
 
-        by('pb81AddCutsceneLine')?.addEventListener('click', async () => {
+        by('pb81AddCutsceneLine')?.addEventListener('click', () => {
           readCutsceneJson81();
           const slot = by('pb81CutsceneSlot')?.value || 'mid';
-          const pickedActorFile = by('pb81CutsceneImage')?.files?.[0] || null;
-          const pickedSfxFile = by('pb81CutsceneSfx')?.files?.[0] || null;
-          const actorFromFile = pickedActorFile ? await toDataURL81(pickedActorFile) : '';
-          const sfxFromFile = pickedSfxFile ? await toDataURL81(pickedSfxFile) : '';
-          const actorImage = decodeCutsceneAssetSrc81(actorFromFile || state.pb8.pendingCutsceneImage || '');
-          const clickSfx = decodeCutsceneAssetSrc81(sfxFromFile || state.pb8.pendingCutsceneSfx || '');
-          if (actorImage) state.pb8.pendingCutsceneImage = actorImage;
-          if (clickSfx) state.pb8.pendingCutsceneSfx = clickSfx;
           state.cutscenes[slot] ??= [];
           state.cutscenes[slot].push({
             speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
@@ -20981,27 +20704,11 @@ Click me again to advance.</textarea>
             duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
             layout: 'visualDialogue',
             position: by('pb81CutsceneSide')?.value || 'right',
-            pb81LineId: `pb81-line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-            pb81LineImageSrc: actorImage || '',
-            pb81FrozenActorSrc: actorImage || '',
-            pb81ActorSrc: actorImage || '',
-            pb81ImageSrc: actorImage || '',
-            actorSrc: actorImage || '',
-            image: actorImage || '',
-            imageSrc: actorImage || '',
-            actorImage: actorImage || '',
-            portraitSrc: actorImage || '',
-            portrait: actorImage || '',
-            pb81ClickSfxSrc: clickSfx || '',
-            soundSrc: clickSfx || '',
-            clickSoundSrc: clickSfx || '',
-            clickSfxSrc: clickSfx || '',
-            sfxSrc: clickSfx || '',
-            _pb81ForceLocal: true
+            image: state.pb8.pendingCutsceneImage || null
           });
           writeCutsceneJson81();
           renderCutsceneList81();
-          toast(`Cutscene line added${actorImage ? ' with actor image' : ''}${clickSfx ? ' and click SFX' : ''}`);
+          toast('Cutscene line added');
         });
         by('pb81PreviewCutsceneSlot')?.addEventListener('click', () => playCutsceneSlot81(by('pb81CutsceneSlot')?.value || 'mid'));
         by('pb81ScheduleMidCutscene')?.addEventListener('click', () => {
@@ -22259,595 +21966,639 @@ Click me again to advance.</textarea>
   </script>
 
 
+  <script id="pbActorThingyRewritePatch">
+    (() => {
+      if (window.ProjectBuildActorThingyRewrite?.installed) return;
 
-<style id="pb81ActorImagePreviewPatch">
-  .pb81VisualCutsceneOverlay {
-    z-index: 160 !important;
-    pointer-events: auto !important;
-    overflow: visible !important;
-  }
-  .pb81VisualCutsceneOverlay .pb81Actor,
-  .pb81VisualCutsceneOverlay .pb556Actor {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    z-index: 5 !important;
-    pointer-events: none !important;
-    overflow: visible !important;
-    top: auto !important;
-    bottom: 0 !important;
-    height: 88% !important;
-    width: min(38vw, 520px) !important;
-    align-items: flex-end !important;
-    justify-content: center !important;
-  }
-  .pb81VisualCutsceneOverlay .pb81Actor.left,
-  .pb81VisualCutsceneOverlay .pb556Actor.left { left: 0 !important; right: auto !important; }
-  .pb81VisualCutsceneOverlay .pb81Actor.right,
-  .pb81VisualCutsceneOverlay .pb556Actor.right { right: 0 !important; left: auto !important; }
-  .pb81VisualCutsceneOverlay .pb81Actor.center,
-  .pb81VisualCutsceneOverlay .pb556Actor.center { left: 50% !important; right: auto !important; width: min(54vw, 650px) !important; transform: translateX(-50%) !important; }
-  .pb81VisualCutsceneOverlay .pb81Actor img,
-  .pb81VisualCutsceneOverlay .pb556Actor img {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    width: 100% !important;
-    height: 100% !important;
-    max-width: none !important;
-    max-height: none !important;
-    object-fit: contain !important;
-    object-position: bottom center !important;
-  }
-  .pb81VisualCutsceneOverlay .pb81ActorFallback,
-  .pb81VisualCutsceneOverlay .pb556ActorFallback {
-    display: grid !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-  .pb81VisualCutsceneOverlay .pb556DialogueBubble {
-    z-index: 6 !important;
-  }
-  .pb81TapHint {
-    display: block;
-    margin-top: 14px;
-    color: #60452c;
-    font-weight: 900;
-    letter-spacing: .08em;
-    text-align: center;
-  }
-</style>
-
-
-
-<style id="pb81BugproofCutsceneNoFlashStyle">
-  .pb81VisualCutsceneOverlay .pb81Actor:not(.pb81ActorLoaded):not(.pb81BugproofLoaded) > img,
-  .pb81VisualCutsceneOverlay .pb556Actor:not(.pb81ActorLoaded):not(.pb81BugproofLoaded) > img {
-    visibility: hidden !important;
-    opacity: 0 !important;
-  }
-  .pb81VisualCutsceneOverlay .pb81Actor.pb81ActorLoaded > img,
-  .pb81VisualCutsceneOverlay .pb81Actor.pb81BugproofLoaded > img,
-  .pb81VisualCutsceneOverlay .pb556Actor.pb81BugproofLoaded > img {
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-</style>
-
-<script id="pb81BugproofCutsceneFix">
-(() => {
-  if (window.ProjectBuild81BugproofCutsceneFix?.installed) return;
-  const api = window.ProjectBuild81BugproofCutsceneFix = { installed: true };
-  const by = id => document.getElementById(id);
-  const getState = () => window.ProjectBuild81AdvancedLevelBuilder?.state || window.ProjectBuildUniversal?.state || window.state || {};
-  const toast = msg => { try { showToast(msg); } catch { try { console.log(msg); } catch {} } };
-  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-  const clone = obj => { try { return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj)); } catch { return obj; } };
-  const IMAGE_FIELDS = ['pb81LineImageSrc','pb81FrozenActorSrc','pb81ActorSrc','pb81ImageSrc','actorSrc','image','imageSrc','actorImage','portraitSrc','portrait','leftImage','rightImage'];
-  const CANONICAL_IMAGE_FIELDS = ['pb81LineImageSrc','image'];
-  const SFX_FIELDS = ['pb81LineSfxSrc','pb81ClickSfxSrc','clickSoundSrc','soundSrc','clickSfxSrc','sfxSrc'];
-  const CANONICAL_SFX_FIELDS = ['pb81LineSfxSrc','soundSrc'];
-
-  function fileToDataURL(file) {
-    return new Promise(resolve => {
-      if (!file) return resolve('');
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result || ''));
-      reader.onerror = () => resolve('');
-      reader.readAsDataURL(file);
-    });
-  }
-
-  function decodeSrc(value) {
-    if (value == null) return '';
-    let src = '';
-    if (typeof value === 'string') src = value;
-    else if (typeof value === 'object') src = value.src || value.url || value.data || value.href || '';
-    src = String(src || '').trim();
-    if (!src || src === 'null' || src === 'undefined' || src === '[object Object]') return '';
-    if (/^(data:image\/|data:audio\/|blob:|https?:\/\/|file:|pbasset:\/\/)/i.test(src)) return src;
-    if (/^(?:\.\/|\.\.\/|\/)?[^\s"'<>]+\.(png|gif|jpe?g|webp|apng|svg|mp3|ogg|wav|m4a)([?#].*)?$/i.test(src)) return src;
-    if (src.includes('<') || /\ssrc\s*=/.test(src) || /^url\(/i.test(src)) {
-      const imgMatch = src.match(/<img[^>]*\ssrc=(['"])(.*?)\1/i) || src.match(/\ssrc=(['"])(.*?)\1/i);
-      if (imgMatch) src = imgMatch[2] || '';
-      const urlMatch = src.match(/^url\((['"]?)(.*?)\1\)$/i);
-      if (urlMatch) src = urlMatch[2] || '';
-      try {
-        const textarea = document.createElement('textarea');
-        textarea.innerHTML = src;
-        src = textarea.value || src;
-      } catch {}
-    }
-    return String(src || '').trim();
-  }
-
-  function resolveAssetRef(src) {
-    src = decodeSrc(src);
-    if (!/^pbasset:\/\//i.test(src)) return src;
-    const id = src.slice('pbasset://'.length);
-    const roots = [getState(), window.ProjectBuildLastImport, window.ProjectBuildAssetRefs, window.ProjectBuildUniversal?.state].filter(Boolean);
-    for (const root of roots) {
-      const table = root?.pbAssetRefs?.assets || root?.assetRefs?.assets || root?.assets || null;
-      if (table && typeof table === 'object' && table[id]) return table[id];
-    }
-    return src;
-  }
-
-  function looksLikeImage(src) {
-    src = resolveAssetRef(src);
-    return !!src && (/^data:image\//i.test(src) || /^blob:/i.test(src) || /^https?:\/\//i.test(src) || /^file:/i.test(src) || /^(?:\.\/|\.\.\/|\/)?[^\s"'<>]+\.(png|gif|jpe?g|webp|apng|svg)([?#].*)?$/i.test(src));
-  }
-
-  function unique(values) {
-    const seen = new Set();
-    return values.map(resolveAssetRef).filter(Boolean).filter(v => {
-      if (seen.has(v)) return false;
-      seen.add(v);
-      return true;
-    });
-  }
-
-  function imageCandidates(slide = {}, fallback = '') {
-    return unique([...IMAGE_FIELDS.map(k => slide?.[k]), fallback]).filter(looksLikeImage);
-  }
-
-  function pickImage(slide = {}, fallback = '') {
-    return imageCandidates(slide, fallback)[0] || '';
-  }
-
-  function pickSfx(slide = {}, fallback = '') {
-    return unique([...SFX_FIELDS.map(k => slide?.[k]), fallback]).find(Boolean) || '';
-  }
-
-  function compactMediaFields(out, fields, canonicalFields, src) {
-    fields.forEach(k => {
-      if (!Object.prototype.hasOwnProperty.call(out, k)) return;
-      const v = decodeSrc(out[k]);
-      if (!v) { delete out[k]; return; }
-      if (src && v === src && !canonicalFields.includes(k)) delete out[k];
-      else out[k] = v;
-    });
-    if (src) canonicalFields.forEach(k => { out[k] = src; });
-  }
-
-  function normalizeSlide(slide = {}) {
-    const raw = (slide && typeof slide === 'object') ? slide : {};
-    const src = pickImage(raw);
-    const sfx = pickSfx(raw);
-    const out = { ...raw };
-    if (!out.pb81LineId) out.pb81LineId = `pb81-line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-
-    // Keep each line's actor/image private to that line, but do not copy one huge base64
-    // image into every old compatibility field. Two fields are enough:
-    // pb81LineImageSrc for the new renderer and image for old renderers/lists.
-    compactMediaFields(out, IMAGE_FIELDS, CANONICAL_IMAGE_FIELDS, src);
-    compactMediaFields(out, SFX_FIELDS, CANONICAL_SFX_FIELDS, sfx);
-
-    out.layout = out.layout || 'visualDialogue';
-    out.position = out.position || out.side || 'right';
-    out._pb81ForceLocal = true;
-    return out;
-  }
-
-  function normalizePack(pack = {}) {
-    const src = (pack && typeof pack === 'object') ? pack : {};
-    return {
-      pre: Array.isArray(src.pre) ? src.pre.map(normalizeSlide) : [],
-      mid: Array.isArray(src.mid) ? src.mid.map(normalizeSlide) : [],
-      post: Array.isArray(src.post) ? src.post.map(normalizeSlide) : []
-    };
-  }
-
-  function readCutscenes() {
-    const st = getState();
-    st.cutscenes ||= { pre: [], mid: [], post: [] };
-    let parsed = {};
-    const box = by('pbCutsceneScript');
-    if (box && String(box.value || '').trim()) {
-      try { parsed = JSON.parse(box.value || '{}') || {}; }
-      catch (err) { toast('Cutscene JSON error: ' + err.message); }
-    }
-    st.cutscenes = normalizePack({ ...(st.cutscenes || {}), ...(parsed || {}) });
-    return st.cutscenes;
-  }
-
-  function writeCutscenes(pack) {
-    const st = getState();
-    st.cutscenes = normalizePack(pack || st.cutscenes || { pre: [], mid: [], post: [] });
-    const box = by('pbCutsceneScript');
-    if (box) box.value = JSON.stringify(st.cutscenes, null, 2);
-    render81List();
-    return st.cutscenes;
-  }
-
-  function render81List() {
-    const box = by('pb81CutsceneList');
-    if (!box) return;
-    const pack = readCutscenes();
-    const rows = [];
-    ['pre','mid','post'].forEach(slot => (pack[slot] || []).forEach((line, index) => rows.push({ slot, index, line })));
-    if (!rows.length) {
-      box.innerHTML = '<div class="pb81ListItem"><span>No cutscene lines yet.</span></div>';
-      return;
-    }
-    box.innerHTML = rows.map(r => {
-      const line = normalizeSlide(r.line || {});
-      const actorSrc = pickImage(line);
-      const sfxSrc = pickSfx(line);
-      const pos = line.position || line.side || 'center';
-      const thumb = actorSrc ? `<img src="${esc(actorSrc)}" alt="">` : esc(String(pos || '?').slice(0, 1).toUpperCase());
-      return `<div class="pb81ListItem"><span class="pb81CutMeta"><span class="pb81CutThumb">${thumb}</span><span class="pb81CutText"><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(line.speaker || line.name || 'Cutscene')}: ${esc((line.text || '').slice(0, 90))}<span class="pb81CutSub">Actor image: ${actorSrc ? 'yes' : 'none'} • Click SFX: ${sfxSrc ? 'yes' : 'none'} • Side: ${esc(pos)}</span></span></span><button type="button" class="danger" data-pb81-bugproof-del="${r.slot}:${r.index}">×</button></div>`;
-    }).join('');
-    box.querySelectorAll('[data-pb81-bugproof-del]').forEach(btn => btn.addEventListener('click', ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      const [slot, index] = btn.dataset.pb81BugproofDel.split(':');
-      const pack = readCutscenes();
-      pack[slot]?.splice(Number(index), 1);
-      writeCutscenes(pack);
-      toast('Cutscene line removed');
-    }));
-  }
-
-  function preloadImage(candidates, timeoutMs = 7000) {
-    const list = unique(candidates).filter(looksLikeImage);
-    return new Promise(resolve => {
-      if (!list.length) return resolve('');
-      let index = 0;
-      let finished = false;
-      let lastTried = list[0] || '';
-      const finish = src => {
-        if (finished) return;
-        finished = true;
-        resolve(src || lastTried || '');
+      const $ = id => document.getElementById(id);
+      const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+      const toast = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const clone = obj => {
+        try { return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj)); }
+        catch { return obj; }
       };
-      const tryNext = () => {
-        const src = list[index++];
-        if (!src) return finish(lastTried || list[0] || '');
-        lastTried = src;
+
+      const cleanSrc = src => typeof src === 'string' ? src.trim() : '';
+      const usableSrc = src => {
+        const value = cleanSrc(src);
+        if (!value) return '';
+        if (/^(data:image\/|data:audio\/|blob:|https?:|file:|\.\/|\.\.\/|\/)/i.test(value)) return value;
+        if (/^[\w\-. ()]+\.(png|gif|jpe?g|webp|apng|svg|mp3|wav|ogg|m4a)(\?.*)?$/i.test(value)) return value;
+        return value;
+      };
+
+      function ensurePbState() {
+        window.state ||= {};
+        state.pb8 ||= {};
+        state.pb8.levelEvents ||= [];
+        state.pb8.actorThingy ||= { pendingImageSrc:'', pendingImageName:'', pendingSfxSrc:'', pendingSfxName:'' };
+        state.cutscenes ||= { pre: [], mid: [], post: [] };
+        ['pre','mid','post'].forEach(slot => { if (!Array.isArray(state.cutscenes[slot])) state.cutscenes[slot] = []; });
+        return state.pb8.actorThingy;
+      }
+
+      function readFileAsDataURL(file) {
+        return new Promise(resolve => {
+          if (!file) return resolve('');
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function normalizeCutsceneData(raw) {
+        const out = { pre: [], mid: [], post: [] };
+        if (Array.isArray(raw)) out.mid = raw;
+        else if (raw && typeof raw === 'object') {
+          out.pre = Array.isArray(raw.pre) ? raw.pre : [];
+          out.mid = Array.isArray(raw.mid) ? raw.mid : [];
+          out.post = Array.isArray(raw.post) ? raw.post : [];
+        }
+        return out;
+      }
+
+      function readCutscenes() {
+        ensurePbState();
+        const box = $('pbCutsceneScript');
+        const text = String(box?.value || '').trim();
+        if (text) {
+          try { state.cutscenes = normalizeCutsceneData(JSON.parse(text)); }
+          catch { /* keep the last valid state instead of destroying cutscenes */ }
+        }
+        state.cutscenes = normalizeCutsceneData(state.cutscenes);
+        return state.cutscenes;
+      }
+
+      function writeCutscenes() {
+        ensurePbState();
+        state.cutscenes = normalizeCutsceneData(state.cutscenes);
+        const box = $('pbCutsceneScript');
+        if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
+        renderCutsceneList();
+      }
+
+      function slideImage(slide = {}) {
+        return usableSrc(slide.actorImageSrc || slide.imageSrc || slide.image || slide.portraitSrc || slide.portrait || slide.npcImageSrc || slide.leftImage || slide.rightImage || '');
+      }
+
+      function slideSound(slide = {}) {
+        return usableSrc(slide.lineSfxSrc || slide.clickSoundSrc || slide.soundSrc || slide.sfxSrc || '');
+      }
+
+      function normalizeSlide(slide = {}) {
+        if (typeof slide === 'string') slide = { text: slide };
+        const image = slideImage(slide);
+        const sfx = slideSound(slide);
+        const positionRaw = String(slide.position || slide.side || slide.actorSide || 'right').toLowerCase();
+        const position = positionRaw.includes('left') ? 'left' : positionRaw.includes('center') || positionRaw.includes('middle') ? 'center' : 'right';
+        return {
+          ...slide,
+          speaker: slide.speaker || slide.name || 'Cutscene',
+          name: slide.name || slide.speaker || 'Cutscene',
+          text: String(slide.text ?? slide.dialog ?? slide.message ?? ''),
+          duration: Math.max(200, Number(slide.duration) || 2200),
+          layout: 'visualDialogue',
+          position,
+          side: position,
+          image: image || null,
+          imageSrc: image || null,
+          actorImageSrc: image || null,
+          soundSrc: sfx || undefined,
+          clickSoundSrc: sfx || undefined,
+          lineSfxSrc: sfx || undefined,
+          _actorThingySafe: true
+        };
+      }
+
+      function installStyles() {
+        if ($('pbActorThingyRewriteStyle')) return;
+        const style = document.createElement('style');
+        style.id = 'pbActorThingyRewriteStyle';
+        style.textContent = `
+          #pb81AdvancedLevelBuilder .pb81ActorRewriteGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; }
+          #pb81AdvancedLevelBuilder .pb81ActorRewriteActions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:8px; }
+          #pb81AdvancedLevelBuilder .pb81ActorRewriteList .pb81ListItem { grid-template-columns:44px 1fr auto; }
+          .pb81ActorThumb { width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.16); display:grid; place-items:center; overflow:hidden; color:#d9ff9f; font-weight:900; }
+          .pb81ActorThumb img { width:100%; height:100%; object-fit:contain; display:block; }
+          .pb81AssetButtons { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+          .pb81SfxLoaded { color:#d9ff9f; font-weight:900; }
+          #pbActorThingyLayer { position:absolute; inset:0; z-index:430; display:none; overflow:hidden; pointer-events:auto; background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.36)); }
+          #pbActorThingyLayer .pbActorScene { position:absolute; inset:0; overflow:hidden; pointer-events:auto; }
+          #pbActorThingyLayer .pbActorFigure { position:absolute; bottom:0; height:92%; width:42%; display:flex; align-items:flex-end; justify-content:center; pointer-events:none; filter:drop-shadow(0 24px 28px rgba(0,0,0,.58)); z-index:1; }
+          #pbActorThingyLayer .pbActorFigure.left { left:-2.5vw; right:auto; }
+          #pbActorThingyLayer .pbActorFigure.right { right:-2.5vw; left:auto; }
+          #pbActorThingyLayer .pbActorFigure.center { left:50%; transform:translateX(-50%); width:min(56vw,620px); }
+          #pbActorThingyLayer .pbActorFigure img { width:116%; height:116%; max-width:none; max-height:none; object-fit:contain; object-position:bottom center; image-rendering:auto; visibility:hidden; }
+          #pbActorThingyLayer .pbActorFallback { width:min(34vw,420px); height:min(34vw,420px); margin-bottom:5vh; border-radius:50%; display:grid; place-items:center; background:linear-gradient(#fde68a,#f59e0b); border:6px solid rgba(255,255,255,.78); color:#1f1300; font-size:clamp(82px,17vw,210px); font-weight:900; box-shadow:0 22px 42px rgba(0,0,0,.5), inset 0 6px 0 rgba(255,255,255,.35); }
+          #pbActorThingyLayer .pbActorBubble { position:absolute; top:23%; width:min(540px,53vw); min-height:118px; max-height:min(36vh,260px); padding:20px 24px 18px; border-radius:30px; border:4px solid #251a10; background:linear-gradient(180deg,#fffef2,#f2ead3); color:#1b1712; box-shadow:inset 0 4px 0 rgba(255,255,255,.8), inset 0 -5px 0 rgba(120,76,34,.16), 0 8px 0 rgba(45,28,16,.9), 0 22px 42px rgba(0,0,0,.45); z-index:2; overflow:visible; cursor:pointer; }
+          #pbActorThingyLayer .pbActorBubble.leftActor { left:calc(39% + 18px); right:auto; }
+          #pbActorThingyLayer .pbActorBubble.rightActor { right:calc(39% + 18px); left:auto; }
+          #pbActorThingyLayer .pbActorBubble.centerActor { left:50%; right:auto; top:auto; bottom:86px; transform:translateX(-50%); width:min(620px,calc(100vw - 44px)); text-align:center; }
+          #pbActorThingyLayer .pbActorBubble::before { content:''; position:absolute; top:58%; width:42px; height:42px; margin-top:-21px; background:linear-gradient(135deg,#fffef2,#f2ead3); border-left:4px solid #251a10; border-bottom:4px solid #251a10; box-shadow:-4px 5px 0 rgba(45,28,16,.9); z-index:-1; }
+          #pbActorThingyLayer .pbActorBubble.leftActor::before { left:-24px; transform:rotate(45deg) skew(-8deg,-8deg); }
+          #pbActorThingyLayer .pbActorBubble.rightActor::before { right:-24px; transform:rotate(225deg) skew(-8deg,-8deg); }
+          #pbActorThingyLayer .pbActorBubble.centerActor::before { display:none; }
+          #pbActorThingyLayer .pbActorName { position:absolute; top:-22px; left:24px; max-width:calc(100% - 48px); padding:5px 14px 6px; border:3px solid #251a10; border-radius:999px; background:linear-gradient(180deg,#a7f35c,#4d9e24); color:#122507; font-size:clamp(13px,1.35vw,18px); line-height:1; font-weight:900; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow:0 1px rgba(255,255,255,.45); box-shadow:inset 0 3px 0 rgba(255,255,255,.5), 0 4px 0 rgba(45,28,16,.9); }
+          #pbActorThingyLayer .pbActorBubble.rightActor .pbActorName { left:auto; right:24px; }
+          #pbActorThingyLayer .pbActorText { color:#1b1712; font-size:clamp(16px,1.55vw,24px); line-height:1.22; font-weight:800; min-height:0; max-height:22vh; overflow:auto; padding-top:4px; white-space:pre-wrap; overflow-wrap:anywhere; text-shadow:0 1px rgba(255,255,255,.65); }
+          #pbActorThingyLayer .pbActorHint { color:#60452c; font-size:12px; font-weight:900; margin-top:12px; letter-spacing:.02em; opacity:.82; }
+          #pbActorThingyLayer .pbActorHint::after { content:' ▼'; font-size:14px; }
+          @media (max-width:820px), (pointer:coarse) {
+            #pb81AdvancedLevelBuilder .pb81ActorRewriteGrid, #pb81AdvancedLevelBuilder .pb81ActorRewriteActions { grid-template-columns:1fr; }
+            #pbActorThingyLayer .pbActorFigure { width:46%; height:80%; }
+            #pbActorThingyLayer .pbActorFigure.left { left:-7vw; }
+            #pbActorThingyLayer .pbActorFigure.right { right:-7vw; }
+            #pbActorThingyLayer .pbActorFigure img { width:130%; height:130%; }
+            #pbActorThingyLayer .pbActorBubble { top:18%; width:calc(60% - 12px); min-height:98px; max-height:33vh; padding:16px 16px 14px; border-width:3px; border-radius:24px; }
+            #pbActorThingyLayer .pbActorBubble.leftActor { left:calc(40% + 6px); }
+            #pbActorThingyLayer .pbActorBubble.rightActor { right:calc(40% + 6px); }
+            #pbActorThingyLayer .pbActorBubble.centerActor { width:calc(100vw - 24px); bottom:150px; }
+            #pbActorThingyLayer .pbActorName { top:-17px; left:16px; font-size:12px; padding:4px 10px; border-width:2px; }
+            #pbActorThingyLayer .pbActorBubble.rightActor .pbActorName { right:16px; left:auto; }
+            #pbActorThingyLayer .pbActorText { font-size:clamp(13px,3.5vw,17px); max-height:22vh; }
+            #pbActorThingyLayer .pbActorHint { font-size:10px; margin-top:8px; }
+          }
+          @media (max-width:430px) {
+            #pbActorThingyLayer .pbActorFigure { opacity:.82; width:62%; }
+            #pbActorThingyLayer .pbActorFigure.left { left:-20vw; }
+            #pbActorThingyLayer .pbActorFigure.right { right:-20vw; }
+            #pbActorThingyLayer .pbActorBubble { top:15%; width:calc(74% - 12px); }
+            #pbActorThingyLayer .pbActorBubble.leftActor { left:calc(26% + 4px); }
+            #pbActorThingyLayer .pbActorBubble.rightActor { right:calc(26% + 4px); }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+      function ensureLayer() {
+        installStyles();
+        let layer = $('pbActorThingyLayer');
+        if (!layer) {
+          layer = document.createElement('div');
+          layer.id = 'pbActorThingyLayer';
+          ($('stageWrap') || document.body).appendChild(layer);
+        }
+        return layer;
+      }
+
+      function createInitial(name) {
+        const div = document.createElement('div');
+        div.className = 'pbActorFallback';
+        div.textContent = String(name || '?').trim().slice(0, 1).toUpperCase() || '?';
+        return div;
+      }
+
+      function appendSafeImage(host, src, alt, fallbackName) {
+        host.textContent = '';
+        const safe = usableSrc(src);
+        if (!safe) {
+          host.appendChild(createInitial(fallbackName));
+          return;
+        }
         const img = new Image();
+        img.alt = alt || '';
         img.decoding = 'async';
         img.loading = 'eager';
+        img.draggable = false;
+        img.style.visibility = 'hidden';
         let done = false;
-        let timer = null;
-        const accept = () => {
+        const reveal = () => {
           if (done) return;
           done = true;
-          clearTimeout(timer);
-          finish(src);
+          img.style.visibility = 'visible';
         };
         const fail = () => {
           if (done) return;
           done = true;
-          clearTimeout(timer);
-          tryNext();
+          try { img.remove(); } catch {}
+          host.appendChild(createInitial(fallbackName));
         };
-        img.onload = accept;
+        img.onload = reveal;
         img.onerror = fail;
-        // Some file://, blob, and large data URLs can be valid but report too slowly or oddly.
-        // Do not punish them by dropping straight to the letter placeholder.
-        timer = setTimeout(() => accept(), Math.min(Math.max(350, Number(timeoutMs) || 7000), 1200));
-        try { img.src = src; }
-        catch { fail(); }
-        if (img.complete && (img.naturalWidth > 0 || /^data:image\//i.test(src) || /^blob:/i.test(src) || /^file:/i.test(src))) accept();
-      };
-      tryNext();
-    });
-  }
-
-  async function showSlide(slide = {}) {
-    slide = normalizeSlide(slide);
-    const stage = by('stageWrap');
-    if (!stage) return;
-    const srcs = imageCandidates(slide);
-    // Pick a source optimistically. The old path treated a slow/odd browser image decode as
-    // failure and immediately swapped to the placeholder. This keeps the selected actor source.
-    const loadedSrc = srcs.length ? (await preloadImage(srcs) || srcs[0] || '') : '';
-    const rawPos = String(slide.position || slide.side || 'left').toLowerCase();
-    const pos = rawPos.includes('right') ? 'right' : (rawPos.includes('center') || rawPos.includes('middle')) ? 'center' : 'left';
-    const speaker = slide.speaker || slide.name || 'Cutscene';
-    const body = slide.text || slide.dialog || slide.message || '';
-    const initial = String(speaker || '?').trim().slice(0, 1).toUpperCase() || '?';
-    const overlay = document.createElement('div');
-    overlay.className = 'pb556CutsceneOverlay pb81VisualCutsceneOverlay pb81BugproofOverlay';
-    overlay.style.pointerEvents = 'auto';
-    const actor = document.createElement('div');
-    actor.className = 'pb556Actor pb81Actor ' + pos;
-    if (loadedSrc) {
-      actor.classList.add('pb81ActorLoaded', 'pb81BugproofLoaded');
-      const img = document.createElement('img');
-      img.alt = '';
-      img.className = 'pb81ActorReady pb81BugproofActorImage';
-      img.decoding = 'async';
-      img.loading = 'eager';
-      let candidateIndex = Math.max(0, srcs.indexOf(loadedSrc));
-      const tryActorSrc = () => {
-        const nextSrc = srcs[candidateIndex++] || srcs[0] || loadedSrc;
-        if (!nextSrc) return;
-        try { img.src = nextSrc; }
-        catch { if (candidateIndex < srcs.length) tryActorSrc(); }
-      };
-      img.onerror = () => {
-        if (candidateIndex < srcs.length) tryActorSrc();
-        else {
-          // Keep the selected source instead of replacing it with the placeholder.
-          // A browser may still finish it later, especially with local/data/blob assets.
-          img.onerror = null;
-          try { if (img.src !== loadedSrc) img.src = loadedSrc; } catch {}
+        host.appendChild(img);
+        img.src = safe;
+        if (img.complete) {
+          if (img.naturalWidth > 0) reveal();
+          else fail();
+        } else {
+          setTimeout(() => {
+            if (!done && img.complete) {
+              if (img.naturalWidth > 0) reveal();
+              else fail();
+            }
+          }, 80);
         }
-      };
-      tryActorSrc();
-      actor.appendChild(img);
-    } else {
-      actor.classList.add('pb81ActorBroken');
-      actor.innerHTML = `<div class="pb556ActorFallback pb81ActorFallback">${esc(initial)}</div>`;
-    }
-    const bubble = document.createElement('div');
-    bubble.className = 'pb556DialogueBubble';
-    bubble.innerHTML = `<b>${esc(speaker)}</b><span>${esc(body)}</span><small class="pb81TapHint">Tap / click to continue</small>`;
-    overlay.appendChild(actor);
-    overlay.appendChild(bubble);
-    stage.appendChild(overlay);
-    const sfx = pickSfx(slide);
-    if (sfx) {
-      try {
-        if (typeof playSfx === 'function') playSfx(sfx, 0.9);
-        else new Audio(sfx).play?.().catch(() => {});
-      } catch {}
-    }
-    if (slide.action && window.ProjectBuildUniversal?.run) {
-      try { window.ProjectBuildUniversal.run(slide.action, slide.args || slide); } catch {}
-    }
-    await new Promise(resolve => {
-      let done = false;
-      const finish = ev => {
-        if (done) return;
-        done = true;
-        ev?.preventDefault?.();
-        ev?.stopPropagation?.();
-        overlay.removeEventListener('click', finish, true);
-        resolve();
-      };
-      overlay.addEventListener('click', finish, true);
-      setTimeout(finish, Math.max(200, Number(slide.duration) || 2200));
-    });
-    overlay.remove();
-  }
+      }
 
-  async function currentPendingSlide(slot) {
-    const st = getState();
-    st.pb8 ||= {};
-    const file = by('pb81CutsceneImage')?.files?.[0] || null;
-    const sfxFile = by('pb81CutsceneSfx')?.files?.[0] || null;
-    const actor = decodeSrc((file ? await fileToDataURL(file) : '') || st.pb8.pendingCutsceneImage || '');
-    const sfx = decodeSrc((sfxFile ? await fileToDataURL(sfxFile) : '') || st.pb8.pendingCutsceneSfx || '');
-    return normalizeSlide({
-      speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
-      text: by('pb81CutsceneText')?.value || '',
-      duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
-      position: by('pb81CutsceneSide')?.value || 'right',
-      slot,
-      pb81LineImageSrc: actor,
-      image: actor,
-      pb81LineSfxSrc: sfx,
-      soundSrc: sfx
-    });
-  }
-
-  async function playSlot(slot = 'mid') {
-    const pack = readCutscenes();
-    let slides = Array.isArray(pack[slot]) ? pack[slot].map(normalizeSlide) : [];
-    if (!slides.length) {
-      const pending = await currentPendingSlide(slot);
-      if (pickImage(pending) || pickSfx(pending) || String(pending.text || '').trim()) slides = [pending];
-    }
-    if (!slides.length) return toast('No cutscene lines in this slot');
-    const oldBox = by('dialogBox');
-    if (oldBox) oldBox.style.display = 'none';
-    for (const slide of slides) await showSlide(slide);
-    if (oldBox) oldBox.style.display = 'none';
-    return true;
-  }
-
-  async function add81Line(ev) {
-    ev?.preventDefault?.();
-    ev?.stopPropagation?.();
-    ev?.stopImmediatePropagation?.();
-    const st = getState();
-    st.pb8 ||= {};
-    const pack = readCutscenes();
-    const slot = by('pb81CutsceneSlot')?.value || 'mid';
-    const actorFile = by('pb81CutsceneImage')?.files?.[0] || null;
-    const sfxFile = by('pb81CutsceneSfx')?.files?.[0] || null;
-    const actor = decodeSrc((actorFile ? await fileToDataURL(actorFile) : '') || st.pb8.pendingCutsceneImage || '');
-    const sfx = decodeSrc((sfxFile ? await fileToDataURL(sfxFile) : '') || st.pb8.pendingCutsceneSfx || '');
-    if (actor) st.pb8.pendingCutsceneImage = actor;
-    if (sfx) st.pb8.pendingCutsceneSfx = sfx;
-    const line = normalizeSlide({
-      pb81LineId: `pb81-line-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
-      text: by('pb81CutsceneText')?.value || '',
-      duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
-      position: by('pb81CutsceneSide')?.value || 'right',
-      layout: 'visualDialogue',
-      pb81LineImageSrc: actor,
-      image: actor,
-      pb81LineSfxSrc: sfx,
-      soundSrc: sfx
-    });
-    pack[slot] ||= [];
-    pack[slot].push(line);
-    writeCutscenes(pack);
-    toast(`Cutscene line added${actor ? ' with actor image' : ''}${sfx ? ' and click SFX' : ''}`);
-    return false;
-  }
-
-  async function add556Line(side, ev) {
-    ev?.preventDefault?.();
-    ev?.stopPropagation?.();
-    ev?.stopImmediatePropagation?.();
-    const st = getState();
-    const pack = readCutscenes();
-    const slot = by('pb556CutSlot')?.value || 'pre';
-    const isLeft = side === 'left';
-    const actor = decodeSrc(st.pb556?.cutsceneDraft?.[isLeft ? 'leftImage' : 'rightImage'] || '');
-    const sfx = decodeSrc(st.pb556?.cutsceneDraft?.lineSfx || '');
-    const line = normalizeSlide({
-      speaker: by(isLeft ? 'pb556LeftName' : 'pb556RightName')?.value || (isLeft ? 'Left NPC' : 'Right NPC'),
-      text: by(isLeft ? 'pb556LeftText' : 'pb556RightText')?.value || '',
-      duration: Number(by('pb556CutDuration')?.value) || 2200,
-      position: side,
-      layout: 'visualDialogue',
-      pb81LineImageSrc: actor,
-      image: actor,
-      pb81LineSfxSrc: sfx,
-      soundSrc: sfx,
-      leftName: by('pb556LeftName')?.value || '',
-      rightName: by('pb556RightName')?.value || ''
-    });
-    pack[slot] ||= [];
-    pack[slot].push(line);
-    writeCutscenes(pack);
-    toast('Visual dialogue line added');
-    return false;
-  }
-
-  async function preview81(ev) {
-    ev?.preventDefault?.();
-    ev?.stopPropagation?.();
-    ev?.stopImmediatePropagation?.();
-    return await playSlot(by('pb81CutsceneSlot')?.value || 'mid');
-  }
-
-  async function preview556(ev) {
-    ev?.preventDefault?.();
-    ev?.stopPropagation?.();
-    ev?.stopImmediatePropagation?.();
-    return await playSlot(by('pb556CutSlot')?.value || 'pre');
-  }
-
-  let delegatedClickWired = false;
-  function wireDelegatedClicks() {
-    if (delegatedClickWired) return;
-    delegatedClickWired = true;
-    document.addEventListener('click', ev => {
-      const btn = ev.target?.closest?.('#pb81AddCutsceneLine,#pb81PreviewCutsceneSlot,#pb556PreviewVisualCutscene,#pb556AddLeftLine,#pb556AddRightLine,#pb556AddDialoguePair');
-      if (!btn) return;
-      const id = btn.id;
-      ev.preventDefault?.();
-      ev.stopPropagation?.();
-      ev.stopImmediatePropagation?.();
-      (async () => {
-        if (id === 'pb81AddCutsceneLine') await add81Line(ev);
-        else if (id === 'pb81PreviewCutsceneSlot') await preview81(ev);
-        else if (id === 'pb556PreviewVisualCutscene') await preview556(ev);
-        else if (id === 'pb556AddLeftLine') await add556Line('left', ev);
-        else if (id === 'pb556AddRightLine') await add556Line('right', ev);
-        else if (id === 'pb556AddDialoguePair') { await add556Line('left', ev); await add556Line('right', ev); }
-      })().catch(err => toast('Cutscene action failed: ' + (err?.message || err)));
-    }, true);
-  }
-
-  function wireOnce(id, type, handler, capture = true) {
-    const el = by(id);
-    if (!el || el.dataset.pb81BugproofWired) return;
-    el.dataset.pb81BugproofWired = '1';
-    el.addEventListener(type, handler, capture);
-  }
-
-  function wire() {
-    wireDelegatedClicks();
-    wireOnce('pb81AddCutsceneLine', 'click', add81Line, true);
-    wireOnce('pb81PreviewCutsceneSlot', 'click', preview81, true);
-    wireOnce('pb556PreviewVisualCutscene', 'click', preview556, true);
-    wireOnce('pb556AddLeftLine', 'click', ev => add556Line('left', ev), true);
-    wireOnce('pb556AddRightLine', 'click', ev => add556Line('right', ev), true);
-    wireOnce('pb556AddDialoguePair', 'click', ev => { add556Line('left', ev); add556Line('right', ev); }, true);
-
-    const imgInput = by('pb81CutsceneImage');
-    if (imgInput && !imgInput.dataset.pb81BugproofChange) {
-      imgInput.dataset.pb81BugproofChange = '1';
-      imgInput.addEventListener('change', async e => {
-        const st = getState();
-        st.pb8 ||= {};
-        const src = await fileToDataURL(e.target.files?.[0]);
-        st.pb8.pendingCutsceneImage = src || '';
-        const box = by('pb81CutscenePreview');
-        if (box) {
-          box.textContent = 'Loading actor...';
-          const ok = src ? await preloadImage([src]) : '';
-          box.innerHTML = ok ? `<img src="${esc(ok)}" alt="">` : 'No actor selected';
+      function renderPreviewBox(box, src, label, fallbackName) {
+        if (!box) return;
+        box.textContent = '';
+        if (!usableSrc(src)) {
+          box.textContent = label || 'No actor selected';
+          return;
         }
-      }, true);
-    }
-    const sfxInput = by('pb81CutsceneSfx');
-    if (sfxInput && !sfxInput.dataset.pb81BugproofChange) {
-      sfxInput.dataset.pb81BugproofChange = '1';
-      sfxInput.addEventListener('change', async e => {
-        const st = getState();
-        st.pb8 ||= {};
-        st.pb8.pendingCutsceneSfx = await fileToDataURL(e.target.files?.[0]) || '';
-        const box = by('pb81CutsceneSfxPreview');
-        if (box) box.textContent = st.pb8.pendingCutsceneSfx ? (e.target.files?.[0]?.name || 'Click SFX loaded') : 'No click SFX selected';
-      }, true);
-    }
+        const host = document.createElement('div');
+        host.style.cssText = 'width:100%;height:76px;display:grid;place-items:center;overflow:hidden;';
+        box.appendChild(host);
+        appendSafeImage(host, src, fallbackName || 'Actor', fallbackName || 'Actor');
+      }
 
-    if (window.ProjectBuild81AdvancedLevelBuilder) window.ProjectBuild81AdvancedLevelBuilder.playCutsceneSlot = playSlot;
-    if (window.ProjectBuildUniversal) {
-      window.ProjectBuildUniversal.playCutscene = playSlot;
-      window.ProjectBuildUniversal.playEnhancedCutscene = playSlot;
-      window.ProjectBuildUniversal.readCutscenes = readCutscenes;
-      window.ProjectBuildUniversal.writeCutscenes = writeCutscenes;
-    }
-    render81List();
-  }
+      function playLineSound(slide = {}) {
+        const src = slideSound(slide);
+        if (!src) return;
+        try {
+          if (typeof playSfx === 'function') playSfx(src, 0.9);
+          else {
+            const audio = new Audio(src);
+            audio.volume = 0.9;
+            audio.play?.().catch(() => {});
+          }
+        } catch {}
+      }
 
-  api.decodeSrc = decodeSrc;
-  api.pickImage = pickImage;
-  api.compactSlide = normalizeSlide;
-  api.compactPack = normalizePack;
-  api.readCutscenes = readCutscenes;
-  api.writeCutscenes = writeCutscenes;
-  api.playSlot = playSlot;
-  api.showSlide = showSlide;
-  api.add81Line = add81Line;
+      let activeSlideToken = 0;
+      function closeActorLayer() {
+        activeSlideToken++;
+        const layer = $('pbActorThingyLayer');
+        if (layer) {
+          layer.style.display = 'none';
+          layer.innerHTML = '';
+        }
+        const oldBox = $('dialogBox');
+        if (oldBox) oldBox.style.display = 'none';
+        document.body.classList.remove('pbActorThingyPlaying');
+      }
 
-  wire();
-  setTimeout(wire, 250);
-  setTimeout(wire, 1000);
-})();
-</script>
+      function hideLegacyDialog() {
+        ['dialogBox','dialogNpcArt','pb604DialogueLayer','pb608DialogueLayer'].forEach(id => {
+          const el = $(id);
+          if (el) el.style.display = 'none';
+        });
+      }
 
+      async function showSlide(slideInput = {}, options = {}) {
+        const slide = normalizeSlide(slideInput);
+        const token = ++activeSlideToken;
+        const layer = ensureLayer();
+        const position = slide.position || 'right';
+        const bubbleClass = position === 'left' ? 'leftActor' : position === 'center' ? 'centerActor' : 'rightActor';
+        layer.innerHTML = `
+          <div class="pbActorScene">
+            <div class="pbActorFigure ${esc(position)}" data-actor-host></div>
+            <div class="pbActorBubble ${bubbleClass}">
+              <div class="pbActorName">${esc(slide.speaker || slide.name || 'Cutscene')}</div>
+              <div class="pbActorText">${esc(slide.text || '')}</div>
+              <div class="pbActorHint">${esc(slide.hint || 'Click, Space, or Enter to continue. Esc closes.')}</div>
+            </div>
+          </div>`;
+        const actorHost = layer.querySelector('[data-actor-host]');
+        appendSafeImage(actorHost, slideImage(slide), slide.speaker || slide.name || 'Actor', slide.speaker || slide.name || 'Actor');
+        layer.style.display = 'block';
+        document.body.classList.add('pbActorThingyPlaying');
+        hideLegacyDialog();
+        playLineSound(slide);
 
-<style id="pb81FinalNoPlaceholderGuard">
-  .pb81VisualCutsceneOverlay .pb81Actor.pb81ActorLoaded > img,
-  .pb81VisualCutsceneOverlay .pb81Actor.pb81BugproofLoaded > img,
-  .pb81VisualCutsceneOverlay .pb556Actor.pb81ActorLoaded > img,
-  .pb81VisualCutsceneOverlay .pb556Actor.pb81BugproofLoaded > img {
-    display: block !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-</style>
+        const duration = Math.max(200, Number(options.duration ?? slide.duration) || 2200);
+        await new Promise(resolve => {
+          let finished = false;
+          const done = ev => {
+            if (finished || token !== activeSlideToken) return;
+            if (ev) {
+              ev.preventDefault?.();
+              ev.stopPropagation?.();
+              ev.stopImmediatePropagation?.();
+            }
+            finished = true;
+            clearTimeout(timer);
+            layer.removeEventListener('click', done, true);
+            window.removeEventListener('keydown', key, true);
+            resolve();
+          };
+          const key = ev => {
+            if (ev.key === 'Escape') { closeActorLayer(); done(ev); return; }
+            if (ev.key === ' ' || ev.key === 'Enter') done(ev);
+          };
+          const timer = setTimeout(done, duration);
+          layer.addEventListener('click', done, true);
+          window.addEventListener('keydown', key, true);
+        });
+      }
+
+      async function playSlot(slot = 'mid') {
+        const data = readCutscenes();
+        const slides = Array.isArray(data[slot]) ? data[slot].map(normalizeSlide) : [];
+        if (!slides.length) {
+          toast('No cutscene lines in this slot');
+          return;
+        }
+        for (const slide of slides) await showSlide(slide);
+        closeActorLayer();
+      }
+
+      function currentSlideFromForm() {
+        const actor = ensurePbState();
+        return normalizeSlide({
+          speaker: $('pb81CutsceneSpeaker')?.value || 'Cutscene',
+          name: $('pb81CutsceneSpeaker')?.value || 'Cutscene',
+          text: $('pb81CutsceneText')?.value || '',
+          duration: Number($('pb81CutsceneDuration')?.value) || 2200,
+          position: $('pb81CutsceneSide')?.value || 'right',
+          image: actor.pendingImageSrc || null,
+          imageSrc: actor.pendingImageSrc || null,
+          actorImageSrc: actor.pendingImageSrc || null,
+          soundSrc: actor.pendingSfxSrc || undefined,
+          clickSoundSrc: actor.pendingSfxSrc || undefined,
+          lineSfxSrc: actor.pendingSfxSrc || undefined
+        });
+      }
+
+      function installPanel() {
+        installStyles();
+        const panel = document.querySelector('#pb81AdvancedLevelBuilder [data-pb81-section="cutscenes"] .pb81Panel');
+        if (!panel || panel.dataset.pbActorThingyRewritten === '1') return !!panel;
+        panel.dataset.pbActorThingyRewritten = '1';
+        panel.innerHTML = `
+          <h3>Advanced Cutscene Builder</h3>
+          <p class="pb81Mini">Each line stores its own actor image and click sound. Changing the next line cannot overwrite old lines.</p>
+          <div class="triple">
+            <div><label>Slot</label><select id="pb81CutsceneSlot"><option value="pre">Before Level</option><option value="mid">Mid Level</option><option value="post">After Level</option></select></div>
+            <div><label>Actor Side</label><select id="pb81CutsceneSide"><option value="left">Left</option><option value="right">Right</option><option value="center">Center</option></select></div>
+            <div><label>Duration MS</label><input id="pb81CutsceneDuration" type="number" value="2200" min="200" step="100"></div>
+          </div>
+          <label>Speaker</label><input id="pb81CutsceneSpeaker" value="Crazy Dave">
+          <label>Line Text</label><textarea id="pb81CutsceneText">More zombies are coming. Watch the waves!</textarea>
+          <div class="pb81ActorRewriteGrid">
+            <div>
+              <label>Actor Image For This Line PNG/GIF</label><input id="pb81CutsceneImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
+              <div id="pb81CutscenePreview" class="pb81Preview pb81ActorPreview">No actor selected</div>
+              <div class="pb81AssetButtons"><button id="pb81UseSelectedNpcImage" type="button" class="blue">Use Selected NPC Image</button><button id="pb81ClearActorImage" type="button" class="danger">Clear Actor Image</button></div>
+            </div>
+            <div>
+              <label>Click SFX For This Line</label><input id="pb81CutsceneSfx" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a">
+              <div id="pb81CutsceneSfxPreview" class="pb81Preview">No line click sound selected</div>
+              <div class="pb81AssetButtons"><button id="pb81TestCutsceneSfx" type="button" class="blue">Test SFX</button><button id="pb81ClearCutsceneSfx" type="button" class="danger">Clear SFX</button></div>
+            </div>
+          </div>
+          <div class="pb81ActorRewriteActions">
+            <button id="pb81PreviewCurrentLine" type="button" class="blue">Preview Current Line</button>
+            <button id="pb81AddCutsceneLine" type="button">Add Line</button>
+            <button id="pb81PreviewCutsceneSlot" type="button" class="blue">Preview Slot</button>
+            <button id="pb81ClearCutsceneSlot" type="button" class="danger">Clear Slot</button>
+          </div>
+          <div class="row">
+            <div><label>Schedule Mid Slot At Sec</label><input id="pb81CutsceneEventTime" type="number" value="45" min="0" step="0.5"></div>
+            <button id="pb81ScheduleMidCutscene" type="button" class="warn">Schedule Mid Cutscene</button>
+          </div>
+          <div id="pb81CutsceneList" class="pb81List pb81ActorRewriteList"></div>`;
+        syncPendingPreviews();
+        renderCutsceneList();
+        return true;
+      }
+
+      function syncPendingPreviews() {
+        const actor = ensurePbState();
+        renderPreviewBox($('pb81CutscenePreview'), actor.pendingImageSrc, 'No actor selected', $('pb81CutsceneSpeaker')?.value || 'Actor');
+        const sfxBox = $('pb81CutsceneSfxPreview');
+        if (sfxBox) sfxBox.innerHTML = actor.pendingSfxSrc ? `<span class="pb81SfxLoaded">Loaded:</span> ${esc(actor.pendingSfxName || 'line click sound')}` : 'No line click sound selected';
+      }
+
+      function thumbnailHtml(slide, speaker) {
+        const src = slideImage(slide);
+        if (!src) return `<div class="pb81ActorThumb">${esc(String(speaker || '?').slice(0,1).toUpperCase())}</div>`;
+        return `<div class="pb81ActorThumb" data-pb81-thumb="${esc(src)}" data-pb81-thumb-name="${esc(speaker || 'Actor')}"></div>`;
+      }
+
+      function hydrateThumbnails(root = document) {
+        root.querySelectorAll?.('[data-pb81-thumb]').forEach(box => {
+          if (box.dataset.ready === '1') return;
+          box.dataset.ready = '1';
+          appendSafeImage(box, box.dataset.pb81Thumb || '', box.dataset.pb81ThumbName || 'Actor', box.dataset.pb81ThumbName || 'Actor');
+        });
+      }
+
+      function renderCutsceneList() {
+        const box = $('pb81CutsceneList');
+        if (!box) return;
+        const data = readCutscenes();
+        const rows = [];
+        ['pre','mid','post'].forEach(slot => (data[slot] || []).forEach((line, index) => rows.push({ slot, index, line: normalizeSlide(line) })));
+        box.innerHTML = rows.length ? rows.map(r => {
+          const speaker = r.line.speaker || r.line.name || 'Cutscene';
+          const soundLabel = slideSound(r.line) ? ' • SFX' : '';
+          const imageLabel = slideImage(r.line) ? ' • image' : ' • no image';
+          return `<div class="pb81ListItem">
+            ${thumbnailHtml(r.line, speaker)}
+            <span><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(speaker)}: ${esc((r.line.text || '').slice(0, 110))}<br><small>${esc(r.line.position || 'right')}${imageLabel}${soundLabel}</small></span>
+            <button type="button" class="danger" data-pb81-del-cutscene="${esc(r.slot)}:${r.index}">×</button>
+          </div>`;
+        }).join('') : '<div class="pb81ListItem"><span>No cutscene lines yet.</span></div>';
+        hydrateThumbnails(box);
+      }
+
+      function addCurrentLine() {
+        const data = readCutscenes();
+        const slot = $('pb81CutsceneSlot')?.value || 'mid';
+        data[slot] ||= [];
+        const slide = currentSlideFromForm();
+        data[slot].push(clone(slide));
+        state.cutscenes = data;
+        writeCutscenes();
+        toast('Cutscene line added');
+      }
+
+      function clearCurrentSlot() {
+        const data = readCutscenes();
+        const slot = $('pb81CutsceneSlot')?.value || 'mid';
+        data[slot] = [];
+        state.cutscenes = data;
+        writeCutscenes();
+        toast('Cutscene slot cleared');
+      }
+
+      function scheduleMidCutscene() {
+        ensurePbState();
+        state.pb8.levelEvents ||= [];
+        state.pb8.levelEvents.push({ type:'actorCutscene', slot:'mid', time:Number($('pb81CutsceneEventTime')?.value) || 0 });
+        try {
+          const list = $('pb81EventList');
+          if (list) list.insertAdjacentHTML('beforeend', `<div class="pb81ListItem"><span><b>${esc(Number($('pb81CutsceneEventTime')?.value) || 0)}s</b> — Mid-level cutscene</span></div>`);
+        } catch {}
+        toast('Mid-level cutscene scheduled');
+      }
+
+      function selectedNpcImage() {
+        const ent = state?.selected || null;
+        return usableSrc(ent?.imageSrc || ent?.idleSrc || ent?.actionSrc || ent?.portraitSrc || ent?.actorImageSrc || '');
+      }
+
+      function installEventGuards() {
+        if (document.documentElement.dataset.pbActorThingyEvents === '1') return;
+        document.documentElement.dataset.pbActorThingyEvents = '1';
+
+        document.addEventListener('change', async ev => {
+          const id = ev.target?.id;
+          if (id !== 'pb81CutsceneImage' && id !== 'pb81CutsceneSfx' && id !== 'pbCutsceneScript') return;
+          if (id === 'pbCutsceneScript') { renderCutsceneList(); return; }
+          ev.stopImmediatePropagation();
+          const actor = ensurePbState();
+          if (id === 'pb81CutsceneImage') {
+            const file = ev.target.files?.[0];
+            actor.pendingImageSrc = await readFileAsDataURL(file);
+            actor.pendingImageName = file?.name || '';
+            syncPendingPreviews();
+            toast(actor.pendingImageSrc ? 'Actor image loaded for new lines' : 'No actor image selected');
+          }
+          if (id === 'pb81CutsceneSfx') {
+            const file = ev.target.files?.[0];
+            actor.pendingSfxSrc = await readFileAsDataURL(file);
+            actor.pendingSfxName = file?.name || '';
+            syncPendingPreviews();
+            toast(actor.pendingSfxSrc ? 'Line click sound loaded' : 'No click sound selected');
+          }
+        }, true);
+
+        document.addEventListener('click', ev => {
+          const target = ev.target?.closest?.('button,[data-pb81-del-cutscene]');
+          if (!target) return;
+          const id = target.id;
+          const handledIds = new Set(['pb81PreviewCurrentLine','pb81AddCutsceneLine','pb81PreviewCutsceneSlot','pb81ClearCutsceneSlot','pb81ScheduleMidCutscene','pb81UseSelectedNpcImage','pb81ClearActorImage','pb81TestCutsceneSfx','pb81ClearCutsceneSfx']);
+          if (!handledIds.has(id) && !target.dataset.pb81DelCutscene) return;
+          ev.preventDefault();
+          ev.stopPropagation();
+          ev.stopImmediatePropagation();
+
+          if (target.dataset.pb81DelCutscene) {
+            const [slot, idx] = target.dataset.pb81DelCutscene.split(':');
+            const data = readCutscenes();
+            data[slot]?.splice(Number(idx), 1);
+            state.cutscenes = data;
+            writeCutscenes();
+            return;
+          }
+          if (id === 'pb81PreviewCurrentLine') { showSlide(currentSlideFromForm()).then(closeActorLayer); return; }
+          if (id === 'pb81AddCutsceneLine') { addCurrentLine(); return; }
+          if (id === 'pb81PreviewCutsceneSlot') { playSlot($('pb81CutsceneSlot')?.value || 'mid'); return; }
+          if (id === 'pb81ClearCutsceneSlot') { clearCurrentSlot(); return; }
+          if (id === 'pb81ScheduleMidCutscene') { scheduleMidCutscene(); return; }
+          if (id === 'pb81UseSelectedNpcImage') {
+            const src = selectedNpcImage();
+            if (!src) { toast('Select an NPC with an image first'); return; }
+            const actor = ensurePbState();
+            actor.pendingImageSrc = src;
+            actor.pendingImageName = state.selected?.name || 'Selected NPC image';
+            syncPendingPreviews();
+            toast('Selected NPC image loaded for new lines');
+            return;
+          }
+          if (id === 'pb81ClearActorImage') {
+            const actor = ensurePbState();
+            actor.pendingImageSrc = '';
+            actor.pendingImageName = '';
+            const input = $('pb81CutsceneImage');
+            if (input) input.value = '';
+            syncPendingPreviews();
+            toast('Actor image cleared for new lines');
+            return;
+          }
+          if (id === 'pb81TestCutsceneSfx') { playLineSound(currentSlideFromForm()); return; }
+          if (id === 'pb81ClearCutsceneSfx') {
+            const actor = ensurePbState();
+            actor.pendingSfxSrc = '';
+            actor.pendingSfxName = '';
+            const input = $('pb81CutsceneSfx');
+            if (input) input.value = '';
+            syncPendingPreviews();
+            toast('Line click sound cleared');
+          }
+        }, true);
+      }
+
+      function processActorRuntimeEvents() {
+        try {
+          const level = state?.level;
+          if (!level?.running || state.paused) return;
+          const elapsed = Number(level.elapsed) || 0;
+          (state.pb8?.runtimeEvents || []).forEach(ev => {
+            if (ev.type === 'cutscene') ev.type = 'actorCutscene';
+            if (ev.type !== 'actorCutscene' || ev._actorThingyFired || elapsed < (Number(ev.time) || 0)) return;
+            ev._actorThingyFired = true;
+            playSlot(ev.slot || 'mid');
+          });
+        } catch {}
+      }
+
+      function patchRuntimeAndUniversal() {
+        try {
+          if (typeof update === 'function' && !update.pbActorThingyRuntime) {
+            const oldUpdate = update;
+            update = function(dt) {
+              try { (state.pb8?.runtimeEvents || []).forEach(ev => { if (ev.type === 'cutscene') ev.type = 'actorCutscene'; }); } catch {}
+              const result = oldUpdate.apply(this, arguments);
+              processActorRuntimeEvents();
+              return result;
+            };
+            update.pbActorThingyRuntime = true;
+            window.update = update;
+          }
+        } catch {}
+
+        try {
+          window.ProjectBuildUniversal ||= {};
+          if (!window.ProjectBuildUniversal.pbActorThingyPatched) {
+            const oldRun = window.ProjectBuildUniversal.run;
+            const oldPlay = window.ProjectBuildUniversal.playCutscene;
+            window.ProjectBuildUniversal.run = async function(fn, args = {}) {
+              if (String(fn).toLowerCase() === 'dialog') return showSlide(args || {});
+              if (typeof oldRun === 'function') return oldRun.apply(this, arguments);
+            };
+            window.ProjectBuildUniversal.playCutscene = async function(slot = 'pre') {
+              const data = readCutscenes();
+              if (Array.isArray(data[slot]) && data[slot].length) return playSlot(slot);
+              if (typeof oldPlay === 'function') return oldPlay.apply(this, arguments);
+            };
+            window.ProjectBuildUniversal.readCutscenes = readCutscenes;
+            window.ProjectBuildUniversal.writeCutscenes = function(cutscenes = state.cutscenes) {
+              ensurePbState();
+              state.cutscenes = normalizeCutsceneData(cutscenes);
+              const box = $('pbCutsceneScript');
+              if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
+              renderCutsceneList();
+              return state.cutscenes;
+            };
+            window.ProjectBuildUniversal.pbActorThingyPatched = true;
+          }
+        } catch {}
+      }
+
+      function init() {
+        ensurePbState();
+        installStyles();
+        installPanel();
+        installEventGuards();
+        patchRuntimeAndUniversal();
+        syncPendingPreviews();
+        renderCutsceneList();
+      }
+
+      const poll = setInterval(() => {
+        init();
+        if ($('pb81AdvancedLevelBuilder') && $('pb81CutsceneList')) clearInterval(poll);
+      }, 150);
+      setTimeout(() => clearInterval(poll), 8000);
+      init();
+
+      window.ProjectBuildActorThingyRewrite = {
+        installed: true,
+        showSlide,
+        playSlot,
+        readCutscenes,
+        writeCutscenes,
+        renderCutsceneList,
+        close: closeActorLayer
+      };
+    })();
+  </script>
+
 </body>
 </html>
