@@ -20039,19 +20039,77 @@ Click me again to advance.</textarea>
         reader.readAsDataURL(file);
       });
 
+      function decodeCutsceneAssetSrc81(value) {
+        if (value == null) return '';
+        let src = '';
+        if (typeof value === 'string') src = value;
+        else if (typeof value.src === 'string') src = value.src;
+        else if (typeof value.url === 'string') src = value.url;
+        else if (typeof value.data === 'string') src = value.data;
+        src = String(src || '').trim();
+        if (!src || src === 'null' || src === 'undefined' || src === '[object Object]') return '';
+        const imgMatch = src.match(/<img[^>]*\ssrc=(['"])(.*?)\1/i) || src.match(/\ssrc=(['"])(.*?)\1/i);
+        if (imgMatch) src = imgMatch[2] || '';
+        const urlMatch = src.match(/^url\((['"]?)(.*?)\1\)$/i);
+        if (urlMatch) src = urlMatch[2] || '';
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.innerHTML = src;
+          src = textarea.value || src;
+        } catch {}
+        src = String(src || '').trim();
+        if (!src || src === 'null' || src === 'undefined' || src === '[object Object]') return '';
+        return src;
+      }
+
+      function cutsceneImageScore81(src) {
+        src = decodeCutsceneAssetSrc81(src);
+        if (!src) return -1;
+        if (/^data:image\//i.test(src)) return 1000000 + src.length;
+        if (/^blob:/i.test(src)) return 900000 + src.length;
+        if (/^https?:\/\//i.test(src) || /^file:/i.test(src)) return 800000 + src.length;
+        if (/\.(png|gif|jpe?g|webp|apng|svg)([?#].*)?$/i.test(src)) return 700000 + src.length;
+        return src.length > 40 ? 600000 + src.length : 1000 + src.length;
+      }
+
+      function pickCutsceneImageSrc81(item = {}, fallbackSrc = '') {
+        const candidates = [
+          item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait,
+          fallbackSrc
+        ].map(decodeCutsceneAssetSrc81).filter(Boolean);
+        if (!candidates.length) return '';
+        return candidates
+          .map((src, order) => ({ src, order, score: cutsceneImageScore81(src) }))
+          .sort((a, b) => b.score - a.score || a.order - b.order)[0].src;
+      }
+
+      function cutsceneImageCandidates81(item = {}, fallbackSrc = '') {
+        const seen = new Set();
+        return [item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait, fallbackSrc]
+          .map(decodeCutsceneAssetSrc81)
+          .filter(src => {
+            if (!src || seen.has(src)) return false;
+            seen.add(src);
+            return true;
+          })
+          .sort((a, b) => cutsceneImageScore81(b) - cutsceneImageScore81(a));
+      }
+
       function normalizeCutsceneSlideCompat(slide = {}) {
         const item = (slide && typeof slide === 'object') ? slide : {};
-        const src = item.image || item.imageSrc || item.actorImage || item.portraitSrc || item.portrait || '';
-        const sfx = item.clickSoundSrc || item.soundSrc || item.clickSfxSrc || item.sfxSrc || '';
+        const src = pickCutsceneImageSrc81(item);
+        const sfx = decodeCutsceneAssetSrc81(item.clickSoundSrc || item.soundSrc || item.clickSfxSrc || item.sfxSrc || '');
         return {
           ...item,
-          image: src || item.image || '',
-          imageSrc: src || item.imageSrc || '',
-          actorImage: src || item.actorImage || '',
-          clickSoundSrc: sfx || item.clickSoundSrc || '',
-          soundSrc: sfx || item.soundSrc || '',
-          clickSfxSrc: sfx || item.clickSfxSrc || '',
-          sfxSrc: sfx || item.sfxSrc || ''
+          image: src || '',
+          imageSrc: src || '',
+          actorImage: src || '',
+          portraitSrc: src || item.portraitSrc || '',
+          portrait: src || item.portrait || '',
+          clickSoundSrc: sfx || '',
+          soundSrc: sfx || '',
+          clickSfxSrc: sfx || '',
+          sfxSrc: sfx || ''
         };
       }
 
@@ -20487,8 +20545,8 @@ Click me again to advance.</textarea>
         ['pre', 'mid', 'post'].forEach(slot => (state.cutscenes[slot] || []).forEach((line, index) => rows.push({ slot, index, line })));
         box.innerHTML = rows.length ? rows.map(r => {
           const line = r.line || {};
-          const actorSrc = line.image || line.imageSrc || line.actorImage || '';
-          const sfxSrc = line.clickSoundSrc || line.soundSrc || line.clickSfxSrc || line.sfxSrc || '';
+          const actorSrc = pickCutsceneImageSrc81(line);
+          const sfxSrc = decodeCutsceneAssetSrc81(line.clickSoundSrc || line.soundSrc || line.clickSfxSrc || line.sfxSrc || '');
           const pos = line.position || line.side || 'center';
           const thumb = actorSrc ? `<img src="${esc(actorSrc)}" alt="">` : esc(String(pos || '?').slice(0, 1).toUpperCase());
           return `<div class="pb81ListItem"><span class="pb81CutMeta"><span class="pb81CutThumb">${thumb}</span><span class="pb81CutText"><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(line.speaker || line.name || 'Cutscene')}: ${esc((line.text || '').slice(0, 90))}<span class="pb81CutSub">Actor image: ${actorSrc ? 'yes' : 'none'} • Click SFX: ${sfxSrc ? 'yes' : 'none'} • Side: ${esc(pos)}</span></span></span><button type="button" class="danger" data-pb81-del-cutscene="${r.slot}:${r.index}">×</button></div>`;
@@ -20632,8 +20690,9 @@ Click me again to advance.</textarea>
 
       async function showCutsceneSlide81(slide = {}) {
         slide = normalizeCutsceneSlideCompat(slide);
-        const actorSrc = slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
-        const slideSfx = slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '';
+        const actorCandidates = cutsceneImageCandidates81(slide, state.pb8?.pendingCutsceneImage || '');
+        const actorSrc = actorCandidates[0] || '';
+        const slideSfx = decodeCutsceneAssetSrc81(slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || state.pb8?.pendingCutsceneSfx || '');
         const needsLocalVisual = !!(slide._pb81ForceLocal || slide.layout === 'visualDialogue' || actorSrc || slideSfx || slide.position || slide.side);
         if (window.ProjectBuildUniversal?.run && !needsLocalVisual) {
           try { return await window.ProjectBuildUniversal.run('dialog', slide); } catch {}
@@ -20668,15 +20727,29 @@ Click me again to advance.</textarea>
           img.alt = '';
           img.decoding = 'auto';
           img.loading = 'eager';
-          img.style.display = 'block';
-          img.onload = () => actor.classList.add('pb81ActorLoaded');
+          img.style.display = 'none';
+          let candidateIndex = 0;
+          const tryNextActorSrc = () => {
+            const nextSrc = actorCandidates[candidateIndex++];
+            if (!nextSrc) {
+              actor.classList.add('pb81ActorBroken');
+              showFallback();
+              try { toast('Cutscene actor image failed to load'); } catch {}
+              return;
+            }
+            img.src = nextSrc;
+          };
+          img.onload = () => {
+            actor.classList.add('pb81ActorLoaded');
+            actor.classList.remove('pb81ActorBroken');
+            img.style.display = 'block';
+          };
           img.onerror = () => {
-            actor.classList.add('pb81ActorBroken');
-            showFallback();
-            try { toast('Cutscene actor image failed to load'); } catch {}
+            img.style.display = 'none';
+            tryNextActorSrc();
           };
           actor.appendChild(img);
-          img.src = actorSrc;
+          tryNextActorSrc();
         } else {
           showFallback();
         }
@@ -20719,8 +20792,9 @@ Click me again to advance.</textarea>
         let slides = Array.isArray(state.cutscenes?.[slot]) ? state.cutscenes[slot].map(normalizeCutsceneSlideCompat) : [];
         if (pendingActor) {
           slides = slides.map(slide => {
-            const hasActor = !!(slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait);
-            return hasActor ? slide : { ...slide, image: pendingActor, imageSrc: pendingActor, actorImage: pendingActor, _pb81ForceLocal: true };
+            const savedActor = pickCutsceneImageSrc81(slide);
+            const actor = savedActor || decodeCutsceneAssetSrc81(pendingActor);
+            return actor ? { ...slide, image: actor, imageSrc: actor, actorImage: actor, portraitSrc: actor, portrait: actor, _pb81ForceLocal: true } : slide;
           });
         }
         if (!slides.length && (pendingActor || String(by('pb81CutsceneText')?.value || '').trim())) {
@@ -20738,7 +20812,7 @@ Click me again to advance.</textarea>
             _pb81ForceLocal: true
           })];
         }
-        const needsLocalVisual = slides.some(s => s?._pb81ForceLocal || s?.layout === 'visualDialogue' || s?.image || s?.imageSrc || s?.actorImage || s?.portraitSrc || s?.portrait || s?.clickSoundSrc || s?.soundSrc || s?.clickSfxSrc || s?.sfxSrc);
+        const needsLocalVisual = slides.some(s => s?._pb81ForceLocal || s?.layout === 'visualDialogue' || pickCutsceneImageSrc81(s) || decodeCutsceneAssetSrc81(s?.clickSoundSrc || s?.soundSrc || s?.clickSfxSrc || s?.sfxSrc || ''));
         if (window.ProjectBuildUniversal?.playCutscene && slot !== 'mid' && !needsLocalVisual) {
           try { return await window.ProjectBuildUniversal.playCutscene(slot); } catch {}
         }
@@ -20867,8 +20941,8 @@ Click me again to advance.</textarea>
           const slot = by('pb81CutsceneSlot')?.value || 'mid';
           const pickedActorFile = by('pb81CutsceneImage')?.files?.[0] || null;
           const pickedSfxFile = by('pb81CutsceneSfx')?.files?.[0] || null;
-          const actorImage = state.pb8.pendingCutsceneImage || await toDataURL81(pickedActorFile) || null;
-          const clickSfx = state.pb8.pendingCutsceneSfx || await toDataURL81(pickedSfxFile) || null;
+          const actorImage = decodeCutsceneAssetSrc81(state.pb8.pendingCutsceneImage || await toDataURL81(pickedActorFile) || '');
+          const clickSfx = decodeCutsceneAssetSrc81(state.pb8.pendingCutsceneSfx || await toDataURL81(pickedSfxFile) || '');
           if (actorImage) state.pb8.pendingCutsceneImage = actorImage;
           if (clickSfx) state.pb8.pendingCutsceneSfx = clickSfx;
           state.cutscenes[slot] ??= [];
@@ -20878,12 +20952,15 @@ Click me again to advance.</textarea>
             duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
             layout: 'visualDialogue',
             position: by('pb81CutsceneSide')?.value || 'right',
-            image: actorImage,
-            imageSrc: actorImage || undefined,
-            actorImage: actorImage || undefined,
-            soundSrc: clickSfx || undefined,
-            clickSoundSrc: clickSfx || undefined,
-            clickSfxSrc: clickSfx || undefined,
+            image: actorImage || '',
+            imageSrc: actorImage || '',
+            actorImage: actorImage || '',
+            portraitSrc: actorImage || '',
+            portrait: actorImage || '',
+            soundSrc: clickSfx || '',
+            clickSoundSrc: clickSfx || '',
+            clickSfxSrc: clickSfx || '',
+            sfxSrc: clickSfx || '',
             _pb81ForceLocal: true
           });
           writeCutsceneJson81();
