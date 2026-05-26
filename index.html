@@ -20078,21 +20078,22 @@ Click me again to advance.</textarea>
           fallbackSrc
         ].map(decodeCutsceneAssetSrc81).filter(Boolean);
         if (!candidates.length) return '';
-        return candidates
-          .map((src, order) => ({ src, order, score: cutsceneImageScore81(src) }))
-          .sort((a, b) => b.score - a.score || a.order - b.order)[0].src;
+        // Keep the saved per-line image first. Older code picked the longest/"best"
+        // URL, which let a later secondary/pending image replace an earlier line.
+        return candidates.find(src => cutsceneImageScore81(src) >= 600000) || candidates[0];
       }
 
       function cutsceneImageCandidates81(item = {}, fallbackSrc = '') {
         const seen = new Set();
+        // Preserve field order instead of sorting. The line's own saved image should
+        // be tried before any compatibility fallback, so multiple loaded images stay independent.
         return [item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait, fallbackSrc]
           .map(decodeCutsceneAssetSrc81)
           .filter(src => {
             if (!src || seen.has(src)) return false;
             seen.add(src);
             return true;
-          })
-          .sort((a, b) => cutsceneImageScore81(b) - cutsceneImageScore81(a));
+          });
       }
 
       function normalizeCutsceneSlideCompat(slide = {}) {
@@ -20690,9 +20691,9 @@ Click me again to advance.</textarea>
 
       async function showCutsceneSlide81(slide = {}) {
         slide = normalizeCutsceneSlideCompat(slide);
-        const actorCandidates = cutsceneImageCandidates81(slide, state.pb8?.pendingCutsceneImage || '');
+        const actorCandidates = cutsceneImageCandidates81(slide, '');
         const actorSrc = actorCandidates[0] || '';
-        const slideSfx = decodeCutsceneAssetSrc81(slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || state.pb8?.pendingCutsceneSfx || '');
+        const slideSfx = decodeCutsceneAssetSrc81(slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '');
         const needsLocalVisual = !!(slide._pb81ForceLocal || slide.layout === 'visualDialogue' || actorSrc || slideSfx || slide.position || slide.side);
         if (window.ProjectBuildUniversal?.run && !needsLocalVisual) {
           try { return await window.ProjectBuildUniversal.run('dialog', slide); } catch {}
@@ -20788,16 +20789,12 @@ Click me again to advance.</textarea>
 
       async function playCutsceneSlot81(slot = 'mid') {
         readCutsceneJson81();
-        const pendingActor = state.pb8?.pendingCutsceneImage || '';
+        const pendingActor = decodeCutsceneAssetSrc81(state.pb8?.pendingCutsceneImage || '');
+        const pendingSfx = decodeCutsceneAssetSrc81(state.pb8?.pendingCutsceneSfx || '');
         let slides = Array.isArray(state.cutscenes?.[slot]) ? state.cutscenes[slot].map(normalizeCutsceneSlideCompat) : [];
-        if (pendingActor) {
-          slides = slides.map(slide => {
-            const savedActor = pickCutsceneImageSrc81(slide);
-            const actor = savedActor || decodeCutsceneAssetSrc81(pendingActor);
-            return actor ? { ...slide, image: actor, imageSrc: actor, actorImage: actor, portraitSrc: actor, portrait: actor, _pb81ForceLocal: true } : slide;
-          });
-        }
-        if (!slides.length && (pendingActor || String(by('pb81CutsceneText')?.value || '').trim())) {
+        // Do not apply the current pending image/SFX to saved slides. Each line keeps
+        // the exact image and sound that were loaded when that line was added.
+        if (!slides.length && (pendingActor || pendingSfx || String(by('pb81CutsceneText')?.value || '').trim())) {
           slides = [normalizeCutsceneSlideCompat({
             speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
             text: by('pb81CutsceneText')?.value || '',
@@ -20807,8 +20804,8 @@ Click me again to advance.</textarea>
             image: pendingActor,
             imageSrc: pendingActor || undefined,
             actorImage: pendingActor || undefined,
-            soundSrc: state.pb8?.pendingCutsceneSfx || undefined,
-            clickSoundSrc: state.pb8?.pendingCutsceneSfx || undefined,
+            soundSrc: pendingSfx || undefined,
+            clickSoundSrc: pendingSfx || undefined,
             _pb81ForceLocal: true
           })];
         }
@@ -20941,8 +20938,10 @@ Click me again to advance.</textarea>
           const slot = by('pb81CutsceneSlot')?.value || 'mid';
           const pickedActorFile = by('pb81CutsceneImage')?.files?.[0] || null;
           const pickedSfxFile = by('pb81CutsceneSfx')?.files?.[0] || null;
-          const actorImage = decodeCutsceneAssetSrc81(state.pb8.pendingCutsceneImage || await toDataURL81(pickedActorFile) || '');
-          const clickSfx = decodeCutsceneAssetSrc81(state.pb8.pendingCutsceneSfx || await toDataURL81(pickedSfxFile) || '');
+          const actorFromFile = pickedActorFile ? await toDataURL81(pickedActorFile) : '';
+          const sfxFromFile = pickedSfxFile ? await toDataURL81(pickedSfxFile) : '';
+          const actorImage = decodeCutsceneAssetSrc81(actorFromFile || state.pb8.pendingCutsceneImage || '');
+          const clickSfx = decodeCutsceneAssetSrc81(sfxFromFile || state.pb8.pendingCutsceneSfx || '');
           if (actorImage) state.pb8.pendingCutsceneImage = actorImage;
           if (clickSfx) state.pb8.pendingCutsceneSfx = clickSfx;
           state.cutscenes[slot] ??= [];
