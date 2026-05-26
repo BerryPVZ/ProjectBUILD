@@ -12106,15 +12106,18 @@ Click me again to advance.</textarea>
             const parsed = JSON.parse(box.value || '{}');
             state.cutscenes = {
               pre: Array.isArray(parsed.pre) ? parsed.pre : [],
+              mid: Array.isArray(parsed.mid) ? parsed.mid : (Array.isArray(state.cutscenes?.mid) ? state.cutscenes.mid : []),
               post: Array.isArray(parsed.post) ? parsed.post : []
             };
           } catch (err) { toast('Cutscene JSON error: ' + err.message); }
         }
-        state.cutscenes ??= { pre: [], post: [] };
+        state.cutscenes ??= { pre: [], mid: [], post: [] };
+        state.cutscenes.mid ??= [];
         return state.cutscenes;
       }
       function writeCutscenes556() {
-        state.cutscenes ??= { pre: [], post: [] };
+        state.cutscenes ??= { pre: [], mid: [], post: [] };
+        state.cutscenes.mid ??= [];
         const box = by('pbCutsceneScript');
         if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
         renderVisualCutsceneList556();
@@ -12629,8 +12632,9 @@ Click me again to advance.</textarea>
         slides.forEach((s, i) => {
           const row = document.createElement('div');
           row.className = 'pb556CutsceneRow';
-          const hasSfx = !!(s.soundSrc || s.clickSoundSrc || s.sfxSrc || s.clickSfxSrc);
-          row.innerHTML = `<div class="pb556CutsceneThumb">${s.image ? `<img src="${s.image}" alt="">` : (s.position === 'right' ? '→' : s.position === 'center' ? '●' : '←')}</div><div><b>${i + 1}. ${s.speaker || 'Speaker'} ${s.position ? '(' + s.position + ')' : ''}</b><span>${String(s.text || '').slice(0, 90)}${hasSfx ? '<br>Click SFX: yes' : ''}</span></div><button type="button" class="danger" data-pb556-del-line="${i}">×</button>`;
+          const hasSfx = !!(s.pb81ClickSfxSrc || s.soundSrc || s.clickSoundSrc || s.sfxSrc || s.clickSfxSrc);
+          const actorSrc = s.pb81ActorSrc || s.pb81ImageSrc || s.actorSrc || s.image || s.imageSrc || s.actorImage || s.portraitSrc || s.portrait || '';
+          row.innerHTML = `<div class="pb556CutsceneThumb">${actorSrc ? `<img src="${actorSrc}" alt="">` : (s.position === 'right' ? '→' : s.position === 'center' ? '●' : '←')}</div><div><b>${i + 1}. ${s.speaker || 'Speaker'} ${s.position ? '(' + s.position + ')' : ''}</b><span>${String(s.text || '').slice(0, 90)}${hasSfx ? '<br>Click SFX: yes' : ''}</span></div><button type="button" class="danger" data-pb556-del-line="${i}">×</button>`;
           box.appendChild(row);
         });
         box.querySelectorAll('[data-pb556-del-line]').forEach(btn => btn.addEventListener('click', () => {
@@ -12642,7 +12646,8 @@ Click me again to advance.</textarea>
       }
       function delay556(ms) { return new Promise(resolve => setTimeout(resolve, Math.max(0, Number(ms) || 0))); }
       async function showEnhancedSlide556(slide = {}) {
-        if (!slide.layout && !slide.position && !slide.image) {
+        const actorSrc = slide.pb81ActorSrc || slide.pb81ImageSrc || slide.actorSrc || slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
+        if (!slide.layout && !slide.position && !actorSrc) {
           if (window.ProjectBuildUniversal?.run) {
             await window.ProjectBuildUniversal.run('dialog', slide);
             return delay556(Number(slide.duration) || 1500);
@@ -12655,7 +12660,7 @@ Click me again to advance.</textarea>
         const pos = slide.position || 'center';
         const actor = document.createElement('div');
         actor.className = 'pb556Actor ' + pos;
-        if (slide.image) actor.innerHTML = `<img src="${slide.image}" alt="">`;
+        if (actorSrc) actor.innerHTML = `<img src="${actorSrc}" alt="">`;
         else actor.innerHTML = `<div class="pb556ActorFallback">${String(slide.speaker || '?').trim().slice(0,1).toUpperCase()}</div>`;
         const bubble = document.createElement('div');
         bubble.className = 'pb556DialogueBubble';
@@ -12663,7 +12668,7 @@ Click me again to advance.</textarea>
         overlay.appendChild(actor);
         overlay.appendChild(bubble);
         stage.appendChild(overlay);
-        const slideSfx = slide.soundSrc || slide.clickSoundSrc || slide.sfxSrc || slide.clickSfxSrc || '';
+        const slideSfx = slide.pb81ClickSfxSrc || slide.soundSrc || slide.clickSoundSrc || slide.sfxSrc || slide.clickSfxSrc || '';
         if (slideSfx) {
           try {
             if (typeof playSfx === 'function') playSfx(slideSfx, 0.9);
@@ -12780,7 +12785,7 @@ Click me again to advance.</textarea>
             try { readCutscenes556(); } catch {}
             data.pb556LevelRules = clone(state.pb556.rules || {});
             data.pb556BoardItems = clone(state.pb556.boardItems || []);
-            data.cutscenes = clone(state.cutscenes || { pre:[], post:[] });
+            data.cutscenes = clone(state.cutscenes || { pre:[], mid:[], post:[] });
             return data;
           };
           serializableState.pb556RulesWrapped = true;
@@ -20068,29 +20073,29 @@ Click me again to advance.</textarea>
         if (/^data:image\//i.test(src)) return 1000000 + src.length;
         if (/^blob:/i.test(src)) return 900000 + src.length;
         if (/^https?:\/\//i.test(src) || /^file:/i.test(src)) return 800000 + src.length;
-        if (/\.(png|gif|jpe?g|webp|apng|svg)([?#].*)?$/i.test(src)) return 700000 + src.length;
-        return src.length > 40 ? 600000 + src.length : 1000 + src.length;
+        if (/^(?:\.\/|\.\.\/|\/)?[^\s"'<>]+\.(png|gif|jpe?g|webp|apng|svg)([?#].*)?$/i.test(src)) return 700000 + src.length;
+        return -1;
       }
 
       function pickCutsceneImageSrc81(item = {}, fallbackSrc = '') {
         const candidates = [
+          item?.pb81ActorSrc, item?.pb81ImageSrc, item?.actorSrc,
           item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait,
           fallbackSrc
         ].map(decodeCutsceneAssetSrc81).filter(Boolean);
         if (!candidates.length) return '';
-        // Keep the saved per-line image first. Older code picked the longest/"best"
-        // URL, which let a later secondary/pending image replace an earlier line.
-        return candidates.find(src => cutsceneImageScore81(src) >= 600000) || candidates[0];
+        // Keep the saved per-line image first. Do not pick random long text or a later pending image.
+        return candidates.find(src => cutsceneImageScore81(src) >= 0) || '';
       }
 
       function cutsceneImageCandidates81(item = {}, fallbackSrc = '') {
         const seen = new Set();
-        // Preserve field order instead of sorting. The line's own saved image should
-        // be tried before any compatibility fallback, so multiple loaded images stay independent.
-        return [item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait, fallbackSrc]
+        // Preserve field order. The saved per-line image is tried before compatibility fallbacks,
+        // so line 1 and line 2 can keep different loaded files.
+        return [item?.pb81ActorSrc, item?.pb81ImageSrc, item?.actorSrc, item?.image, item?.imageSrc, item?.actorImage, item?.portraitSrc, item?.portrait, fallbackSrc]
           .map(decodeCutsceneAssetSrc81)
           .filter(src => {
-            if (!src || seen.has(src)) return false;
+            if (!src || seen.has(src) || cutsceneImageScore81(src) < 0) return false;
             seen.add(src);
             return true;
           });
@@ -20099,7 +20104,7 @@ Click me again to advance.</textarea>
       function normalizeCutsceneSlideCompat(slide = {}) {
         const item = (slide && typeof slide === 'object') ? slide : {};
         const src = pickCutsceneImageSrc81(item);
-        const sfx = decodeCutsceneAssetSrc81(item.clickSoundSrc || item.soundSrc || item.clickSfxSrc || item.sfxSrc || '');
+        const sfx = decodeCutsceneAssetSrc81(item.pb81ClickSfxSrc || item.clickSoundSrc || item.soundSrc || item.clickSfxSrc || item.sfxSrc || '');
         return {
           ...item,
           image: src || '',
@@ -20107,6 +20112,7 @@ Click me again to advance.</textarea>
           actorImage: src || '',
           portraitSrc: src || item.portraitSrc || '',
           portrait: src || item.portrait || '',
+          pb81ClickSfxSrc: sfx || '',
           clickSoundSrc: sfx || '',
           soundSrc: sfx || '',
           clickSfxSrc: sfx || '',
@@ -20547,7 +20553,7 @@ Click me again to advance.</textarea>
         box.innerHTML = rows.length ? rows.map(r => {
           const line = r.line || {};
           const actorSrc = pickCutsceneImageSrc81(line);
-          const sfxSrc = decodeCutsceneAssetSrc81(line.clickSoundSrc || line.soundSrc || line.clickSfxSrc || line.sfxSrc || '');
+          const sfxSrc = decodeCutsceneAssetSrc81(line.pb81ClickSfxSrc || line.clickSoundSrc || line.soundSrc || line.clickSfxSrc || line.sfxSrc || '');
           const pos = line.position || line.side || 'center';
           const thumb = actorSrc ? `<img src="${esc(actorSrc)}" alt="">` : esc(String(pos || '?').slice(0, 1).toUpperCase());
           return `<div class="pb81ListItem"><span class="pb81CutMeta"><span class="pb81CutThumb">${thumb}</span><span class="pb81CutText"><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(line.speaker || line.name || 'Cutscene')}: ${esc((line.text || '').slice(0, 90))}<span class="pb81CutSub">Actor image: ${actorSrc ? 'yes' : 'none'} • Click SFX: ${sfxSrc ? 'yes' : 'none'} • Side: ${esc(pos)}</span></span></span><button type="button" class="danger" data-pb81-del-cutscene="${r.slot}:${r.index}">×</button></div>`;
@@ -20690,10 +20696,11 @@ Click me again to advance.</textarea>
       }
 
       async function showCutsceneSlide81(slide = {}) {
-        slide = normalizeCutsceneSlideCompat(slide);
-        const actorCandidates = cutsceneImageCandidates81(slide, '');
+        const rawSlide81 = (slide && typeof slide === 'object') ? slide : {};
+        slide = normalizeCutsceneSlideCompat(rawSlide81);
+        const actorCandidates = cutsceneImageCandidates81(rawSlide81, pickCutsceneImageSrc81(slide, ''));
         const actorSrc = actorCandidates[0] || '';
-        const slideSfx = decodeCutsceneAssetSrc81(slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '');
+        const slideSfx = decodeCutsceneAssetSrc81(slide.pb81ClickSfxSrc || slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '');
         const needsLocalVisual = !!(slide._pb81ForceLocal || slide.layout === 'visualDialogue' || actorSrc || slideSfx || slide.position || slide.side);
         if (window.ProjectBuildUniversal?.run && !needsLocalVisual) {
           try { return await window.ProjectBuildUniversal.run('dialog', slide); } catch {}
@@ -20951,11 +20958,15 @@ Click me again to advance.</textarea>
             duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
             layout: 'visualDialogue',
             position: by('pb81CutsceneSide')?.value || 'right',
+            pb81ActorSrc: actorImage || '',
+            pb81ImageSrc: actorImage || '',
+            actorSrc: actorImage || '',
             image: actorImage || '',
             imageSrc: actorImage || '',
             actorImage: actorImage || '',
             portraitSrc: actorImage || '',
             portrait: actorImage || '',
+            pb81ClickSfxSrc: clickSfx || '',
             soundSrc: clickSfx || '',
             clickSoundSrc: clickSfx || '',
             clickSfxSrc: clickSfx || '',
