@@ -20810,5 +20810,536 @@ Click me again to advance.</textarea>
 
   </script>
 
+
+  <script>
+    /* Project: BUILD 8.1.1 - export JSON + buildmod hard fix.
+       This final patch wins after the older export handlers. It removes stale listeners,
+       exports the live template library, and streams huge buildmods into Blob chunks instead
+       of building one impossible mega-string. */
+    (function installProjectBuild811ExportHardFix() {
+      if (window.ProjectBuild811ExportHardFix?.installed) return;
+
+      const VERSION = '8.1.1-export-hard-fix';
+      const by = id => document.getElementById(id);
+      const toast = msg => { try { showToast(msg); } catch { console.log(msg); } };
+      const runtimeKeys = new Set([
+        'image','gifEl','idleImage','actionImage','deathImage','idleGifEl','actionGifEl','deathGifEl',
+        'model3d','model3dObject','model3dScene','model3dMixer','dataTimers','dead','_runtime','_cache',
+        'hpSpriteImages','_pb702HpSpriteKey','_pb701HpSpriteKey','canvas','ctx','audio','element','el'
+      ]);
+
+      function isDomLike(value) {
+        try {
+          return !!value && (
+            (typeof Element !== 'undefined' && value instanceof Element) ||
+            (typeof HTMLImageElement !== 'undefined' && value instanceof HTMLImageElement) ||
+            (typeof HTMLAudioElement !== 'undefined' && value instanceof HTMLAudioElement) ||
+            (typeof ImageBitmap !== 'undefined' && value instanceof ImageBitmap) ||
+            (typeof CanvasRenderingContext2D !== 'undefined' && value instanceof CanvasRenderingContext2D)
+          );
+        } catch { return false; }
+      }
+
+      function clonePlain(value, seen = new WeakMap()) {
+        if (value == null) return value;
+        const type = typeof value;
+        if (type === 'string' || type === 'number' || type === 'boolean') return value;
+        if (type === 'bigint') return Number(value);
+        if (type === 'function' || type === 'symbol' || type === 'undefined') return undefined;
+        if (isDomLike(value)) return undefined;
+        if (value instanceof Date) return value.toISOString();
+        if (seen.has(value)) return seen.get(value);
+        if (Array.isArray(value)) {
+          const arr = [];
+          seen.set(value, arr);
+          value.forEach(item => {
+            const cloned = clonePlain(item, seen);
+            arr.push(cloned === undefined ? null : cloned);
+          });
+          return arr;
+        }
+        const out = {};
+        seen.set(value, out);
+        Object.keys(value).forEach(key => {
+          if (runtimeKeys.has(key)) return;
+          const cloned = clonePlain(value[key], seen);
+          if (cloned !== undefined) out[key] = cloned;
+        });
+        return out;
+      }
+
+      const cleanSrc = src => typeof src === 'string' ? src.trim() : '';
+      const isDataSrc = src => /^data:/i.test(cleanSrc(src));
+      const isDurableSrc = src => {
+        const value = cleanSrc(src);
+        return !!value && !/^blob:/i.test(value) && !/^about:/i.test(value);
+      };
+      const firstData = (...values) => values.map(cleanSrc).find(isDataSrc) || '';
+      const firstDurable = (...values) => values.map(cleanSrc).find(isDurableSrc) || '';
+      const safeFile = (name, fallback = 'project-build') =>
+        String(name || fallback).trim().replace(/[^a-z0-9._-]+/gi, '_').replace(/^_+|_+$/g, '') || fallback;
+
+      function readFileAsDataURL(inputId) {
+        const file = by(inputId)?.files?.[0];
+        if (!file) return Promise.resolve('');
+        return new Promise(resolve => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(String(reader.result || ''));
+          reader.onerror = () => resolve('');
+          reader.readAsDataURL(file);
+        });
+      }
+
+      async function currentAssetBundle() {
+        const mainLawnData = await readFileAsDataURL('lawnImage');
+        const mainMusicData = await readFileAsDataURL('lawnMusic');
+        const builderLawnData = await readFileAsDataURL('builderLevelLawn');
+        const builderMusicData = await readFileAsDataURL('builderLevelMusic');
+        const level = state?.currentCampaignLevel || null;
+        const worldLawn = level?.world?.lawn || {};
+        const liveGifSrc = by('gifLawn')?.getAttribute('src') || by('gifLawn')?.src || '';
+        const liveMusicSrc = (typeof music !== 'undefined' && music) ? (music.currentSrc || music.src || '') : '';
+
+        const imageSrc = firstData(
+          builderLawnData, mainLawnData, state?.pendingLevelLawnSrc, level?.lawnSrc,
+          worldLawn.imageSrc, worldLawn.src, worldLawn.url, state?.lawn?.imageSrc, liveGifSrc
+        ) || firstDurable(
+          builderLawnData, mainLawnData, state?.pendingLevelLawnSrc, level?.lawnSrc,
+          worldLawn.imageSrc, worldLawn.src, worldLawn.url, state?.lawn?.imageSrc, liveGifSrc
+        );
+
+        const musicSrc = firstData(
+          builderMusicData, mainMusicData, state?.pendingLevelMusicSrc, level?.musicSrc,
+          worldLawn.musicSrc, worldLawn.bgmSrc, worldLawn.audioSrc, state?.lawn?.musicSrc, liveMusicSrc
+        ) || firstDurable(
+          builderMusicData, mainMusicData, state?.pendingLevelMusicSrc, level?.musicSrc,
+          worldLawn.musicSrc, worldLawn.bgmSrc, worldLawn.audioSrc, state?.lawn?.musicSrc, liveMusicSrc
+        );
+
+        const bundle = {
+          name: by('lawnName')?.value || state?.lawn?.name || worldLawn.name || 'Main Lawn',
+          imageSrc,
+          musicSrc,
+          fitMode: by('lawnFitMode')?.value || state?.lawn?.fitMode || worldLawn.fitMode || 'fitAll'
+        };
+
+        state.lawn ||= {};
+        state.lawn.name = bundle.name;
+        state.lawn.fitMode = bundle.fitMode;
+        if (bundle.imageSrc) state.lawn.imageSrc = bundle.imageSrc;
+        if (bundle.musicSrc) state.lawn.musicSrc = bundle.musicSrc;
+        if (builderLawnData || mainLawnData) state.pendingLevelLawnSrc = bundle.imageSrc;
+        if (builderMusicData || mainMusicData) state.pendingLevelMusicSrc = bundle.musicSrc;
+        return bundle;
+      }
+
+      function templateKey(t) {
+        return String(t?.name || '').trim().toLowerCase();
+      }
+
+      function cleanTemplate(template) {
+        const t = clonePlain(template || {});
+        if (!t || typeof t !== 'object') return null;
+        t.name = String(t.name || '').trim();
+        if (!t.name) return null;
+        t.side = t.side || (t.type === 'zombie' ? 'zombie' : t.type === 'boss' ? 'boss' : t.type === 'npc' ? 'npc' : 'plant');
+        t.role = t.role || t.type || (t.side === 'zombie' ? 'fighter' : t.side === 'npc' ? 'npc' : 'fighter');
+        t.type = t.type || t.side || 'plant';
+        const hp = Number(t.maxHp ?? t.hp ?? 100) || 100;
+        t.maxHp = hp;
+        t.hp = Number(t.hp ?? hp) || hp;
+        t.damage = Number(t.damage ?? 0) || 0;
+        t.speed = Number(t.speed ?? t.vx ?? 0) || 0;
+        t.w = Number(t.w ?? t.width ?? 80) || 80;
+        t.h = Number(t.h ?? t.height ?? 80) || 80;
+        t.cooldown = Number(t.cooldown ?? 1.5) || 1.5;
+        t.abilities = Array.isArray(t.abilities) ? [...new Set(t.abilities.filter(Boolean))] : [];
+        if (t.seedPacketBgSrc && !t.packetBackgroundSrc) t.packetBackgroundSrc = t.seedPacketBgSrc;
+        if (t.packetBackgroundSrc && !t.seedPacketBgSrc) t.seedPacketBgSrc = t.packetBackgroundSrc;
+        if (t.side === 'npc' || t.role === 'npc' || t.type === 'npc') {
+          t.side = 'npc';
+          t.role = 'npc';
+          t.type = 'npc';
+          t.abilities = [];
+          t.script = '';
+          t.spawnScript = '';
+        }
+        return t;
+      }
+
+      function captureTemplateLibrary() {
+        state.templates ||= [];
+        const byName = new Map();
+        (state.templates || []).forEach(raw => {
+          const t = cleanTemplate(raw);
+          if (!t) return;
+          byName.set(templateKey(t), { ...(byName.get(templateKey(t)) || {}), ...t });
+        });
+
+        if (typeof getTemplateForm === 'function') {
+          try {
+            const formTemplate = cleanTemplate(getTemplateForm());
+            if (formTemplate?.name) {
+              const key = templateKey(formTemplate);
+              const selectedIndex = Number(by('templateSelect')?.value);
+              const selected = Number.isFinite(selectedIndex) ? cleanTemplate(state.templates[selectedIndex]) : null;
+              if (!byName.has(key) || templateKey(selected) === key) {
+                byName.set(key, { ...(byName.get(key) || {}), ...formTemplate });
+              }
+            }
+          } catch {}
+        }
+
+        const templates = [...byName.values()].filter(Boolean);
+        state.templates = templates.map(t => ({ ...t }));
+        state._pb811TemplateLibrary = templates.map(clonePlain);
+        try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
+        try { if (window.renderProjectBuildPackets) window.renderProjectBuildPackets(); } catch {}
+        return templates;
+      }
+
+      function cleanEntity(e) {
+        try {
+          if (typeof serializableEntity === 'function') return clonePlain(serializableEntity(e));
+        } catch {}
+        return clonePlain(e);
+      }
+
+      function cleanWorld(world = {}) {
+        const w = clonePlain(world) || {};
+        [
+          'templates','campaigns','boostTemplates','pb55Graphics','pb55BossBlueprints',
+          'timelineEvents','spriteAssets','almanac','weather','state','project','pack',
+          'currentTemplateLibrary','pbAssetRefs','assetRefs'
+        ].forEach(key => { try { delete w[key]; } catch {} });
+        if (Array.isArray(w.entities)) w.entities = w.entities.map(cleanEntity);
+        w.projectiles = [];
+        w.collectibles = [];
+        w.particles = [];
+        return w;
+      }
+
+      function cleanLevel(level, fallbackLawn = null) {
+        const l = clonePlain(level || {}) || {};
+        l.id ||= `level-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+        l.name = String(l.name || 'Level').trim() || 'Level';
+        l.world = cleanWorld(l.world || {});
+        l.world.lawn ||= {};
+        const imageSrc = firstDurable(l.lawnSrc, l.world.lawn.imageSrc, l.world.lawn.src, l.world.lawn.url, fallbackLawn?.imageSrc);
+        const musicSrc = firstDurable(l.musicSrc, l.world.lawn.musicSrc, l.world.lawn.bgmSrc, l.world.lawn.audioSrc, fallbackLawn?.musicSrc);
+        if (imageSrc) { l.lawnSrc = imageSrc; l.world.lawn.imageSrc = imageSrc; }
+        if (musicSrc) { l.musicSrc = musicSrc; l.world.lawn.musicSrc = musicSrc; }
+        l.fitMode = l.fitMode || l.world.lawn.fitMode || fallbackLawn?.fitMode || 'fitAll';
+        l.world.lawn.fitMode = l.fitMode;
+        return l;
+      }
+
+      function cleanCampaigns(campaigns, fallbackLawn = null) {
+        return (Array.isArray(campaigns) ? campaigns : []).map((raw, index) => {
+          const c = clonePlain(raw || {}) || {};
+          c.id ||= `campaign-${index + 1}`;
+          c.name = String(c.name || c.title || c.campaignName || `Campaign ${index + 1}`).trim() || `Campaign ${index + 1}`;
+          c.levels = (Array.isArray(c.levels) ? c.levels : []).map(level => cleanLevel(level, fallbackLawn));
+          return c;
+        });
+      }
+
+      function makeCurrentWorld(lawn) {
+        let base = {};
+        try { if (typeof serializableState === 'function') base = serializableState() || {}; } catch {}
+        const world = cleanWorld(base);
+        world.lawn = { ...(world.lawn || {}), ...(lawn || {}) };
+        world.grid = clonePlain(state.grid || world.grid || {});
+        world.display = clonePlain(state.display || world.display || {});
+        world.entities = (state.entities || []).map(cleanEntity);
+        world.pb8 = clonePlain(state.pb8 || {});
+        world.cutscenes = clonePlain(state.cutscenes || { pre: [], post: [], mid: [] });
+        return world;
+      }
+
+      async function buildJsonExport() {
+        const lawn = await currentAssetBundle();
+        const templates = captureTemplateLibrary().map(clonePlain);
+        const data = makeCurrentWorld(lawn);
+        data.type = 'project-build-world';
+        data.version = VERSION;
+        data.templates = templates;
+        data.currentTemplateLibrary = templates.map(t => ({ name: t.name, side: t.side, role: t.role, type: t.type }));
+        data.campaigns = cleanCampaigns(state.campaigns || [], lawn);
+        data.lawn = { ...(state.lawn || {}), ...lawn };
+        data.pb8 = clonePlain(state.pb8 || {});
+        data.cutscenes = clonePlain(state.cutscenes || { pre: [], post: [], mid: [] });
+        return data;
+      }
+
+      function isBigDataAsset(value) {
+        return typeof value === 'string' && value.length > 512 && /^data:/i.test(value);
+      }
+
+      function compactAssetRefs(root) {
+        root = clonePlain(root) || {};
+        try { delete root.pbAssetRefs; } catch {}
+        try { delete root.assetRefs; } catch {}
+
+        const valueToId = new Map();
+        const assets = {};
+        let nextId = 1;
+        let replacements = 0;
+        let bytesMoved = 0;
+        const seen = new WeakSet();
+
+        const replace = value => {
+          if (isBigDataAsset(value)) {
+            let id = valueToId.get(value);
+            if (!id) {
+              id = `asset${nextId++}`;
+              valueToId.set(value, id);
+              assets[id] = value;
+              bytesMoved += value.length;
+            }
+            replacements++;
+            return `pbasset://${id}`;
+          }
+          if (!value || typeof value !== 'object') return value;
+          if (seen.has(value)) return value;
+          seen.add(value);
+          if (Array.isArray(value)) {
+            for (let i = 0; i < value.length; i++) value[i] = replace(value[i]);
+          } else {
+            Object.keys(value).forEach(key => { value[key] = replace(value[key]); });
+          }
+          return value;
+        };
+
+        replace(root);
+        root.compatibility ||= {};
+        root.compatibility.compactBuildmodExport = true;
+        root.compatibility.streamedExport = true;
+        root.compatibility.allDataUrlsStoredAsAssetRefs = true;
+        root.compatibility.assetRefCount = Object.keys(assets).length;
+        root.compatibility.assetRefReplacementCount = replacements;
+
+        if (Object.keys(assets).length) {
+          root.pbAssetRefs = {
+            version: 2,
+            prefix: 'pbasset://',
+            assets,
+            repeatedAssetCount: Object.keys(assets).length,
+            approxBytesMovedToAssetTable: bytesMoved,
+            replacements
+          };
+        }
+        return root;
+      }
+
+      async function buildBuildmod(selectedOnly = false) {
+        captureTemplateLibrary();
+        if (!selectedOnly) {
+          try {
+            const api = window.ProjectBuild703CampaignBuildmodSeedPacketFix;
+            if (api?.upsertCurrentLevel) await api.upsertCurrentLevel({ silent: true });
+          } catch {}
+        }
+
+        const lawn = await currentAssetBundle();
+        const selectedIndex = Number(by('templateSelect')?.value) || 0;
+        const selectedTemplate = state.templates?.[selectedIndex] ? cleanTemplate(state.templates[selectedIndex]) : null;
+        const templates = selectedOnly && selectedTemplate ? [selectedTemplate] : captureTemplateLibrary().map(clonePlain);
+
+        const pkg = {
+          type: 'project-build-mod-package',
+          packageVersion: 5,
+          engine: 'Project: BUILD',
+          engineVersion: VERSION,
+          name: by('pb55ModName')?.value || by('pb60PackName')?.value || by('campaignName')?.value || by('builderCampaignName')?.value || 'Project BUILD Mod',
+          exportedAt: new Date().toISOString(),
+          templates,
+          campaigns: selectedOnly ? [] : cleanCampaigns(state.campaigns || [], lawn),
+          lawn,
+          currentWorld: makeCurrentWorld(lawn),
+          currentBackground: clonePlain(lawn),
+          currentLawnSrc: lawn.imageSrc || '',
+          currentMusicSrc: lawn.musicSrc || '',
+          currentBase64Lawn: lawn.imageSrc || '',
+          currentBase64Music: lawn.musicSrc || '',
+          mainLawnSrc: lawn.imageSrc || '',
+          mainMusicSrc: lawn.musicSrc || '',
+          boostTemplates: selectedOnly ? [] : clonePlain(state.boostTemplates || []),
+          graphics: selectedOnly ? [] : clonePlain(state.pb55Graphics || []),
+          bossBlueprints: selectedOnly ? [] : clonePlain(state.pb55BossBlueprints || []),
+          timelineEvents: selectedOnly ? [] : clonePlain(state.timelineEvents || []),
+          pb556LevelRules: clonePlain(state.pb556?.rules || {}),
+          pb556BoardItems: clonePlain(state.pb556?.boardItems || []),
+          pb60: selectedOnly ? undefined : clonePlain(state.pb60 || {}),
+          pb8: selectedOnly ? undefined : clonePlain(state.pb8 || {}),
+          cutscenes: clonePlain(state.cutscenes || { pre: [], post: [], mid: [] }),
+          compatibility: {
+            legacyJsonStillSupported: true,
+            savesCampaignLevels: true,
+            embedsCurrentBackground: true,
+            embedsCurrentBase64LawnAndMusic: true,
+            embedsLevelLawnAndMusic: true,
+            savesSeedPacketBackgrounds: true,
+            avoidsInvalidStringLength: true,
+            notes: '8.1.1 buildmods store base64 assets in pbAssetRefs and download JSON as chunks, preventing giant-string export crashes.'
+          }
+        };
+
+        return compactAssetRefs(pkg);
+      }
+
+      function pushJsonString(value, parts) {
+        const s = String(value);
+        parts.push('"');
+        let i = 0;
+        const size = 32768;
+        while (i < s.length) {
+          let end = Math.min(s.length, i + size);
+          if (end < s.length) {
+            const code = s.charCodeAt(end - 1);
+            if (code >= 0xD800 && code <= 0xDBFF) end--;
+          }
+          if (end <= i) end = Math.min(s.length, i + size);
+          parts.push(JSON.stringify(s.slice(i, end)).slice(1, -1));
+          i = end;
+        }
+        parts.push('"');
+      }
+
+      function jsonBlobParts(value) {
+        const parts = [];
+        const seen = new WeakSet();
+
+        const write = (v, inArray = false) => {
+          if (v == null) { parts.push('null'); return; }
+          const type = typeof v;
+          if (type === 'string') { pushJsonString(v, parts); return; }
+          if (type === 'number') { parts.push(Number.isFinite(v) ? String(v) : 'null'); return; }
+          if (type === 'boolean') { parts.push(v ? 'true' : 'false'); return; }
+          if (type === 'bigint') { parts.push(String(Number(v))); return; }
+          if (type === 'undefined' || type === 'function' || type === 'symbol') {
+            parts.push(inArray ? 'null' : 'null');
+            return;
+          }
+          if (v instanceof Date) { pushJsonString(v.toISOString(), parts); return; }
+          if (seen.has(v)) { parts.push('null'); return; }
+          seen.add(v);
+
+          if (Array.isArray(v)) {
+            parts.push('[');
+            for (let i = 0; i < v.length; i++) {
+              if (i) parts.push(',');
+              write(v[i], true);
+            }
+            parts.push(']');
+            seen.delete(v);
+            return;
+          }
+
+          parts.push('{');
+          let first = true;
+          Object.keys(v).forEach(key => {
+            const child = v[key];
+            if (child === undefined || typeof child === 'function' || typeof child === 'symbol') return;
+            if (!first) parts.push(',');
+            first = false;
+            pushJsonString(key, parts);
+            parts.push(':');
+            write(child, false);
+          });
+          parts.push('}');
+          seen.delete(v);
+        };
+
+        write(value);
+        return parts;
+      }
+
+      function downloadObject(filename, data, type = 'application/json') {
+        const blob = new Blob(jsonBlobParts(data), { type });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+      }
+
+      async function exportJsonFixed(e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+        try {
+          const data = await buildJsonExport();
+          downloadObject('project-build-8-1-1-world.json', data, 'application/json');
+          toast(`JSON exported with ${data.templates?.length || 0} templates`);
+        } catch (err) {
+          console.error(err);
+          toast('JSON export failed: ' + (err?.message || err));
+        }
+        return false;
+      }
+
+      async function exportBuildmodFixed(selectedOnly, e) {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
+        e?.stopImmediatePropagation?.();
+        try {
+          const pkg = await buildBuildmod(selectedOnly);
+          const base = selectedOnly ? `${pkg.templates?.[0]?.name || pkg.name}.template` : pkg.name;
+          downloadObject(`${safeFile(base, selectedOnly ? 'template' : 'project-build-mod')}.buildmod`, pkg, 'application/x-project-build-mod');
+          const status = by('pb55ModStatus') || by('pb60PackStatus');
+          if (status) status.textContent = selectedOnly
+            ? 'Exported selected template .buildmod with streamed asset-safe JSON.'
+            : 'Exported full .buildmod with streamed asset-safe JSON.';
+          toast(selectedOnly ? 'Template buildmod exported' : 'Buildmod exported without invalid string length');
+        } catch (err) {
+          console.error(err);
+          toast('Buildmod export failed: ' + (err?.message || err));
+        }
+        return false;
+      }
+
+      function replaceButton(id, handler) {
+        const old = by(id);
+        if (!old) return null;
+        const fresh = old.cloneNode(true);
+        fresh.type = 'button';
+        fresh.dataset.pb811ExportHardFixed = '1';
+        old.replaceWith(fresh);
+        fresh.addEventListener('click', handler, true);
+        return fresh;
+      }
+
+      function wireExports() {
+        replaceButton('exportWorld', exportJsonFixed);
+        replaceButton('pb55ExportMod', e => exportBuildmodFixed(false, e));
+        replaceButton('pb60ExportPack', e => exportBuildmodFixed(false, e));
+        replaceButton('pb55ExportSelectedTemplate', e => exportBuildmodFixed(true, e));
+      }
+
+      try {
+        document.title = 'Project: BUILD 8.1.1 - Export Fix';
+        document.querySelectorAll('.versionBadge').forEach(b => b.textContent = '8.1.1');
+      } catch {}
+
+      wireExports();
+      setTimeout(wireExports, 300);
+      setTimeout(wireExports, 1200);
+
+      window.ProjectBuild811ExportHardFix = {
+        installed: true,
+        version: VERSION,
+        exportJson: buildJsonExport,
+        exportBuildmod: buildBuildmod,
+        compactAssetRefs,
+        jsonBlobParts,
+        wireExports
+      };
+
+      toast('8.1.1 export fix loaded: JSON templates and huge buildmods fixed');
+    })();
+  </script>
+
 </body>
 </html>
