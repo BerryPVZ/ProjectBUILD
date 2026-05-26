@@ -22989,5 +22989,816 @@ Click me again to advance.</textarea>
     })();
   </script>
 
+
+<script id="pbActorThingyFinalStabilizer">
+(() => {
+  if (window.ProjectBuildActorThingyFinal?.installed) return;
+
+  const $ = id => document.getElementById(id);
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+  const toast = msg => { try { (window.showToast || window.toast || console.log)(msg); } catch { console.log(msg); } };
+  const clone = obj => { try { return typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj)); } catch { return obj; } };
+  const slots = ['pre', 'mid', 'post'];
+  const imageFields = ['actorImageSrc','imageSrc','image','portraitSrc','portrait','npcImageSrc','leftImage','rightImage','src'];
+  const soundFields = ['lineSfxSrc','clickSoundSrc','soundSrc','sfxSrc','lineSfx','clickSound'];
+
+  const stateObj = () => { window.state ||= {}; return window.state; };
+  const clean = src => typeof src === 'string' ? src.trim() : '';
+
+  function assetTables() {
+    const s = stateObj();
+    const level = s.currentCampaignLevel || null;
+    return [
+      s.pbAssetRefs?.assets, s.assetRefs?.assets, s._pbAssetRefs?.assets, s._assetRefs?.assets,
+      level?.pbAssetRefs?.assets, level?.assetRefs?.assets,
+      level?.world?.pbAssetRefs?.assets, level?.world?.assetRefs?.assets,
+      window.pbAssetRefs?.assets, window.assetRefs?.assets
+    ].filter(t => t && typeof t === 'object');
+  }
+
+  function resolveAsset(src) {
+    let value = clean(src);
+    if (!value) return '';
+    if (!value.startsWith('pbasset://')) return value;
+    const id = value.slice('pbasset://'.length);
+    for (const table of assetTables()) {
+      const found = table[id];
+      if (typeof found === 'string' && found.trim()) return found.trim();
+      if (found && typeof found === 'object') {
+        const nested = found.src || found.data || found.dataUrl || found.url || found.imageSrc;
+        if (typeof nested === 'string' && nested.trim()) return nested.trim();
+      }
+    }
+    return '';
+  }
+
+  function usable(src, kind = 'any') {
+    const value = resolveAsset(src);
+    if (!value) return '';
+    if (value.startsWith('pbasset://')) return '';
+    if (kind === 'image' && /^data:audio\//i.test(value)) return '';
+    if (kind === 'audio' && /^data:image\//i.test(value)) return '';
+    return value;
+  }
+
+  function firstField(obj, fields, kind) {
+    if (!obj || typeof obj !== 'object') return '';
+    for (const field of fields) {
+      const value = usable(obj[field], kind);
+      if (value) return value;
+    }
+    return '';
+  }
+
+  function imageOf(line) { return firstField(line, imageFields, 'image'); }
+  function sfxOf(line) { return firstField(line, soundFields, 'audio'); }
+
+  function ensureState() {
+    const s = stateObj();
+    s.pb8 ||= {};
+    s.pb8.actorThingyFinal ||= { pendingImageSrc:'', pendingImageName:'', pendingSfxSrc:'', pendingSfxName:'' };
+    s.pb8.actorThingy ||= s.pb8.actorThingyFinal;
+    s.pb8.levelEvents ||= [];
+    s.cutscenes ||= { pre: [], mid: [], post: [] };
+    slots.forEach(slot => { if (!Array.isArray(s.cutscenes[slot])) s.cutscenes[slot] = []; });
+    return s.pb8.actorThingyFinal;
+  }
+
+  function normalizeLine(line) {
+    if (typeof line === 'string') line = { text: line };
+    if (!line || typeof line !== 'object') line = { text: String(line ?? '') };
+    const out = { ...line };
+    const img = imageOf(out);
+    const sfx = sfxOf(out);
+    const rawSide = String(out.position || out.side || out.actorSide || 'right').toLowerCase();
+    const pos = rawSide.includes('left') ? 'left' : (rawSide.includes('center') || rawSide.includes('middle')) ? 'center' : 'right';
+    out.speaker = out.speaker || out.name || 'Cutscene';
+    out.name = out.name || out.speaker || 'Cutscene';
+    out.text = String(out.text ?? out.dialog ?? out.message ?? '');
+    out.duration = Math.max(200, Number(out.duration) || 2200);
+    out.position = pos;
+    out.side = pos;
+    out.layout = 'visualDialogue';
+    if (img) {
+      out.image = img;
+      out.imageSrc = img;
+      out.actorImageSrc = img;
+    } else {
+      delete out.image;
+      delete out.imageSrc;
+      delete out.actorImageSrc;
+    }
+    if (sfx) {
+      out.soundSrc = sfx;
+      out.clickSoundSrc = sfx;
+      out.lineSfxSrc = sfx;
+    }
+    out._actorThingyFinal = true;
+    return out;
+  }
+
+  function normalizeData(raw) {
+    const out = { pre: [], mid: [], post: [] };
+    if (typeof raw === 'string') {
+      try { raw = JSON.parse(raw || '{}'); } catch { raw = null; }
+    }
+    const list = value => Array.isArray(value) ? value.map(normalizeLine) : [];
+    if (Array.isArray(raw)) out.mid = list(raw);
+    else if (raw && typeof raw === 'object') {
+      out.pre = list(raw.pre || raw.before || raw.opening || raw.start);
+      out.mid = list(raw.mid || raw.middle || raw.during || raw.level || raw.actor || raw.lines);
+      out.post = list(raw.post || raw.after || raw.ending || raw.end);
+    }
+    return out;
+  }
+
+  function stats(data) {
+    data = normalizeData(data);
+    let lines = 0, images = 0, sounds = 0, chars = 0;
+    slots.forEach(slot => (data[slot] || []).forEach(line => {
+      lines++;
+      if (imageOf(line)) images++;
+      if (sfxOf(line)) sounds++;
+      chars += String(line.text || '').length;
+    }));
+    return { lines, images, sounds, chars, score: lines * 1000 + images * 100 + sounds * 50 + chars };
+  }
+
+  function lineMatch(a = {}, b = {}) {
+    let score = 0;
+    if (String(a.text || '') && String(a.text || '') === String(b.text || '')) score += 4;
+    if (String(a.speaker || a.name || '') && String(a.speaker || a.name || '') === String(b.speaker || b.name || '')) score += 2;
+    return score;
+  }
+
+  function mergeData(candidates) {
+    const list = candidates.map(normalizeData).filter(data => stats(data).lines);
+    if (!list.length) return { pre: [], mid: [], post: [] };
+    let base = clone(list[0]);
+    let best = stats(base).score;
+    for (const candidate of list.slice(1)) {
+      const score = stats(candidate).score;
+      if (score > best) { best = score; base = clone(candidate); }
+    }
+    slots.forEach(slot => {
+      base[slot] ||= [];
+      for (let i = 0; i < base[slot].length; i++) {
+        const line = { ...(base[slot][i] || {}) };
+        let img = imageOf(line);
+        let sfx = sfxOf(line);
+        for (const candidate of list) {
+          const other = candidate[slot]?.[i] || (candidate[slot] || []).find(x => lineMatch(line, x) >= 4);
+          if (!other) continue;
+          if (!img) img = imageOf(other);
+          if (!sfx) sfx = sfxOf(other);
+          if (img && sfx) break;
+        }
+        if (img) { line.image = img; line.imageSrc = img; line.actorImageSrc = img; }
+        if (sfx) { line.soundSrc = sfx; line.clickSoundSrc = sfx; line.lineSfxSrc = sfx; }
+        base[slot][i] = normalizeLine(line);
+      }
+    });
+    return normalizeData(base);
+  }
+
+  function campaignSources() {
+    const s = stateObj();
+    const level = s.currentCampaignLevel || null;
+    return [
+      level?.world?.cutscenes, level?.cutscenes,
+      level?.world?.advancedCutscenes, level?.advancedCutscenes,
+      level?.world?.pb8?.cutscenes, level?.pb8?.cutscenes
+    ].filter(Boolean);
+  }
+
+  function readBoxData() {
+    const text = String($('pbCutsceneScript')?.value || '').trim();
+    if (!text) return null;
+    try { return JSON.parse(text); } catch { return null; }
+  }
+
+  function readCutscenesFinal() {
+    ensureState();
+    const s = stateObj();
+    const merged = mergeData([readBoxData(), s.cutscenes, ...campaignSources()].filter(Boolean));
+    if (stats(merged).lines) s.cutscenes = merged;
+    slots.forEach(slot => { s.cutscenes[slot] ||= []; });
+    prewarm(s.cutscenes);
+    const box = $('pbCutsceneScript');
+    if (box) box.value = JSON.stringify(s.cutscenes, null, 2);
+    return s.cutscenes;
+  }
+
+  function writeCutscenesFinal(data = null) {
+    ensureState();
+    const s = stateObj();
+    s.cutscenes = normalizeData(data || s.cutscenes);
+    prewarm(s.cutscenes);
+    const box = $('pbCutsceneScript');
+    if (box) box.value = JSON.stringify(s.cutscenes, null, 2);
+    try { if (s.currentCampaignLevel) s.currentCampaignLevel.cutscenes = clone(s.cutscenes); } catch {}
+    try { if (s.currentCampaignLevel?.world) s.currentCampaignLevel.world.cutscenes = clone(s.cutscenes); } catch {}
+    renderListFinal();
+    return s.cutscenes;
+  }
+
+  const cache = window.__pbActorFinalImageCache ||= new Map();
+
+  function cacheImage(src) {
+    src = usable(src, 'image');
+    if (!src) return null;
+    let entry = cache.get(src);
+    if (entry) return entry;
+    const img = new Image();
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.draggable = false;
+    entry = { src, img, loaded:false, failed:false, promise:null };
+    entry.promise = new Promise(resolve => {
+      img.onload = () => { entry.loaded = true; entry.failed = false; resolve(entry); };
+      img.onerror = () => { entry.loaded = false; entry.failed = true; resolve(entry); };
+    });
+    cache.set(src, entry);
+    img.src = src;
+    if (img.complete && img.naturalWidth > 0) entry.loaded = true;
+    return entry;
+  }
+
+  function prewarm(data) {
+    try { cacheImage(ensureState().pendingImageSrc); } catch {}
+    const normalized = normalizeData(data || stateObj().cutscenes || {});
+    slots.forEach(slot => (normalized[slot] || []).forEach(line => cacheImage(imageOf(line))));
+  }
+
+  async function waitImages(lines, maxMs = 2600) {
+    const entries = (lines || []).map(line => cacheImage(imageOf(line))).filter(Boolean).filter(e => !e.loaded && !e.failed);
+    if (!entries.length) return;
+    await Promise.race([
+      Promise.all(entries.map(e => e.promise.catch(() => e))),
+      new Promise(resolve => setTimeout(resolve, maxMs))
+    ]);
+  }
+
+  function fileToDataURL(file) {
+    return new Promise(resolve => {
+      if (!file) return resolve('');
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function initial(name) {
+    const div = document.createElement('div');
+    div.className = 'pbActorFinalInitial';
+    div.textContent = String(name || '?').trim().slice(0, 1).toUpperCase() || '?';
+    return div;
+  }
+
+  function renderImage(host, src, name = 'Actor', mode = 'actor') {
+    if (!host) return;
+    host.textContent = '';
+    src = usable(src, 'image');
+    if (!src) { host.appendChild(initial(name)); return; }
+
+    const entry = cacheImage(src);
+    const img = new Image();
+    img.alt = name || 'Actor';
+    img.decoding = 'async';
+    img.loading = 'eager';
+    img.draggable = false;
+    img.className = mode === 'thumb' ? 'pbActorFinalThumbImg' : mode === 'preview' ? 'pbActorFinalPreviewImg' : 'pbActorFinalImg';
+    img.style.opacity = '0';
+
+    const note = document.createElement('div');
+    note.className = 'pbActorFinalLoadNote';
+    note.textContent = 'loading image...';
+
+    const reveal = () => {
+      note.remove();
+      img.style.opacity = '1';
+    };
+    const softFail = () => {
+      note.textContent = 'image assigned';
+      // Keep the src and do not replace it with a placeholder. This prevents the old bug
+      // where a valid uploaded actor was visually wiped while the browser was still decoding it.
+    };
+
+    host.appendChild(img);
+    host.appendChild(note);
+    img.onload = reveal;
+    img.onerror = softFail;
+    img.src = src;
+    if ((entry?.loaded || (img.complete && img.naturalWidth > 0)) && !entry?.failed) reveal();
+    else entry?.promise?.then(e => e.loaded ? reveal() : softFail());
+  }
+
+  function installCss() {
+    if ($('pbActorThingyFinalStyle')) return;
+    const style = document.createElement('style');
+    style.id = 'pbActorThingyFinalStyle';
+    style.textContent = `
+      #pb81AdvancedLevelBuilder .pb81ActorFinalGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:start}
+      #pb81AdvancedLevelBuilder .pb81ActorFinalActions{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:8px}
+      #pb81AdvancedLevelBuilder .pb81ActorFinalAssetButtons{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      #pb81AdvancedLevelBuilder .pb81ActorFinalList .pb81ListItem{grid-template-columns:52px 1fr auto}
+      .pbActorFinalThumb{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;overflow:hidden;position:relative;color:#d9ff9f;font-weight:900}
+      .pbActorFinalPreviewBox{min-height:88px;position:relative;display:grid;place-items:center;overflow:hidden;border-radius:12px}
+      .pbActorFinalImg,.pbActorFinalPreviewImg,.pbActorFinalThumbImg{display:block;width:100%;height:100%;object-fit:contain;object-position:bottom center;transition:opacity 120ms ease;image-rendering:auto}
+      .pbActorFinalPreviewImg{max-height:88px}.pbActorFinalThumbImg{max-height:46px}.pbActorFinalLoadNote{position:absolute;left:4px;right:4px;bottom:4px;text-align:center;font-size:10px;color:#d9ff9f;text-shadow:0 2px 2px #000;pointer-events:none}
+      .pbActorFinalInitial{width:min(28vw,300px);height:min(28vw,300px);display:grid;place-items:center;border-radius:999px;background:linear-gradient(#fde68a,#f59e0b);border:5px solid rgba(255,255,255,.8);box-shadow:0 18px 38px rgba(0,0,0,.42),inset 0 5px 0 rgba(255,255,255,.34);color:#1f1300;font-size:clamp(58px,12vw,150px);font-weight:900}
+      .pbActorFinalSfxLoaded{color:#d9ff9f;font-weight:900}
+      #pbActorFinalLayer{position:absolute;inset:0;z-index:650;display:none;overflow:hidden;pointer-events:auto;background:linear-gradient(180deg,rgba(0,0,0,.04),rgba(0,0,0,.38))}
+      #pbActorFinalLayer .pbActorFinalScene{position:absolute;inset:0;overflow:hidden;pointer-events:auto}
+      #pbActorFinalLayer .pbActorFinalFigure{position:absolute;bottom:54px;width:min(42vw,440px);height:min(72vh,560px);display:flex;align-items:flex-end;justify-content:center;pointer-events:none;filter:drop-shadow(0 22px 28px rgba(0,0,0,.58));z-index:1;overflow:visible}
+      #pbActorFinalLayer .pbActorFinalFigure.left{left:18px}.pbActorFinalFigure.right{right:18px}.pbActorFinalFigure.center{left:50%;transform:translateX(-50%);width:min(54vw,560px)}
+      #pbActorFinalLayer .pbActorFinalFigure .pbActorFinalImg{width:100%;height:100%;max-width:100%;max-height:100%;object-fit:contain;object-position:bottom center}
+      #pbActorFinalLayer .pbActorFinalBubble{position:absolute;top:22%;width:min(560px,52vw);min-height:116px;max-height:min(38vh,270px);padding:20px 24px 18px;border-radius:30px;border:4px solid #251a10;background:linear-gradient(180deg,#fffef2,#f2ead3);color:#1b1712;box-shadow:inset 0 4px 0 rgba(255,255,255,.82),inset 0 -5px 0 rgba(120,76,34,.16),0 8px 0 rgba(45,28,16,.9),0 22px 42px rgba(0,0,0,.45);z-index:2;overflow:visible;cursor:pointer}
+      #pbActorFinalLayer .pbActorFinalBubble.leftActor{left:calc(min(42vw,440px) + 34px)}#pbActorFinalLayer .pbActorFinalBubble.rightActor{right:calc(min(42vw,440px) + 34px)}#pbActorFinalLayer .pbActorFinalBubble.centerActor{left:50%;right:auto;top:auto;bottom:72px;transform:translateX(-50%);width:min(650px,calc(100vw - 44px));text-align:center}
+      #pbActorFinalLayer .pbActorFinalName{position:absolute;top:-22px;left:24px;max-width:calc(100% - 48px);padding:5px 14px 6px;border:3px solid #251a10;border-radius:999px;background:linear-gradient(180deg,#a7f35c,#4d9e24);color:#122507;font-size:clamp(13px,1.35vw,18px);line-height:1;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px rgba(255,255,255,.45);box-shadow:inset 0 3px 0 rgba(255,255,255,.5),0 4px 0 rgba(45,28,16,.9)}
+      #pbActorFinalLayer .pbActorFinalBubble.rightActor .pbActorFinalName{left:auto;right:24px}
+      #pbActorFinalLayer .pbActorFinalText{color:#1b1712;font-size:clamp(16px,1.55vw,24px);line-height:1.22;font-weight:800;max-height:22vh;overflow:auto;padding-top:4px;white-space:pre-wrap;overflow-wrap:anywhere;text-shadow:0 1px rgba(255,255,255,.65)}
+      #pbActorFinalLayer .pbActorFinalHint{color:#60452c;font-size:12px;font-weight:900;margin-top:12px;letter-spacing:.02em;opacity:.82}.pbActorFinalHint::after{content:' ▼';font-size:14px}
+      @media (max-width:820px),(pointer:coarse){#pb81AdvancedLevelBuilder .pb81ActorFinalGrid,#pb81AdvancedLevelBuilder .pb81ActorFinalActions{grid-template-columns:1fr}#pbActorFinalLayer .pbActorFinalFigure{width:46%;height:70%;bottom:82px}#pbActorFinalLayer .pbActorFinalFigure.left{left:-6vw}#pbActorFinalLayer .pbActorFinalFigure.right{right:-6vw}#pbActorFinalLayer .pbActorFinalBubble{top:18%;width:calc(60% - 12px);min-height:98px;max-height:33vh;padding:16px 16px 14px;border-width:3px;border-radius:24px}#pbActorFinalLayer .pbActorFinalBubble.leftActor{left:calc(40% + 6px)}#pbActorFinalLayer .pbActorFinalBubble.rightActor{right:calc(40% + 6px)}#pbActorFinalLayer .pbActorFinalBubble.centerActor{width:calc(100vw - 24px);bottom:150px}.pbActorFinalName{font-size:12px}.pbActorFinalText{font-size:clamp(13px,3.5vw,17px)}}
+      @media (max-width:430px){#pbActorFinalLayer .pbActorFinalFigure{opacity:.88;width:62%}#pbActorFinalLayer .pbActorFinalFigure.left{left:-19vw}#pbActorFinalLayer .pbActorFinalFigure.right{right:-19vw}#pbActorFinalLayer .pbActorFinalBubble{top:15%;width:calc(74% - 12px)}#pbActorFinalLayer .pbActorFinalBubble.leftActor{left:calc(26% + 4px)}#pbActorFinalLayer .pbActorFinalBubble.rightActor{right:calc(26% + 4px)}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function layer() {
+    installCss();
+    let el = $('pbActorFinalLayer');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'pbActorFinalLayer';
+      ($('stageWrap') || document.body).appendChild(el);
+    }
+    return el;
+  }
+
+  let token = 0;
+  function closeFinal() {
+    token++;
+    const el = $('pbActorFinalLayer');
+    if (el) { el.style.display = 'none'; el.innerHTML = ''; }
+    ['pbActorThingyLayer','dialogBox','pb604DialogueLayer','pb608DialogueLayer'].forEach(id => { const x = $(id); if (x) x.style.display = 'none'; });
+    document.body.classList.remove('pbActorThingyPlaying','pbActorFinalPlaying');
+  }
+
+  function playSfxFinal(line) {
+    const src = sfxOf(line);
+    if (!src) return;
+    try {
+      if (typeof window.playSfx === 'function') window.playSfx(src, 0.9);
+      else { const a = new Audio(src); a.volume = 0.9; a.play?.().catch(() => {}); }
+    } catch {}
+  }
+
+  async function showSlideFinal(input = {}, options = {}) {
+    const line = normalizeLine(input);
+    cacheImage(imageOf(line));
+    await waitImages([line], 3000);
+    const my = ++token;
+    const pos = line.position || 'right';
+    const bubbleClass = pos === 'left' ? 'leftActor' : pos === 'center' ? 'centerActor' : 'rightActor';
+    const el = layer();
+    ['pbActorThingyLayer','dialogBox','pb604DialogueLayer','pb608DialogueLayer'].forEach(id => { const x = $(id); if (x) x.style.display = 'none'; });
+    el.innerHTML = `
+      <div class="pbActorFinalScene">
+        <div class="pbActorFinalFigure ${esc(pos)}" data-pb-final-actor></div>
+        <div class="pbActorFinalBubble ${bubbleClass}">
+          <div class="pbActorFinalName">${esc(line.speaker || line.name || 'Cutscene')}</div>
+          <div class="pbActorFinalText">${esc(line.text || '')}</div>
+          <div class="pbActorFinalHint">${esc(line.hint || 'Click, Space, or Enter to continue. Esc closes.')}</div>
+        </div>
+      </div>`;
+    renderImage(el.querySelector('[data-pb-final-actor]'), imageOf(line), line.speaker || line.name || 'Actor', 'actor');
+    el.style.display = 'block';
+    document.body.classList.add('pbActorFinalPlaying');
+    playSfxFinal(line);
+
+    const duration = Math.max(200, Number(options.duration ?? line.duration) || 2200);
+    await new Promise(resolve => {
+      let doneAlready = false;
+      const done = ev => {
+        if (doneAlready || my !== token) return;
+        ev?.preventDefault?.(); ev?.stopPropagation?.(); ev?.stopImmediatePropagation?.();
+        doneAlready = true;
+        clearTimeout(timer);
+        el.removeEventListener('click', done, true);
+        window.removeEventListener('keydown', key, true);
+        resolve();
+      };
+      const key = ev => {
+        if (ev.key === 'Escape') { closeFinal(); done(ev); return; }
+        if (ev.key === ' ' || ev.key === 'Enter') done(ev);
+      };
+      const timer = setTimeout(done, duration);
+      el.addEventListener('click', done, true);
+      window.addEventListener('keydown', key, true);
+    });
+  }
+
+  async function playSlotFinal(slot = 'mid') {
+    const data = readCutscenesFinal();
+    const lines = Array.isArray(data[slot]) ? data[slot].map(normalizeLine) : [];
+    if (!lines.length) { toast('No cutscene lines in this slot'); return; }
+    prewarm(data);
+    await waitImages(lines, 3000);
+    for (const line of lines) await showSlideFinal(line);
+    closeFinal();
+  }
+
+  async function playAllFinal() {
+    const data = readCutscenesFinal();
+    const lines = [];
+    slots.forEach(slot => (data[slot] || []).forEach(line => lines.push(normalizeLine(line))));
+    if (!lines.length) { toast('No cutscene lines saved'); return; }
+    await waitImages(lines, 3000);
+    for (const line of lines) await showSlideFinal(line);
+    closeFinal();
+  }
+
+  function currentLine() {
+    const pending = ensureState();
+    const img = usable(pending.pendingImageSrc || stateObj().pb8?.actorThingy?.pendingImageSrc || stateObj().pb8?.pendingCutsceneImage || '', 'image');
+    const sfx = usable(pending.pendingSfxSrc || stateObj().pb8?.actorThingy?.pendingSfxSrc || '', 'audio');
+    return normalizeLine({
+      speaker: $('pb81CutsceneSpeaker')?.value || 'Cutscene',
+      name: $('pb81CutsceneSpeaker')?.value || 'Cutscene',
+      text: $('pb81CutsceneText')?.value || '',
+      duration: Number($('pb81CutsceneDuration')?.value) || 2200,
+      position: $('pb81CutsceneSide')?.value || 'right',
+      image: img || null,
+      imageSrc: img || null,
+      actorImageSrc: img || null,
+      soundSrc: sfx || undefined,
+      clickSoundSrc: sfx || undefined,
+      lineSfxSrc: sfx || undefined
+    });
+  }
+
+  function panelHtml() {
+    return `
+      <h3>Advanced Cutscene Builder</h3>
+      <p class="pb81Mini">Final fixed actor image system: every line stores its own image and click SFX. Selecting a new image cannot overwrite older lines.</p>
+      <div class="triple">
+        <div><label>Slot</label><select id="pb81CutsceneSlot"><option value="pre">Before Level</option><option value="mid">Mid Level</option><option value="post">After Level</option></select></div>
+        <div><label>Actor Side</label><select id="pb81CutsceneSide"><option value="left">Left</option><option value="right">Right</option><option value="center">Center</option></select></div>
+        <div><label>Duration MS</label><input id="pb81CutsceneDuration" type="number" value="2200" min="200" step="100"></div>
+      </div>
+      <label>Speaker</label><input id="pb81CutsceneSpeaker" value="Crazy Dave">
+      <label>Line Text</label><textarea id="pb81CutsceneText">More zombies are coming. Watch the waves!</textarea>
+      <div class="pb81ActorFinalGrid">
+        <div>
+          <label>Actor Image For This Line PNG/GIF</label><input id="pb81CutsceneImage" type="file" accept="image/*,.png,.gif,.jpg,.jpeg,.webp,.apng">
+          <div id="pb81CutscenePreview" class="pb81Preview pbActorFinalPreviewBox">No actor selected</div>
+          <div class="pb81ActorFinalAssetButtons"><button id="pb81UseSelectedNpcImage" type="button" class="blue">Use Selected NPC Image</button><button id="pb81ClearActorImage" type="button" class="danger">Clear Actor Image</button></div>
+        </div>
+        <div>
+          <label>Click SFX For This Line</label><input id="pb81CutsceneSfx" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a">
+          <div id="pb81CutsceneSfxPreview" class="pb81Preview">No line click sound selected</div>
+          <div class="pb81ActorFinalAssetButtons"><button id="pb81TestCutsceneSfx" type="button" class="blue">Test SFX</button><button id="pb81ClearCutsceneSfx" type="button" class="danger">Clear SFX</button></div>
+        </div>
+      </div>
+      <div class="pb81ActorFinalActions">
+        <button id="pb81PreviewCurrentLine" type="button" class="blue">Preview Current Line</button>
+        <button id="pb81AddCutsceneLine" type="button">Add Line</button>
+        <button id="pb81PreviewCutsceneSlot" type="button" class="blue">Preview Slot</button>
+        <button id="pb81PreviewAllCutsceneLines" type="button" class="blue">Preview All Lines</button>
+        <button id="pb81ClearCutsceneSlot" type="button" class="danger">Clear Slot</button>
+      </div>
+      <div class="row">
+        <div><label>Schedule Mid Slot At Sec</label><input id="pb81CutsceneEventTime" type="number" value="45" min="0" step="0.5"></div>
+        <button id="pb81ScheduleMidCutscene" type="button" class="warn">Schedule Mid Cutscene</button>
+      </div>
+      <div id="pb81CutsceneList" class="pb81List pb81ActorFinalList"></div>`;
+  }
+
+  function installPanelFinal() {
+    const panel = document.querySelector('#pb81AdvancedLevelBuilder [data-pb81-section="cutscenes"] .pb81Panel');
+    if (!panel) return false;
+    if (panel.dataset.pbActorFinal === '1' && $('pb81PreviewAllCutsceneLines')) return true;
+    panel.dataset.pbActorFinal = '1';
+    panel.innerHTML = panelHtml();
+    syncPreviewFinal();
+    renderListFinal();
+    return true;
+  }
+
+  function syncPreviewFinal() {
+    const pending = ensureState();
+    const box = $('pb81CutscenePreview');
+    if (box) {
+      box.textContent = '';
+      if (usable(pending.pendingImageSrc, 'image')) renderImage(box, pending.pendingImageSrc, $('pb81CutsceneSpeaker')?.value || 'Actor', 'preview');
+      else box.textContent = 'No actor selected';
+    }
+    const sfxBox = $('pb81CutsceneSfxPreview');
+    if (sfxBox) sfxBox.innerHTML = usable(pending.pendingSfxSrc, 'audio') ? `<span class="pbActorFinalSfxLoaded">Loaded:</span> ${esc(pending.pendingSfxName || 'line click sound')}` : 'No line click sound selected';
+  }
+
+  function thumbHtml(line, slot, index) {
+    const img = imageOf(line);
+    if (!img) return `<div class="pbActorFinalThumb">${esc(String(line.speaker || line.name || '?').slice(0,1).toUpperCase())}</div>`;
+    return `<div class="pbActorFinalThumb" data-pb-final-thumb="${esc(slot)}:${index}" data-pb-final-name="${esc(line.speaker || line.name || 'Actor')}"></div>`;
+  }
+
+  function hydrateThumbs(root = document) {
+    root.querySelectorAll?.('[data-pb-final-thumb]').forEach(box => {
+      const [slot, raw] = String(box.dataset.pbFinalThumb || '').split(':');
+      const idx = Number(raw);
+      const line = stateObj().cutscenes?.[slot]?.[idx];
+      renderImage(box, imageOf(line), box.dataset.pbFinalName || 'Actor', 'thumb');
+    });
+  }
+
+  function renderListFinal() {
+    const box = $('pb81CutsceneList');
+    if (!box) return;
+    const data = readCutscenesFinal();
+    const rows = [];
+    slots.forEach(slot => (data[slot] || []).forEach((line, index) => rows.push({ slot, index, line: normalizeLine(line) })));
+    box.innerHTML = rows.length ? rows.map(r => {
+      const imageLabel = imageOf(r.line) ? ' • image' : ' • no image';
+      const soundLabel = sfxOf(r.line) ? ' • SFX' : '';
+      return `<div class="pb81ListItem">
+        ${thumbHtml(r.line, r.slot, r.index)}
+        <span><b>${esc(r.slot.toUpperCase())} #${r.index + 1}</b> ${esc(r.line.speaker || r.line.name || 'Cutscene')}${imageLabel}${soundLabel}<br>${esc((r.line.text || '').slice(0, 120))}</span>
+        <button type="button" class="danger" data-pb81-del-cutscene="${esc(r.slot)}:${r.index}">×</button>
+      </div>`;
+    }).join('') : '<div class="pb81ListItem"><span>No cutscene lines yet.</span></div>';
+    hydrateThumbs(box);
+  }
+
+  function addLineFinal() {
+    const data = readCutscenesFinal();
+    const slot = $('pb81CutsceneSlot')?.value || 'mid';
+    data[slot] ||= [];
+    const line = currentLine();
+    cacheImage(imageOf(line));
+    data[slot].push(clone(line));
+    writeCutscenesFinal(data);
+    toast(imageOf(line) ? 'Cutscene line added with its own actor image' : 'Cutscene line added');
+  }
+
+  function clearSlotFinal() {
+    const data = readCutscenesFinal();
+    const slot = $('pb81CutsceneSlot')?.value || 'mid';
+    data[slot] = [];
+    writeCutscenesFinal(data);
+    toast('Cutscene slot cleared');
+  }
+
+  function selectedNpcImageFinal() {
+    const s = stateObj();
+    const ent = s.selected || s.selectedEntity || s.activeEntity || null;
+    return usable(ent?.actorImageSrc || ent?.portraitSrc || ent?.imageSrc || ent?.idleSrc || ent?.actionSrc || ent?.image || '', 'image');
+  }
+
+  function scheduleMidFinal() {
+    ensureState();
+    const s = stateObj();
+    s.pb8.levelEvents ||= [];
+    const time = Number($('pb81CutsceneEventTime')?.value) || 0;
+    s.pb8.levelEvents.push({ type:'actorCutscene', slot:'mid', time, _actorThingyFired:false, fired:false });
+    try { window.renderEventList81?.(); } catch {}
+    const list = $('pb81EventList');
+    if (list && !String(list.textContent || '').includes(`${time}s`)) list.insertAdjacentHTML('beforeend', `<div class="pb81ListItem"><span><b>${esc(time)}s</b> — Mid-level cutscene</span></div>`);
+    toast('Mid-level cutscene scheduled');
+  }
+
+  function installEventsFinal() {
+    if (document.documentElement.dataset.pbActorFinalEvents === '1') return;
+    document.documentElement.dataset.pbActorFinalEvents = '1';
+
+    window.addEventListener('change', async ev => {
+      const id = ev.target?.id;
+      if (id !== 'pb81CutsceneImage' && id !== 'pb81CutsceneSfx' && id !== 'pbCutsceneScript') return;
+      ev.preventDefault?.(); ev.stopPropagation?.(); ev.stopImmediatePropagation?.();
+      if (id === 'pbCutsceneScript') { readCutscenesFinal(); renderListFinal(); return; }
+      const pending = ensureState();
+      const file = ev.target.files?.[0];
+      if (id === 'pb81CutsceneImage') {
+        const src = await fileToDataURL(file);
+        pending.pendingImageSrc = src;
+        pending.pendingImageName = file?.name || '';
+        stateObj().pb8.pendingCutsceneImage = src;
+        stateObj().pb8.actorThingy = pending;
+        cacheImage(src);
+        syncPreviewFinal();
+        toast(src ? 'Actor image loaded and held for new lines' : 'No actor image selected');
+      } else {
+        const src = await fileToDataURL(file);
+        pending.pendingSfxSrc = src;
+        pending.pendingSfxName = file?.name || '';
+        stateObj().pb8.actorThingy = pending;
+        syncPreviewFinal();
+        toast(src ? 'Line click sound loaded' : 'No click sound selected');
+      }
+    }, true);
+
+    window.addEventListener('click', ev => {
+      const target = ev.target?.closest?.('button,[data-pb81-del-cutscene]');
+      if (!target) return;
+      const id = target.id;
+      const handled = new Set(['pb81PreviewCurrentLine','pb81AddCutsceneLine','pb81PreviewCutsceneSlot','pb81PreviewAllCutsceneLines','pb81ClearCutsceneSlot','pb81ScheduleMidCutscene','pb81UseSelectedNpcImage','pb81ClearActorImage','pb81TestCutsceneSfx','pb81ClearCutsceneSfx']);
+      if (!handled.has(id) && !target.dataset.pb81DelCutscene) return;
+      ev.preventDefault?.(); ev.stopPropagation?.(); ev.stopImmediatePropagation?.();
+
+      if (target.dataset.pb81DelCutscene) {
+        const [slot, raw] = target.dataset.pb81DelCutscene.split(':');
+        const data = readCutscenesFinal();
+        data[slot]?.splice(Number(raw), 1);
+        writeCutscenesFinal(data);
+        return;
+      }
+      if (id === 'pb81PreviewCurrentLine') return void showSlideFinal(currentLine()).then(closeFinal);
+      if (id === 'pb81AddCutsceneLine') return addLineFinal();
+      if (id === 'pb81PreviewCutsceneSlot') return void playSlotFinal($('pb81CutsceneSlot')?.value || 'mid');
+      if (id === 'pb81PreviewAllCutsceneLines') return void playAllFinal();
+      if (id === 'pb81ClearCutsceneSlot') return clearSlotFinal();
+      if (id === 'pb81ScheduleMidCutscene') return scheduleMidFinal();
+      if (id === 'pb81UseSelectedNpcImage') {
+        const src = selectedNpcImageFinal();
+        if (!src) return toast('Select an NPC with an image first');
+        const pending = ensureState();
+        pending.pendingImageSrc = src;
+        pending.pendingImageName = stateObj().selected?.name || 'Selected NPC image';
+        stateObj().pb8.pendingCutsceneImage = src;
+        cacheImage(src);
+        syncPreviewFinal();
+        return toast('Selected NPC image loaded for new lines');
+      }
+      if (id === 'pb81ClearActorImage') {
+        const pending = ensureState();
+        pending.pendingImageSrc = '';
+        pending.pendingImageName = '';
+        stateObj().pb8.pendingCutsceneImage = '';
+        const input = $('pb81CutsceneImage'); if (input) input.value = '';
+        syncPreviewFinal();
+        return toast('Actor image cleared for new lines');
+      }
+      if (id === 'pb81TestCutsceneSfx') return playSfxFinal(currentLine());
+      if (id === 'pb81ClearCutsceneSfx') {
+        const pending = ensureState();
+        pending.pendingSfxSrc = '';
+        pending.pendingSfxName = '';
+        const input = $('pb81CutsceneSfx'); if (input) input.value = '';
+        syncPreviewFinal();
+        return toast('Line click sound cleared');
+      }
+    }, true);
+  }
+
+  let runtimeLevel = null;
+  function eventSourcesFinal() {
+    const s = stateObj();
+    const level = s.currentCampaignLevel || null;
+    return [
+      level?.world?.pb8?.levelEvents,
+      level?.world?.advancedLevelBuilder?.levelEvents,
+      level?.pb8?.levelEvents,
+      level?.levelEvents,
+      s.pb8?.levelEvents
+    ].filter(Array.isArray);
+  }
+
+  function hydrateEventsFinal(force = false) {
+    const s = stateObj();
+    ensureState();
+    const level = s.level || null;
+    const changed = runtimeLevel !== level;
+    if (!force && !changed && Array.isArray(s.pb8.runtimeEventsFinal) && s.pb8.runtimeEventsFinal.length) return;
+    runtimeLevel = level;
+    let found = [];
+    for (const source of eventSourcesFinal()) {
+      const events = source.filter(ev => ev && (ev.type === 'actorCutscene' || ev.type === 'cutscene'));
+      if (events.length) { found = source; break; }
+    }
+    s.pb8.runtimeEventsFinal = found.map(ev => {
+      const copy = { ...clone(ev) };
+      if (copy.type === 'cutscene') copy.type = 'actorCutscene';
+      copy.slot ||= 'mid';
+      copy._actorThingyFired = false;
+      return copy;
+    }).sort((a,b) => (Number(a.time) || 0) - (Number(b.time) || 0));
+  }
+
+  function processEventsFinal() {
+    const s = stateObj();
+    const level = s.level;
+    if (!level?.running || s.paused) return;
+    hydrateEventsFinal(false);
+    const elapsed = Number(level.elapsed) || 0;
+    (s.pb8?.runtimeEventsFinal || []).forEach(ev => {
+      if (ev.type !== 'actorCutscene' || ev._actorThingyFired || elapsed < (Number(ev.time) || 0)) return;
+      ev._actorThingyFired = true;
+      ev.fired = true;
+      playSlotFinal(ev.slot || 'mid');
+    });
+  }
+
+  function patchRuntimeFinal() {
+    if (typeof window.update === 'function' && !window.update.pbActorThingyFinalRuntime) {
+      const old = window.update;
+      window.update = function(...args) {
+        let result;
+        try { hydrateEventsFinal(false); } catch {}
+        result = old.apply(this, args);
+        try { processEventsFinal(); } catch {}
+        return result;
+      };
+      window.update.pbActorThingyFinalRuntime = true;
+      try { update = window.update; } catch {}
+    }
+  }
+
+  function patchUniversalFinal() {
+    window.ProjectBuildUniversal ||= {};
+    const api = window.ProjectBuildUniversal;
+    if (!api._pbActorFinalOldRun) api._pbActorFinalOldRun = api.run;
+    if (!api._pbActorFinalOldPlay) api._pbActorFinalOldPlay = api.playCutscene;
+    api.run = async function(fn, args = {}) {
+      const name = String(fn || '').toLowerCase();
+      if (name === 'dialog' || name === 'showdialog' || name === 'cutscenedialog') return showSlideFinal(args || {});
+      if (typeof api._pbActorFinalOldRun === 'function') return api._pbActorFinalOldRun.apply(this, arguments);
+    };
+    api.playCutscene = async function(slot = 'pre') {
+      const data = readCutscenesFinal();
+      if (Array.isArray(data[slot]) && data[slot].length) return playSlotFinal(slot);
+      if (typeof api._pbActorFinalOldPlay === 'function') return api._pbActorFinalOldPlay.apply(this, arguments);
+    };
+    api.readCutscenes = readCutscenesFinal;
+    api.writeCutscenes = writeCutscenesFinal;
+    api.pbActorThingyFinal = true;
+  }
+
+  function patchCampaignFinal() {
+    try {
+      if (typeof window.makeWorldSnapshotForLevel === 'function' && !window.makeWorldSnapshotForLevel.pbActorFinalBake) {
+        const old = window.makeWorldSnapshotForLevel;
+        window.makeWorldSnapshotForLevel = function(...args) {
+          const snap = old.apply(this, args) || {};
+          snap.cutscenes = clone(readCutscenesFinal());
+          snap.pb8 ||= clone(stateObj().pb8 || {});
+          snap.pb8.cutscenes = clone(stateObj().cutscenes || {});
+          snap.pb8.levelEvents = clone(stateObj().pb8?.levelEvents || []);
+          return snap;
+        };
+        window.makeWorldSnapshotForLevel.pbActorFinalBake = true;
+        try { makeWorldSnapshotForLevel = window.makeWorldSnapshotForLevel; } catch {}
+      }
+    } catch {}
+    try {
+      const api = window.ProjectBuildCampaigns;
+      if (api?.restoreWorldSnapshotForLevel && !api.restoreWorldSnapshotForLevel.pbActorFinalRestore) {
+        const old = api.restoreWorldSnapshotForLevel;
+        api.restoreWorldSnapshotForLevel = function(data, ...args) {
+          const result = old.apply(this, [data, ...args]);
+          readCutscenesFinal();
+          hydrateEventsFinal(true);
+          return result;
+        };
+        api.restoreWorldSnapshotForLevel.pbActorFinalRestore = true;
+      }
+    } catch {}
+  }
+
+  function initFinal() {
+    ensureState();
+    installCss();
+    patchUniversalFinal();
+    patchRuntimeFinal();
+    patchCampaignFinal();
+    installPanelFinal();
+    installEventsFinal();
+    prewarm(stateObj().cutscenes || {});
+    syncPreviewFinal();
+    renderListFinal();
+  }
+
+  const observer = new MutationObserver(() => { try { installPanelFinal(); patchUniversalFinal(); } catch {} });
+  try { observer.observe(document.documentElement, { childList:true, subtree:true }); } catch {}
+  const poll = setInterval(initFinal, 120);
+  setTimeout(() => clearInterval(poll), 12000);
+  initFinal();
+
+  window.ProjectBuildActorThingyFinal = {
+    installed: true,
+    showSlide: showSlideFinal,
+    playSlot: playSlotFinal,
+    playAllLines: playAllFinal,
+    readCutscenes: readCutscenesFinal,
+    writeCutscenes: writeCutscenesFinal,
+    renderCutsceneList: renderListFinal,
+    close: closeFinal,
+    cacheImage
+  };
+  window.ProjectBuildActorThingyRewrite = window.ProjectBuildActorThingyFinal;
+})();
+</script>
+
 </body>
 </html>
