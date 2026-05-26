@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Project: BUILD 7.0.7 - JSON Template Export Fix</title>
+  <title>Project: BUILD 7.0.7 - JSON Template Export Fix + seen.has Hotfix</title>
   <style>
     @font-face {
       font-family: 'GameFolderFont';
@@ -1876,7 +1876,7 @@
     <button id="sidebarToggle" title="Hide toolbar" aria-label="Hide toolbar"><span id="sidebarToggleIcon">‹</span></button>
     <aside id="sidebar">
       <h1><img src="icon.png" alt="" class="pb4TitleIcon"> Project: BUILD <span class="versionBadge">7.0.7</span></h1>
-      <p>Project: BUILD 7.0.7 sandbox. This update fixes JSON/template exporting so new saved templates stay in plain JSON exports and are not wiped by stale campaign level snapshots.</p>
+      <p>Project: BUILD 7.0.7 sandbox. This hotfix fixes seen.has export crashes and JSON/template exporting so new saved templates stay in plain JSON exports and are not wiped by stale campaign level snapshots.</p>
 
       <h2>Tool</h2>
       <div class="row">
@@ -20848,6 +20848,12 @@ Click me again to advance.</textarea>
         if (type === 'function' || type === 'symbol' || type === 'undefined') return undefined;
         if (isDomLike(value)) return undefined;
         if (value instanceof Date) return value.toISOString();
+        // Array.map passes (item, index, array). If clonePlain is ever used as a
+        // direct callback by old code, `seen` can be the numeric index instead of
+        // a WeakMap. Reset it here so exports do not crash with seen.has errors.
+        if (!seen || typeof seen.has !== 'function' || typeof seen.get !== 'function' || typeof seen.set !== 'function') {
+          seen = new WeakMap();
+        }
         if (seen.has(value)) return seen.get(value);
         if (Array.isArray(value)) {
           const arr = [];
@@ -20992,7 +20998,7 @@ Click me again to advance.</textarea>
 
         const templates = [...byName.values()].filter(Boolean);
         state.templates = templates.map(t => ({ ...t }));
-        state._pb811TemplateLibrary = templates.map(clonePlain);
+        state._pb811TemplateLibrary = templates.map(item => clonePlain(item));
         try { if (typeof refreshTemplates === 'function') refreshTemplates(); } catch {}
         try { if (window.renderProjectBuildPackets) window.renderProjectBuildPackets(); } catch {}
         return templates;
@@ -21059,7 +21065,7 @@ Click me again to advance.</textarea>
 
       async function buildJsonExport() {
         const lawn = await currentAssetBundle();
-        const templates = captureTemplateLibrary().map(clonePlain);
+        const templates = captureTemplateLibrary().map(item => clonePlain(item));
         const data = makeCurrentWorld(lawn);
         data.type = 'project-build-world';
         data.version = VERSION;
@@ -21144,7 +21150,7 @@ Click me again to advance.</textarea>
         const lawn = await currentAssetBundle();
         const selectedIndex = Number(by('templateSelect')?.value) || 0;
         const selectedTemplate = state.templates?.[selectedIndex] ? cleanTemplate(state.templates[selectedIndex]) : null;
-        const templates = selectedOnly && selectedTemplate ? [selectedTemplate] : captureTemplateLibrary().map(clonePlain);
+        const templates = selectedOnly && selectedTemplate ? [selectedTemplate] : captureTemplateLibrary().map(item => clonePlain(item));
 
         const pkg = {
           type: 'project-build-mod-package',
