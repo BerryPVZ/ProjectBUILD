@@ -5882,26 +5882,49 @@ Click me again to advance.</textarea>
         try { if (typeof renderBuilderTimeline === 'function') renderBuilderTimeline(); } catch {}
       }
 
+      function normalizeCutsceneSlideCompat(slide = {}) {
+        const src = slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
+        const sfx = slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '';
+        return {
+          ...slide,
+          image: src || slide.image,
+          imageSrc: src || slide.imageSrc,
+          actorImage: src || slide.actorImage,
+          clickSoundSrc: sfx || slide.clickSoundSrc,
+          soundSrc: sfx || slide.soundSrc,
+          clickSfxSrc: sfx || slide.clickSfxSrc,
+          sfxSrc: sfx || slide.sfxSrc
+        };
+      }
+
+      function normalizeCutscenePackCompat(parsed = {}) {
+        const pack = (parsed && typeof parsed === 'object') ? parsed : {};
+        return {
+          pre: Array.isArray(pack.pre) ? pack.pre.map(normalizeCutsceneSlideCompat) : [],
+          post: Array.isArray(pack.post) ? pack.post.map(normalizeCutsceneSlideCompat) : [],
+          mid: Array.isArray(pack.mid) ? pack.mid.map(normalizeCutsceneSlideCompat) : []
+        };
+      }
+
       function readCutscenes() {
         const box = by('pbCutsceneScript');
-        if (!box) return state.cutscenes || { pre: [], post: [] };
+        const fallback = normalizeCutscenePackCompat(state.cutscenes || { pre: [], post: [], mid: [] });
+        if (!box) {
+          state.cutscenes = fallback;
+          return state.cutscenes;
+        }
         try {
           const parsed = JSON.parse(box.value || '{}');
-          state.cutscenes = {
-            pre: Array.isArray(parsed.pre) ? parsed.pre : [],
-            post: Array.isArray(parsed.post) ? parsed.post : []
-          };
+          state.cutscenes = normalizeCutscenePackCompat({ ...fallback, ...parsed });
         } catch (err) {
           toast('Cutscene JSON error: ' + err.message);
+          state.cutscenes = fallback;
         }
         return state.cutscenes;
       }
 
       function writeCutscenes(cutscenes = state.cutscenes) {
-        state.cutscenes = {
-          pre: Array.isArray(cutscenes?.pre) ? cutscenes.pre : [],
-          post: Array.isArray(cutscenes?.post) ? cutscenes.post : []
-        };
+        state.cutscenes = normalizeCutscenePackCompat(cutscenes || { pre: [], post: [], mid: [] });
         const box = by('pbCutsceneScript');
         if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
       }
@@ -5909,6 +5932,7 @@ Click me again to advance.</textarea>
       function delay(ms) { return new Promise(resolve => setTimeout(resolve, Math.max(0, ms))); }
 
       async function showCutsceneSlide(slide = {}) {
+        slide = normalizeCutsceneSlideCompat(slide);
         const name = by('dialogName');
         const text = by('dialogText');
         const hint = by('dialogHint');
@@ -5924,15 +5948,17 @@ Click me again to advance.</textarea>
 
         if (stage && slide.backdrop) {
           wash = document.createElement('div');
-          wash.style.cssText = 'position:absolute;inset:0;z-index:6;pointer-events:none;background:' + String(slide.backdrop) + ';opacity:.42;';
+          wash.style.cssText = 'position:absolute;inset:0;z-index:90;pointer-events:none;background:' + String(slide.backdrop) + ';opacity:.42;';
           stage.appendChild(wash);
         }
-        if (stage && slide.image) {
+        const actorSrc = slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
+        if (stage && actorSrc) {
           img = document.createElement('img');
-          img.src = slide.image;
           img.alt = '';
-          img.style.cssText = 'position:absolute;right:6%;bottom:120px;max-width:32%;max-height:55%;object-fit:contain;z-index:7;pointer-events:none;filter:drop-shadow(0 12px 20px rgba(0,0,0,.55));';
+          img.style.cssText = 'position:absolute;right:6%;bottom:120px;max-width:32%;max-height:55%;object-fit:contain;z-index:91;pointer-events:none;filter:drop-shadow(0 12px 20px rgba(0,0,0,.55));display:block;';
+          img.onerror = () => { img.remove(); img = null; toast('Cutscene actor image failed to load'); };
           stage.appendChild(img);
+          img.src = actorSrc;
         }
 
         if (slide.action) runUniversalFunction(slide.action, slide.args || slide);
@@ -20013,6 +20039,31 @@ Click me again to advance.</textarea>
         reader.readAsDataURL(file);
       });
 
+      function normalizeCutsceneSlideCompat(slide = {}) {
+        const item = (slide && typeof slide === 'object') ? slide : {};
+        const src = item.image || item.imageSrc || item.actorImage || item.portraitSrc || item.portrait || '';
+        const sfx = item.clickSoundSrc || item.soundSrc || item.clickSfxSrc || item.sfxSrc || '';
+        return {
+          ...item,
+          image: src || item.image || '',
+          imageSrc: src || item.imageSrc || '',
+          actorImage: src || item.actorImage || '',
+          clickSoundSrc: sfx || item.clickSoundSrc || '',
+          soundSrc: sfx || item.soundSrc || '',
+          clickSfxSrc: sfx || item.clickSfxSrc || '',
+          sfxSrc: sfx || item.sfxSrc || ''
+        };
+      }
+
+      function normalizeCutscenePackCompat(parsed = {}) {
+        const pack = (parsed && typeof parsed === 'object') ? parsed : {};
+        return {
+          pre: Array.isArray(pack.pre) ? pack.pre.map(normalizeCutsceneSlideCompat) : [],
+          mid: Array.isArray(pack.mid) ? pack.mid.map(normalizeCutsceneSlideCompat) : [],
+          post: Array.isArray(pack.post) ? pack.post.map(normalizeCutsceneSlideCompat) : []
+        };
+      }
+
       state.pb8 ??= {};
       state.pb8.levelEvents ??= [];
       state.pb8.preplacedPlants ??= [];
@@ -20451,15 +20502,20 @@ Click me again to advance.</textarea>
       }
 
       function writeCutsceneJson81() {
+        state.cutscenes = normalizeCutscenePackCompat(state.cutscenes || { pre: [], post: [], mid: [] });
         const box = by('pbCutsceneScript');
-        if (box) box.value = JSON.stringify(state.cutscenes || { pre: [], post: [], mid: [] }, null, 2);
+        if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
         try { window.ProjectBuildUniversal?.writeCutscenes?.(state.cutscenes); } catch {}
       }
 
       function readCutsceneJson81() {
-        try { if (window.ProjectBuildUniversal?.readCutscenes) state.cutscenes = window.ProjectBuildUniversal.readCutscenes(); } catch {}
-        state.cutscenes ??= { pre: [], post: [], mid: [] };
-        state.cutscenes.mid ??= [];
+        try {
+          if (window.ProjectBuildUniversal?.readCutscenes) {
+            const fromUniversal = window.ProjectBuildUniversal.readCutscenes();
+            state.cutscenes = normalizeCutscenePackCompat({ ...(state.cutscenes || {}), ...(fromUniversal || {}) });
+          }
+        } catch {}
+        state.cutscenes = normalizeCutscenePackCompat(state.cutscenes || { pre: [], post: [], mid: [] });
         return state.cutscenes;
       }
 
@@ -20575,7 +20631,8 @@ Click me again to advance.</textarea>
       }
 
       async function showCutsceneSlide81(slide = {}) {
-        const actorSrc = slide.image || slide.imageSrc || slide.actorImage || '';
+        slide = normalizeCutsceneSlideCompat(slide);
+        const actorSrc = slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait || '';
         const slideSfx = slide.clickSoundSrc || slide.soundSrc || slide.clickSfxSrc || slide.sfxSrc || '';
         const needsLocalVisual = !!(slide._pb81ForceLocal || slide.layout === 'visualDialogue' || actorSrc || slideSfx || slide.position || slide.side);
         if (window.ProjectBuildUniversal?.run && !needsLocalVisual) {
@@ -20591,7 +20648,10 @@ Click me again to advance.</textarea>
         const pos = rawPos.includes('right') ? 'right' : (rawPos.includes('center') || rawPos.includes('middle')) ? 'center' : 'left';
         const speaker = slide.speaker || slide.name || 'Cutscene';
         const body = slide.text || slide.dialog || slide.message || '';
-        const initial = esc(String(speaker || '?').trim().slice(0, 1).toUpperCase() || '?');
+        const initial = (String(speaker || '?').trim().slice(0, 1).toUpperCase() || '?');
+        const safeInitial = typeof esc === 'function' ? esc(initial) : initial.replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+        const safeSpeaker = typeof esc === 'function' ? esc(String(speaker)) : String(speaker).replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+        const safeBody = typeof esc === 'function' ? esc(String(body)) : String(body).replace(/[<>&]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
         const duration = Math.max(200, Number(slide.duration) || 2200);
 
         const overlay = document.createElement('div');
@@ -20599,12 +20659,31 @@ Click me again to advance.</textarea>
         overlay.style.pointerEvents = 'auto';
 
         const actor = document.createElement('div');
-        actor.className = 'pb556Actor ' + pos;
-        actor.innerHTML = actorSrc ? `<img src="${esc(actorSrc)}" alt="">` : `<div class="pb556ActorFallback">${initial}</div>`;
+        actor.className = 'pb556Actor pb81Actor ' + pos;
+        const showFallback = () => {
+          actor.innerHTML = `<div class="pb556ActorFallback pb81ActorFallback">${safeInitial}</div>`;
+        };
+        if (actorSrc) {
+          const img = document.createElement('img');
+          img.alt = '';
+          img.decoding = 'auto';
+          img.loading = 'eager';
+          img.style.display = 'block';
+          img.onload = () => actor.classList.add('pb81ActorLoaded');
+          img.onerror = () => {
+            actor.classList.add('pb81ActorBroken');
+            showFallback();
+            try { toast('Cutscene actor image failed to load'); } catch {}
+          };
+          actor.appendChild(img);
+          img.src = actorSrc;
+        } else {
+          showFallback();
+        }
 
         const bubble = document.createElement('div');
         bubble.className = 'pb556DialogueBubble';
-        bubble.innerHTML = `<b>${esc(speaker)}</b><span>${esc(body)}</span><small style="display:block;margin-top:14px;color:#60452c;font-weight:900;letter-spacing:.08em;text-align:center;">Tap / click to continue</small>`;
+        bubble.innerHTML = `<b>${safeSpeaker}</b><span>${safeBody}</span><small class="pb81TapHint">Tap / click to continue</small>`;
 
         overlay.appendChild(actor);
         overlay.appendChild(bubble);
@@ -20636,11 +20715,34 @@ Click me again to advance.</textarea>
 
       async function playCutsceneSlot81(slot = 'mid') {
         readCutsceneJson81();
-        const slides = state.cutscenes?.[slot] || [];
-        const needsLocalVisual = slides.some(s => s?._pb81ForceLocal || s?.layout === 'visualDialogue' || s?.image || s?.imageSrc || s?.actorImage || s?.clickSoundSrc || s?.soundSrc || s?.clickSfxSrc || s?.sfxSrc);
+        const pendingActor = state.pb8?.pendingCutsceneImage || '';
+        let slides = Array.isArray(state.cutscenes?.[slot]) ? state.cutscenes[slot].map(normalizeCutsceneSlideCompat) : [];
+        if (pendingActor) {
+          slides = slides.map(slide => {
+            const hasActor = !!(slide.image || slide.imageSrc || slide.actorImage || slide.portraitSrc || slide.portrait);
+            return hasActor ? slide : { ...slide, image: pendingActor, imageSrc: pendingActor, actorImage: pendingActor, _pb81ForceLocal: true };
+          });
+        }
+        if (!slides.length && (pendingActor || String(by('pb81CutsceneText')?.value || '').trim())) {
+          slides = [normalizeCutsceneSlideCompat({
+            speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
+            text: by('pb81CutsceneText')?.value || '',
+            duration: Number(by('pb81CutsceneDuration')?.value) || 2200,
+            position: by('pb81CutsceneSide')?.value || 'right',
+            layout: 'visualDialogue',
+            image: pendingActor,
+            imageSrc: pendingActor || undefined,
+            actorImage: pendingActor || undefined,
+            soundSrc: state.pb8?.pendingCutsceneSfx || undefined,
+            clickSoundSrc: state.pb8?.pendingCutsceneSfx || undefined,
+            _pb81ForceLocal: true
+          })];
+        }
+        const needsLocalVisual = slides.some(s => s?._pb81ForceLocal || s?.layout === 'visualDialogue' || s?.image || s?.imageSrc || s?.actorImage || s?.portraitSrc || s?.portrait || s?.clickSoundSrc || s?.soundSrc || s?.clickSfxSrc || s?.sfxSrc);
         if (window.ProjectBuildUniversal?.playCutscene && slot !== 'mid' && !needsLocalVisual) {
           try { return await window.ProjectBuildUniversal.playCutscene(slot); } catch {}
         }
+        if (!slides.length) return toast('No cutscene lines in this slot');
         for (const slide of slides) await showCutsceneSlide81(slide);
         const box = by('dialogBox');
         if (box) box.style.display = 'none';
@@ -20718,7 +20820,7 @@ Click me again to advance.</textarea>
           state.pb8.pendingCutsceneImage = await toDataURL81(e.target.files?.[0]);
           const box = by('pb81CutscenePreview');
           if (box) box.innerHTML = state.pb8.pendingCutsceneImage ? `<img src="${state.pb8.pendingCutsceneImage}" alt="">` : 'No actor selected';
-          toast(state.pb8.pendingCutsceneImage ? 'Actor image loaded for the next cutscene line' : 'No actor image selected');
+          toast(state.pb8.pendingCutsceneImage ? 'Actor image loaded; Add Cutscene Line saves it, Preview Slot can now show it' : 'No actor image selected');
         });
         by('pb81CutsceneSfx')?.addEventListener('change', async e => {
           state.pb8.pendingCutsceneSfx = await toDataURL81(e.target.files?.[0]);
@@ -20760,11 +20862,15 @@ Click me again to advance.</textarea>
         });
         by('pb81ClearEvents')?.addEventListener('click', () => { state.pb8.levelEvents = []; resetRuntimeLevelEvents81(); renderEventList81(); toast('Timed events cleared'); });
 
-        by('pb81AddCutsceneLine')?.addEventListener('click', () => {
+        by('pb81AddCutsceneLine')?.addEventListener('click', async () => {
           readCutsceneJson81();
           const slot = by('pb81CutsceneSlot')?.value || 'mid';
-          const actorImage = state.pb8.pendingCutsceneImage || null;
-          const clickSfx = state.pb8.pendingCutsceneSfx || null;
+          const pickedActorFile = by('pb81CutsceneImage')?.files?.[0] || null;
+          const pickedSfxFile = by('pb81CutsceneSfx')?.files?.[0] || null;
+          const actorImage = state.pb8.pendingCutsceneImage || await toDataURL81(pickedActorFile) || null;
+          const clickSfx = state.pb8.pendingCutsceneSfx || await toDataURL81(pickedSfxFile) || null;
+          if (actorImage) state.pb8.pendingCutsceneImage = actorImage;
+          if (clickSfx) state.pb8.pendingCutsceneSfx = clickSfx;
           state.cutscenes[slot] ??= [];
           state.cutscenes[slot].push({
             speaker: by('pb81CutsceneSpeaker')?.value || 'Cutscene',
@@ -22038,6 +22144,66 @@ Click me again to advance.</textarea>
       setTimeout(relabel, 1200);
     })();
   </script>
+
+
+
+<style id="pb81ActorImagePreviewPatch">
+  .pb81VisualCutsceneOverlay {
+    z-index: 160 !important;
+    pointer-events: auto !important;
+    overflow: visible !important;
+  }
+  .pb81VisualCutsceneOverlay .pb81Actor,
+  .pb81VisualCutsceneOverlay .pb556Actor {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    z-index: 5 !important;
+    pointer-events: none !important;
+    overflow: visible !important;
+    top: auto !important;
+    bottom: 0 !important;
+    height: 88% !important;
+    width: min(38vw, 520px) !important;
+    align-items: flex-end !important;
+    justify-content: center !important;
+  }
+  .pb81VisualCutsceneOverlay .pb81Actor.left,
+  .pb81VisualCutsceneOverlay .pb556Actor.left { left: 0 !important; right: auto !important; }
+  .pb81VisualCutsceneOverlay .pb81Actor.right,
+  .pb81VisualCutsceneOverlay .pb556Actor.right { right: 0 !important; left: auto !important; }
+  .pb81VisualCutsceneOverlay .pb81Actor.center,
+  .pb81VisualCutsceneOverlay .pb556Actor.center { left: 50% !important; right: auto !important; width: min(54vw, 650px) !important; transform: translateX(-50%) !important; }
+  .pb81VisualCutsceneOverlay .pb81Actor img,
+  .pb81VisualCutsceneOverlay .pb556Actor img {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain !important;
+    object-position: bottom center !important;
+  }
+  .pb81VisualCutsceneOverlay .pb81ActorFallback,
+  .pb81VisualCutsceneOverlay .pb556ActorFallback {
+    display: grid !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+  .pb81VisualCutsceneOverlay .pb556DialogueBubble {
+    z-index: 6 !important;
+  }
+  .pb81TapHint {
+    display: block;
+    margin-top: 14px;
+    color: #60452c;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-align: center;
+  }
+</style>
 
 </body>
 </html>
