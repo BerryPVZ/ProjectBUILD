@@ -21979,9 +21979,36 @@ Click me again to advance.</textarea>
       };
 
       const cleanSrc = src => typeof src === 'string' ? src.trim() : '';
-      const usableSrc = src => {
+
+      function assetRefTables() {
+        const tables = [];
+        try {
+          if (typeof state !== 'undefined') {
+            tables.push(state?.pbAssetRefs?.assets, state?.assetRefs?.assets);
+            tables.push(state?.currentCampaignLevel?.pbAssetRefs?.assets, state?.currentCampaignLevel?.assetRefs?.assets);
+            tables.push(state?.currentCampaignLevel?.world?.pbAssetRefs?.assets, state?.currentCampaignLevel?.world?.assetRefs?.assets);
+            tables.push(state?._pbAssetRefs?.assets, state?._assetRefs?.assets);
+          }
+          tables.push(window.pbAssetRefs?.assets, window.assetRefs?.assets);
+        } catch {}
+        return tables.filter(t => t && typeof t === 'object');
+      }
+
+      function resolveAssetSrc(src) {
         const value = cleanSrc(src);
         if (!value) return '';
+        if (!value.startsWith('pbasset://')) return value;
+        const id = value.slice('pbasset://'.length);
+        for (const table of assetRefTables()) {
+          const found = table[id];
+          if (typeof found === 'string' && found) return found;
+        }
+        return value;
+      }
+
+      const usableSrc = src => {
+        const value = resolveAssetSrc(src);
+        if (!value || value.startsWith('pbasset://')) return '';
         if (/^(data:image\/|data:audio\/|blob:|https?:|file:|\.\/|\.\.\/|\/)/i.test(value)) return value;
         if (/^[\w\-. ()]+\.(png|gif|jpe?g|webp|apng|svg|mp3|wav|ogg|m4a)(\?.*)?$/i.test(value)) return value;
         return value;
@@ -22007,26 +22034,146 @@ Click me again to advance.</textarea>
         });
       }
 
+      function rawLineImage(line = {}) {
+        return usableSrc(line.actorImageSrc || line.imageSrc || line.image || line.portraitSrc || line.portrait || line.npcImageSrc || line.leftImage || line.rightImage || '');
+      }
+
+      function rawLineSound(line = {}) {
+        return usableSrc(line.lineSfxSrc || line.clickSoundSrc || line.soundSrc || line.sfxSrc || '');
+      }
+
       function normalizeCutsceneData(raw) {
         const out = { pre: [], mid: [], post: [] };
-        if (Array.isArray(raw)) out.mid = raw;
+        if (typeof raw === 'string') {
+          try { raw = JSON.parse(raw || '{}'); } catch { raw = null; }
+        }
+        const copyList = list => (Array.isArray(list) ? list : []).map(line => {
+          if (typeof line === 'string') return { text: line };
+          if (!line || typeof line !== 'object') return { text: String(line ?? '') };
+          const copy = { ...line };
+          const img = rawLineImage(copy);
+          const sfx = rawLineSound(copy);
+          if (img) {
+            copy.image = img;
+            copy.imageSrc = img;
+            copy.actorImageSrc = img;
+          }
+          if (sfx) {
+            copy.soundSrc = sfx;
+            copy.clickSoundSrc = sfx;
+            copy.lineSfxSrc = sfx;
+          }
+          return copy;
+        });
+        if (Array.isArray(raw)) out.mid = copyList(raw);
         else if (raw && typeof raw === 'object') {
-          out.pre = Array.isArray(raw.pre) ? raw.pre : [];
-          out.mid = Array.isArray(raw.mid) ? raw.mid : [];
-          out.post = Array.isArray(raw.post) ? raw.post : [];
+          out.pre = copyList(raw.pre || raw.before || raw.opening || raw.start);
+          out.mid = copyList(raw.mid || raw.middle || raw.during || raw.level || raw.actor || raw.lines);
+          out.post = copyList(raw.post || raw.after || raw.ending || raw.end);
         }
         return out;
       }
 
-      function readCutscenes() {
-        ensurePbState();
+      function cutsceneStats(data) {
+        data = normalizeCutsceneData(data);
+        let lines = 0, images = 0, sounds = 0, textChars = 0;
+        ['pre','mid','post'].forEach(slot => (data[slot] || []).forEach(line => {
+          lines++;
+          if (rawLineImage(line)) images++;
+          if (rawLineSound(line)) sounds++;
+          textChars += String(line.text || line.dialog || line.message || '').length;
+        }));
+        return { lines, images, sounds, textChars, score: lines * 1000 + images * 250 + sounds * 80 + Math.min(textChars, 4000) };
+      }
+
+      function lineMatchScore(a = {}, b = {}) {
+        let score = 0;
+        if (String(a.text || a.dialog || a.message || '') && String(a.text || a.dialog || a.message || '') === String(b.text || b.dialog || b.message || '')) score += 4;
+        if (String(a.speaker || a.name || '') && String(a.speaker || a.name || '') === String(b.speaker || b.name || '')) score += 2;
+        return score;
+      }
+
+      function mergeCutsceneCandidates(candidates = []) {
+        const list = candidates.map(normalizeCutsceneData).filter(data => cutsceneStats(data).lines > 0);
+        if (!list.length) return { pre: [], mid: [], post: [] };
+
+        let base = list[0];
+        let best = cutsceneStats(base).score;
+        for (const candidate of list.slice(1)) {
+          const score = cutsceneStats(candidate).score;
+          if (score > best) {
+            best = score;
+            base = candidate;
+          }
+        }
+        base = clone(base);
+
+        ['pre','mid','post'].forEach(slot => {
+          base[slot] ||= [];
+          for (let i = 0; i < base[slot].length; i++) {
+            const line = base[slot][i] || {};
+            let img = rawLineImage(line);
+            let sfx = rawLineSound(line);
+
+            for (const candidate of list) {
+              const sameIndex = candidate[slot]?.[i];
+              const matchByText = (candidate[slot] || []).find(other => lineMatchScore(line, other) >= 4);
+              const richer = sameIndex || matchByText;
+              if (!richer) continue;
+              if (!img) img = rawLineImage(richer);
+              if (!sfx) sfx = rawLineSound(richer);
+              if (img && sfx) break;
+            }
+
+            if (img) {
+              line.image = img;
+              line.imageSrc = img;
+              line.actorImageSrc = img;
+            }
+            if (sfx) {
+              line.soundSrc = sfx;
+              line.clickSoundSrc = sfx;
+              line.lineSfxSrc = sfx;
+            }
+            base[slot][i] = line;
+          }
+        });
+
+        return normalizeCutsceneData(base);
+      }
+
+      function campaignCutsceneSources() {
+        const sources = [];
+        try {
+          const level = state?.currentCampaignLevel || null;
+          sources.push(level?.world?.cutscenes, level?.cutscenes);
+          sources.push(level?.world?.advancedCutscenes, level?.advancedCutscenes);
+          sources.push(level?.world?.pb8?.cutscenes, level?.pb8?.cutscenes);
+        } catch {}
+        return sources.filter(Boolean);
+      }
+
+      function readCutsceneBoxData() {
         const box = $('pbCutsceneScript');
         const text = String(box?.value || '').trim();
-        if (text) {
-          try { state.cutscenes = normalizeCutsceneData(JSON.parse(text)); }
-          catch { /* keep the last valid state instead of destroying cutscenes */ }
-        }
-        state.cutscenes = normalizeCutsceneData(state.cutscenes);
+        if (!text) return null;
+        try { return normalizeCutsceneData(JSON.parse(text)); }
+        catch { return null; }
+      }
+
+      function readCutscenes() {
+        ensurePbState();
+        const candidates = [];
+        const boxData = readCutsceneBoxData();
+        if (boxData) candidates.push(boxData);
+        if (state.cutscenes) candidates.push(state.cutscenes);
+        candidates.push(...campaignCutsceneSources());
+
+        const merged = mergeCutsceneCandidates(candidates);
+        const stats = cutsceneStats(merged);
+        state.cutscenes = stats.lines ? merged : normalizeCutsceneData(state.cutscenes);
+        const box = $('pbCutsceneScript');
+        if (box && stats.lines) box.value = JSON.stringify(state.cutscenes, null, 2);
         return state.cutscenes;
       }
 
@@ -22035,6 +22182,10 @@ Click me again to advance.</textarea>
         state.cutscenes = normalizeCutsceneData(state.cutscenes);
         const box = $('pbCutsceneScript');
         if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
+        try {
+          if (state.currentCampaignLevel?.world) state.currentCampaignLevel.world.cutscenes = clone(state.cutscenes);
+          if (state.currentCampaignLevel) state.currentCampaignLevel.cutscenes = clone(state.cutscenes);
+        } catch {}
         renderCutsceneList();
       }
 
@@ -22077,7 +22228,7 @@ Click me again to advance.</textarea>
         style.id = 'pbActorThingyRewriteStyle';
         style.textContent = `
           #pb81AdvancedLevelBuilder .pb81ActorRewriteGrid { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; }
-          #pb81AdvancedLevelBuilder .pb81ActorRewriteActions { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin-top:8px; }
+          #pb81AdvancedLevelBuilder .pb81ActorRewriteActions { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:8px; }
           #pb81AdvancedLevelBuilder .pb81ActorRewriteList .pb81ListItem { grid-template-columns:44px 1fr auto; }
           .pb81ActorThumb { width:42px; height:42px; border-radius:10px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.16); display:grid; place-items:center; overflow:hidden; color:#d9ff9f; font-weight:900; }
           .pb81ActorThumb img { width:100%; height:100%; object-fit:contain; display:block; }
@@ -22296,6 +22447,18 @@ Click me again to advance.</textarea>
         closeActorLayer();
       }
 
+      async function playAllLines() {
+        const data = readCutscenes();
+        const slides = [];
+        ['pre','mid','post'].forEach(slot => (data[slot] || []).forEach(line => slides.push(normalizeSlide({ ...line, _previewSlot: slot }))));
+        if (!slides.length) {
+          toast('No cutscene lines to preview');
+          return;
+        }
+        for (const slide of slides) await showSlide(slide);
+        closeActorLayer();
+      }
+
       function currentSlideFromForm() {
         const actor = ensurePbState();
         return normalizeSlide({
@@ -22344,6 +22507,7 @@ Click me again to advance.</textarea>
             <button id="pb81PreviewCurrentLine" type="button" class="blue">Preview Current Line</button>
             <button id="pb81AddCutsceneLine" type="button">Add Line</button>
             <button id="pb81PreviewCutsceneSlot" type="button" class="blue">Preview Slot</button>
+            <button id="pb81PreviewAllCutsceneLines" type="button" class="blue">Preview All Lines</button>
             <button id="pb81ClearCutsceneSlot" type="button" class="danger">Clear Slot</button>
           </div>
           <div class="row">
@@ -22462,7 +22626,7 @@ Click me again to advance.</textarea>
           const target = ev.target?.closest?.('button,[data-pb81-del-cutscene]');
           if (!target) return;
           const id = target.id;
-          const handledIds = new Set(['pb81PreviewCurrentLine','pb81AddCutsceneLine','pb81PreviewCutsceneSlot','pb81ClearCutsceneSlot','pb81ScheduleMidCutscene','pb81UseSelectedNpcImage','pb81ClearActorImage','pb81TestCutsceneSfx','pb81ClearCutsceneSfx']);
+          const handledIds = new Set(['pb81PreviewCurrentLine','pb81AddCutsceneLine','pb81PreviewCutsceneSlot','pb81PreviewAllCutsceneLines','pb81ClearCutsceneSlot','pb81ScheduleMidCutscene','pb81UseSelectedNpcImage','pb81ClearActorImage','pb81TestCutsceneSfx','pb81ClearCutsceneSfx']);
           if (!handledIds.has(id) && !target.dataset.pb81DelCutscene) return;
           ev.preventDefault();
           ev.stopPropagation();
@@ -22479,6 +22643,7 @@ Click me again to advance.</textarea>
           if (id === 'pb81PreviewCurrentLine') { showSlide(currentSlideFromForm()).then(closeActorLayer); return; }
           if (id === 'pb81AddCutsceneLine') { addCurrentLine(); return; }
           if (id === 'pb81PreviewCutsceneSlot') { playSlot($('pb81CutsceneSlot')?.value || 'mid'); return; }
+          if (id === 'pb81PreviewAllCutsceneLines') { playAllLines(); return; }
           if (id === 'pb81ClearCutsceneSlot') { clearCurrentSlot(); return; }
           if (id === 'pb81ScheduleMidCutscene') { scheduleMidCutscene(); return; }
           if (id === 'pb81UseSelectedNpcImage') {
@@ -22514,25 +22679,145 @@ Click me again to advance.</textarea>
         }, true);
       }
 
+      let actorRuntimeLevelRef = null;
+
+      function campaignLevelEventSources() {
+        const sources = [];
+        try {
+          const level = state?.currentCampaignLevel || null;
+          sources.push(level?.world?.pb8?.levelEvents, level?.world?.advancedLevelBuilder?.levelEvents, level?.pb8?.levelEvents);
+        } catch {}
+        try { sources.push(state?.pb8?.levelEvents); } catch {}
+        return sources.filter(Array.isArray);
+      }
+
+      function hydrateActorRuntimeEvents(force = false) {
+        ensurePbState();
+        const level = state?.level || null;
+        if (!level?.running) return;
+        const changedLevel = actorRuntimeLevelRef !== level;
+        if (!force && !changedLevel && Array.isArray(state.pb8.runtimeEvents) && state.pb8.runtimeEvents.length) return;
+        actorRuntimeLevelRef = level;
+
+        let source = [];
+        for (const candidate of campaignLevelEventSources()) {
+          const actorEvents = candidate.filter(ev => ev && (ev.type === 'cutscene' || ev.type === 'actorCutscene'));
+          if (actorEvents.length) { source = candidate; break; }
+        }
+        if (!source.length) return;
+
+        state.pb8.runtimeEvents = source.map(ev => {
+          const copy = { ...clone(ev), _actorThingyFired: false };
+          if (copy.type === 'cutscene') copy.type = 'actorCutscene';
+          if (!copy.slot) copy.slot = 'mid';
+          return copy;
+        }).sort((a, b) => (Number(a.time) || 0) - (Number(b.time) || 0));
+      }
+
       function processActorRuntimeEvents() {
         try {
           const level = state?.level;
           if (!level?.running || state.paused) return;
+          hydrateActorRuntimeEvents(false);
           const elapsed = Number(level.elapsed) || 0;
           (state.pb8?.runtimeEvents || []).forEach(ev => {
             if (ev.type === 'cutscene') ev.type = 'actorCutscene';
             if (ev.type !== 'actorCutscene' || ev._actorThingyFired || elapsed < (Number(ev.time) || 0)) return;
             ev._actorThingyFired = true;
+            ev.fired = true;
             playSlot(ev.slot || 'mid');
           });
         } catch {}
       }
 
+      function prepareActorCutscenesFromWorld(data = null) {
+        ensurePbState();
+        const merged = mergeCutsceneCandidates([
+          data?.cutscenes,
+          data?.advancedCutscenes,
+          data?.pb8?.cutscenes,
+          state.currentCampaignLevel?.world?.cutscenes,
+          state.currentCampaignLevel?.cutscenes,
+          state.cutscenes,
+          readCutsceneBoxData()
+        ]);
+        if (cutsceneStats(merged).lines) {
+          state.cutscenes = merged;
+          const box = $('pbCutsceneScript');
+          if (box) box.value = JSON.stringify(state.cutscenes, null, 2);
+          renderCutsceneList();
+        }
+        hydrateActorRuntimeEvents(true);
+        return state.cutscenes;
+      }
+
+      function installCampaignCutscenePersistence() {
+        try {
+          if (typeof makeWorldSnapshotForLevel === 'function' && !makeWorldSnapshotForLevel.pbActorThingyCutsceneBake) {
+            const oldMake = makeWorldSnapshotForLevel;
+            makeWorldSnapshotForLevel = function(...args) {
+              const snap = oldMake.apply(this, args) || {};
+              const data = readCutscenes();
+              snap.cutscenes = clone(data);
+              snap.pb8 ||= clone(state.pb8 || {});
+              snap.pb8.levelEvents = clone(state.pb8?.levelEvents || snap.pb8.levelEvents || []);
+              return snap;
+            };
+            makeWorldSnapshotForLevel.pbActorThingyCutsceneBake = true;
+          }
+        } catch {}
+
+        try {
+          const api = window.ProjectBuildCampaigns;
+          if (api?.restoreWorldSnapshotForLevel && !api.restoreWorldSnapshotForLevel.pbActorThingyCutsceneRestore) {
+            const oldRestore = api.restoreWorldSnapshotForLevel;
+            api.restoreWorldSnapshotForLevel = function(data, ...args) {
+              const result = oldRestore.apply(this, [data, ...args]);
+              prepareActorCutscenesFromWorld(data || {});
+              return result;
+            };
+            api.restoreWorldSnapshotForLevel.pbActorThingyCutsceneRestore = true;
+          }
+        } catch {}
+
+        try {
+          const emergency = window.ProjectBuild5_2EmergencyStartFix;
+          if (emergency?.startCampaignLevel && !emergency.startCampaignLevel.pbActorThingyCutsceneRestore) {
+            const oldStartCampaign = emergency.startCampaignLevel;
+            emergency.startCampaignLevel = function(level, ...args) {
+              state.currentCampaignLevel = level || state.currentCampaignLevel;
+              prepareActorCutscenesFromWorld(level?.world || level || {});
+              const result = oldStartCampaign.apply(this, [level, ...args]);
+              setTimeout(() => prepareActorCutscenesFromWorld(level?.world || level || {}), 0);
+              return result;
+            };
+            emergency.startCampaignLevel.pbActorThingyCutsceneRestore = true;
+          }
+        } catch {}
+
+        try {
+          const mapStart = window.ProjectBuild5_2MapStart;
+          if (mapStart?.startCampaignLevel && !mapStart.startCampaignLevel.pbActorThingyCutsceneRestore) {
+            const oldMapStart = mapStart.startCampaignLevel;
+            mapStart.startCampaignLevel = function(level, ...args) {
+              state.currentCampaignLevel = level || state.currentCampaignLevel;
+              prepareActorCutscenesFromWorld(level?.world || level || {});
+              const result = oldMapStart.apply(this, [level, ...args]);
+              setTimeout(() => prepareActorCutscenesFromWorld(level?.world || level || {}), 0);
+              return result;
+            };
+            mapStart.startCampaignLevel.pbActorThingyCutsceneRestore = true;
+          }
+        } catch {}
+      }
+
       function patchRuntimeAndUniversal() {
+        installCampaignCutscenePersistence();
         try {
           if (typeof update === 'function' && !update.pbActorThingyRuntime) {
             const oldUpdate = update;
             update = function(dt) {
+              try { hydrateActorRuntimeEvents(false); } catch {}
               try { (state.pb8?.runtimeEvents || []).forEach(ev => { if (ev.type === 'cutscene') ev.type = 'actorCutscene'; }); } catch {}
               const result = oldUpdate.apply(this, arguments);
               processActorRuntimeEvents();
@@ -22592,6 +22877,7 @@ Click me again to advance.</textarea>
         installed: true,
         showSlide,
         playSlot,
+        playAllLines,
         readCutscenes,
         writeCutscenes,
         renderCutsceneList,
